@@ -9,32 +9,59 @@ function model(): string {
   return process.env.GEMINI_MODEL || "gemini-2.5-flash";
 }
 
+/**
+ * Every configured key, in order: GEMINI_API_KEY first, then the backups GEMINI_API_KEY_2 .. _5
+ * and any comma-separated GEMINI_API_KEYS. Duplicates and blanks are dropped.
+ */
+export function geminiKeys(env: Record<string, string | undefined> = process.env): string[] {
+  const list = [
+    env.GEMINI_API_KEY,
+    env.GEMINI_API_KEY_2,
+    env.GEMINI_API_KEY_3,
+    env.GEMINI_API_KEY_4,
+    env.GEMINI_API_KEY_5,
+    ...(env.GEMINI_API_KEYS ?? "").split(","),
+  ];
+  return [...new Set(list.map((k) => (k ?? "").trim()).filter(Boolean))];
+}
+
+/** Statuses where another key may succeed: rate limit, bad or blocked key, server trouble. */
+const TRY_NEXT_KEY = new Set([401, 403, 429, 500, 502, 503, 504]);
+
 async function callGemini(prompt: string, img: ReaderImage, schema: object): Promise<unknown> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new ReaderError("no_api_key", "The reader is not configured.");
-  let res: Response;
-  try {
-    res = await fetch(`${BASE}/${model()}:generateContent`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-goog-api-key": key },
-      body: JSON.stringify({
-        contents: [
-          { role: "user", parts: [{ text: prompt }, { inline_data: { mime_type: img.mimeType, data: img.base64 } }] },
-        ],
-        generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0 },
-      }),
-    });
-  } catch {
-    throw new ReaderError("network", "Could not reach the reading service.");
+  const keys = geminiKeys();
+  if (keys.length === 0) throw new ReaderError("no_api_key", "The reader is not configured.");
+  const body = JSON.stringify({
+    contents: [{ role: "user", parts: [{ text: prompt }, { inline_data: { mime_type: img.mimeType, data: img.base64 } }] }],
+    generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0 },
+  });
+  let res: Response | null = null;
+  let lastError: ReaderError | null = null;
+  for (const key of keys) {
+    try {
+      res = await fetch(`${BASE}/${model()}:generateContent`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": key },
+        body,
+      });
+    } catch {
+      lastError = new ReaderError("network", "Could not reach the reading service.");
+      res = null;
+      continue;
+    }
+    if (res.ok) break;
+    lastError = new ReaderError("http_error", `The reading service returned HTTP ${res.status}.`);
+    if (!TRY_NEXT_KEY.has(res.status)) break;
+    res = null;
   }
-  if (!res.ok) throw new ReaderError("http_error", `The reading service returned HTTP ${res.status}.`);
-  let body: any;
+  if (!res || !res.ok) throw lastError ?? new ReaderError("http_error", "The reading service failed.");
+  let reply: any;
   try {
-    body = await res.json();
+    reply = await res.json();
   } catch {
     throw new ReaderError("bad_output", "The reading service sent an unreadable reply.");
   }
-  const text = body?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const text = reply?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (typeof text !== "string") throw new ReaderError("bad_output", "The reading service sent no result.");
   try {
     return JSON.parse(text);
