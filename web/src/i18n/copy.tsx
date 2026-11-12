@@ -2,8 +2,8 @@ import { createContext, useContext, useState, type ReactNode } from 'react'
 import type { LineKey } from '../api/types'
 import { setFormatLang } from '../lib/format'
 
-// Every user-facing string, in English and Filipino. The Filipino is a draft:
-// Clarence checks it (02_product_spec.md). Names (Kahati, Meralco, 4Ps), units
+// Every user-facing string, in English and Filipino. The Filipino was reviewed and
+// approved on 2026-11-12; check new or changed Filipino strings. Names (Kahati, Meralco, 4Ps), units
 // (kWh, ₱) and household names stay as they are.
 const en = {
   // nav

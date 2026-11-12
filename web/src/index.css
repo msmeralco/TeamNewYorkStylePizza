@@ -403,6 +403,24 @@ a { color: inherit; text-decoration: none; }
   .screen.own .rate-range { display: none; }
   .screen.own .card.list .list-row:nth-child(n+2), .screen.shared .card.list .list-row:nth-child(n+2) { display: none; }
 }
+/* Spacing between a screen's blocks is the screen gap only: no default <p> margins on footnotes or
+   on paragraphs sitting directly in a screen (they added 13-14px above and below, on some tabs only). */
+.footnote, .screen > p { margin: 0; }
+/* Compact buttons are 44px everywhere; the compact screen rhythm doesn't enlarge them. */
+.screen .btn.compact { min-height: 44px; }
+/* Shared-meter Usage up to 860px tall: the tips card goes (its rows were already trimmed there) so the
+   what-if card, per-kWh note and buttons fit one screen; on short phones the organizer footnote goes too
+   (the Meralco disclaimer is required on tenant screens; the rate and lifeline caveats stay). */
+@media (max-height: 860px) { .screen.shared > .card.list { display: none; } }
+/* Tenant view: the two text links are 32px tall with invisible 44px tap areas (6px each way); 12px
+   between them so the tap areas meet without overlapping. On short phones the "Whole bill" line goes
+   so the view fits one screen; the rate, reading and Meralco notes in the footnote stay. */
+.tenant-actions .link-btn { min-height: 32px; position: relative; }
+.tenant-actions .link-btn::after { content: ''; position: absolute; inset: -6px 0; }
+.tenant-actions .link-btn + .link-btn { margin-top: 4px; }
+@media (max-height: 700px) { .tenant-whole { display: none; } }
+@media (max-height: 700px) { .screen.shared > .usage-foot { display: none; } }
+
 /* Safety net: if a phone is shorter still, own-meter Usage scrolls instead of hiding the footnote. */
 .screen.own, .screen.scrolls { overflow-y: auto; }
 

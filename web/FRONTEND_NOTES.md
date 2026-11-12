@@ -34,7 +34,7 @@ Look
 - No borders or card shadows (branding), lime never as text on white.
 
 Copy
-- Every string lives in `i18n/copy.tsx` (en + fil). Filipino is a DRAFT for Clarence to review. Keep bill line names (Generation, Transmission, ...) as printed on the Meralco bill. Wording rules from the spec apply ("needs a second look", never "overcharged", every tenant screen says "Not a Meralco statement").
+- Every string lives in `i18n/copy.tsx` (en + fil). The Filipino copy was reviewed and approved on 2026-11-12; new or changed Filipino strings still need a check before release. Keep bill line names (Generation, Transmission, ...) as printed on the Meralco bill. Wording rules from the spec apply ("needs a second look", never "overcharged", every tenant screen says "Not a Meralco statement").
 
 ## How changes were verified
 
@@ -59,5 +59,4 @@ Copy
 
 - Uncommitted at handoff time (see `git status`): GSAP chat animations and the no-shimmer chip fade, faster tier bar, softer Check bar (6px, 85%), Check icon without the tint and aligned, Home/Check header alignment, 50px nav circle, Filipino Bill title "Bayarin ni {name}", skeleton header rows.
 - Ask Kahati: tested against the live backend on 2026-11-12 (all six presets in en and fil, Gemini free text with history, off-topic refusal, BAU own meter, `/t/demo-santos/ask` tenant token, bad token, unknown household, 501-character question). Chat UI passed at 375 x 812 (en) and 375 x 667 (fil) with no page overflow. Mock answers are still English only.
-- Clarence to review all Filipino copy.
 - Real-phone camera test (iPhone and Android) on a deployed HTTPS link.
