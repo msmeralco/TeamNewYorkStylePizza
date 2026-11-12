@@ -1,6 +1,6 @@
 // POST /api/scan/bill: read a (masked) bill photo. The image is never stored.
 import { RATES } from "@/data/tables";
-import { fail, ok, readJson } from "@/lib/http";
+import { fail, failWithDetail, ok, readJson } from "@/lib/http";
 import { getReaders, ReaderError } from "@/lib/readers";
 import { reconcileLines } from "@/lib/engine/billLines";
 
@@ -46,7 +46,8 @@ export async function POST(req: Request): Promise<Response> {
     });
   } catch (e) {
     const msg = e instanceof ReaderError ? "The bill could not be read." : "The bill could not be read right now.";
-    return fail(502, "reader_failed", msg, "Try again, or type it instead");
+    console.error("reader_failed", e instanceof ReaderError ? `${e.code}: ${e.message}` : String(e));
+    return failWithDetail(502, "reader_failed", msg, "Try again, or type it instead", e instanceof ReaderError ? `${e.code}: ${e.message}` : undefined);
   }
 }
 

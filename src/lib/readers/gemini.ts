@@ -50,7 +50,12 @@ async function callGemini(prompt: string, img: ReaderImage, schema: object): Pro
       continue;
     }
     if (res.ok) break;
-    lastError = new ReaderError("http_error", `The reading service returned HTTP ${res.status}.`);
+    // Google's error text (e.g. "API key not valid", "model not found") never contains the key.
+    const why = await res
+      .json()
+      .then((j: any) => [j?.error?.status, j?.error?.message].filter(Boolean).join(" ").slice(0, 160))
+      .catch(() => "");
+    lastError = new ReaderError("http_error", `The reading service returned HTTP ${res.status}.${why ? ` ${why}` : ""}`);
     if (!TRY_NEXT_KEY.has(res.status)) break;
     res = null;
   }

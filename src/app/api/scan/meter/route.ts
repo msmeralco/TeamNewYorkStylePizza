@@ -1,6 +1,6 @@
 // POST /api/scan/meter: read a meter photo and validate it. The image is never stored.
 import { validateMeterScan } from "@/lib/engine/meterValidate";
-import { fail, ok, readJson } from "@/lib/http";
+import { fail, failWithDetail, ok, readJson } from "@/lib/http";
 import { getReaders, ReaderError } from "@/lib/readers";
 import type { Meter, Reading } from "@/types";
 
@@ -46,7 +46,8 @@ export async function POST(req: Request): Promise<Response> {
     return ok({ scan, validation, serialLine: serialLine(scan.serial, validation.serialMatches) });
   } catch (e) {
     const msg = e instanceof ReaderError ? "The meter could not be read." : "The meter could not be read right now.";
-    return fail(502, "reader_failed", msg, "Try again, or type it instead");
+    console.error("reader_failed", e instanceof ReaderError ? `${e.code}: ${e.message}` : String(e));
+    return failWithDetail(502, "reader_failed", msg, "Try again, or type it instead", e instanceof ReaderError ? `${e.code}: ${e.message}` : undefined);
   }
 }
 
