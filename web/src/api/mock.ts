@@ -4,6 +4,7 @@
 // The real engine lives in the backend; this file only stands in for it.
 
 import { ApiError, type KahatiApi } from './client'
+import { LIFELINE_TIERS_2026, lifelineDiscount } from '../lib/lifeline'
 import type {
   Bill,
   BillScan,
@@ -156,12 +157,6 @@ function month(): MonthView {
   }
 }
 
-function lifelineDiscount(kwh: number): number {
-  if (kwh <= 50) return 1
-  if (kwh <= 70) return 0.35
-  if (kwh <= 100) return 0.2
-  return 0
-}
 
 const ACTIONS: UsageView['actions'] = [
   { icon: 'plug', text: 'Unplug the rice cooker after cooking' },
@@ -267,6 +262,7 @@ export const mockApi: KahatiApi = {
           limitKwh: 50,
           pesoAtForecast: shown * rate * (1 - lifelineDiscount(shown)),
           pesoUnderLimit: 50 * rate * (1 - lifelineDiscount(50)),
+          tiers: LIFELINE_TIERS_2026,
         },
         rate: { perKwh: rate, ...rateMeta },
         actions: ACTIONS,

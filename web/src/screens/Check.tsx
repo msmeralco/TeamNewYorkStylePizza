@@ -45,8 +45,8 @@ export default function Check() {
     <div className="screen" ref={ref}>
       <h1 className="title">{t('check.title')}</h1>
 
-      <div className="lime-card">
-        <p className="hero-num" style={{ fontSize: c.addsUp ? 'calc(var(--hero) * 0.68)' : 'var(--hero)', paddingRight: 44 }}>
+      <div className="lime-card" style={{ ['--num' as string]: c.addsUp ? 'calc(var(--hero) * 0.68)' : 'var(--hero)', ['--text-gap' as string]: 'calc(var(--num) * 0.1259)' }}>
+        <p className="hero-num" style={{ fontSize: 'var(--num)', paddingRight: 44 }}>
           {c.addsUp ? (
             t('check.addsUp')
           ) : (

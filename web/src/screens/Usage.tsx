@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Bell, ChevronDown, Clock, Gauge, Leaf, Plug, Snowflake, Tag, TrendingUp } from 'lucide-react'
 import { api } from '../api'
 import { UsageChart } from '../components/UsageChart'
+import { LifelineBar } from '../components/LifelineBar'
 import { CountUp, useReveal } from '../components/motion'
 import { UsageSkeleton } from '../components/Skeletons'
 import { ErrorState, ICON, Sheet, toast } from '../components/ui'
@@ -80,17 +81,20 @@ export default function Usage() {
       )}
 
       {u.mode === 'own' && u.lifeline ? (
-        <div className="card note">
-          <span className="icon-chip lime"><Tag {...ICON} /></span>
-          <div className="stack" style={{ gap: 4 }}>
-            <span className="body">
-              {t('usage.stayUnder', { limit: u.lifeline.limitKwh, a: phpWhole(u.lifeline.pesoUnderLimit), b: phpWhole(u.lifeline.pesoAtForecast) })}
-            </span>
-            <span className="support" style={{ fontSize: 14 }}>
-              {t('usage.tiers')}
-              {u.rate.isFallback ? ` ${t('usage.usingRate', { month: localMonth(u.rate.month) })}` : ''}
-            </span>
+        <div className="card stack" style={{ gap: 'calc(var(--gap) * 0.6)' }}>
+          <div className="note">
+            <span className="icon-chip lime"><Tag {...ICON} /></span>
+            <div className="stack" style={{ gap: 4 }}>
+              <span className="body">
+                {t('usage.stayUnder', { limit: u.lifeline.limitKwh, a: phpWhole(u.lifeline.pesoUnderLimit), b: phpWhole(u.lifeline.pesoAtForecast) })}
+              </span>
+              {u.rate.isFallback && (
+                <span className="support" style={{ fontSize: 14 }}>{t('usage.usingRate', { month: localMonth(u.rate.month) })}</span>
+              )}
+            </div>
           </div>
+          {/* The tiers as a to-scale bar, replacing the "100% off up to 50 kWh..." line. */}
+          <LifelineBar forecastKwh={f.kwh} tiers={u.lifeline.tiers} />
         </div>
       ) : (
         u.perKwhValue != null && (

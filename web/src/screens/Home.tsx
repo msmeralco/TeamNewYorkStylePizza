@@ -71,7 +71,7 @@ export default function Home() {
     <div className="screen" ref={ref}>
       {header(t('home.billTitle', { month: monthName(bill.periodEnd) }))}
 
-      <div className="hero">
+      <div className="hero" style={{ ['--text-gap' as string]: 'calc(var(--hero) * 0.1259)' }}>
         <p className="hero-num"><CountUp value={bill.amount} format={php} /></p>
         <p className="body" style={{ margin: '10px 0 0', fontWeight: 500, fontSize: 15 }}>
           {bill.kwh} kWh · {t('common.range', { a: day(bill.periodStart), b: day(bill.periodEnd) })}

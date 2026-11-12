@@ -17,8 +17,12 @@ interface Tip {
 }
 
 const W = 320
-const H = 132
+const H = 116
 const PAD = { l: 8, r: 14, t: 16, b: 24 }
+// Every point is the same size. Measured points are solid dark; the forecast is lime
+// with a dark ring, drawn inside the same outer radius.
+const POINT_R = 5
+const END_RING = 1.25
 // White outline behind text so lines running under a label never cut through it.
 const HALO = { stroke: '#fff', strokeWidth: 4, strokeLinejoin: 'round' as const, paintOrder: 'stroke' }
 
@@ -53,7 +57,7 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
     const b = t.getBBox()
     const right = PAD.l + 4 + b.width
     const aboveTop = y(limit) - 8 - b.height
-    const r = 6 + 6
+    const r = POINT_R + 6
     const hits = right > x(end.day) - r && y(end.kwh) + r > aboveTop && y(end.kwh) - r < y(limit) - 8 + 3
     setLabelBelow(hits)
   }, [label, limit, end.kwh, end.day]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -64,7 +68,7 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
       id: `p${p.day}`,
       cx: x(p.day),
       cy: y(p.kwhUsed),
-      r: 4,
+      r: POINT_R,
       title: t(p.kind === 'bill' ? 'chart.billReading' : 'chart.photo', { d: day(p.date) }),
       body:
         p.kind === 'bill'
@@ -75,7 +79,7 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
       id: 'end',
       cx: x(end.day),
       cy: y(end.kwh),
-      r: 6,
+      r: POINT_R,
       title: t('chart.expected', { d: day(u.nextReadDate) }),
       body:
         t('chart.range', { n: Math.round(end.kwh), lo: Math.round(u.forecast.low), hi: Math.round(u.forecast.high) }) +
@@ -143,7 +147,7 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
         width="100%"
-        style={{ display: 'block', maxHeight: '22dvh', overflow: 'visible' }}
+        style={{ display: 'block', maxHeight: '16dvh', overflow: 'visible' }}
         role="img"
         aria-label={t('chart.aria', { n: Math.round(end.kwh), d: day(u.nextReadDate) })}
       >
@@ -163,8 +167,8 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
           </>
         )}
         <line x1={x(last.day)} x2={x(last.day)} y1={y(last.kwhUsed)} y2={y(0)} stroke="#231F20" strokeOpacity="0.45" strokeWidth="1" strokeDasharray="1 3.5" strokeLinecap="round" />
-        <polyline className="solid" points={solid} fill="none" stroke="#231F20" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
-        <line className="proj" x1={x(last.day)} y1={y(last.kwhUsed)} x2={x(end.day)} y2={y(end.kwh)} stroke="#231F20" strokeOpacity="0.8" strokeWidth="1.1" strokeDasharray="4 4" strokeLinecap="round" />
+        <polyline className="solid" points={solid} fill="none" stroke="#231F20" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" shapeRendering="geometricPrecision" />
+        <line className="proj" shapeRendering="geometricPrecision" x1={x(last.day)} y1={y(last.kwhUsed)} x2={x(end.day)} y2={y(end.kwh)} stroke="#231F20" strokeOpacity="0.8" strokeWidth="1.1" strokeDasharray="4 4" strokeLinecap="round" />
         {last.day > 0 && (
           <text className="lbl" x={x(last.day) + (photoLabelLow ? 8 : -6)} y={photoLabelLow ? y(last.kwhUsed) + 16 : y(last.kwhUsed) - 10} fontSize="11" fontWeight="600" textAnchor={photoLabelLow ? 'start' : 'end'} fill="#231F20" {...HALO}>
             {last.kwhUsed} kWh
@@ -175,7 +179,7 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
             {/* White ring so the dotted and dashed lines pass behind the point, not through it. */}
             <circle className={`${p.id === 'end' ? 'end' : 'dot'} pt`} data-id={p.id} cx={p.cx} cy={p.cy} r={p.r + 2.5} fill="#fff" />
             {p.id === 'end' ? (
-              <circle className="end pt" data-id={p.id} cx={p.cx} cy={p.cy} r={p.r} fill="#B7F42A" stroke="#231F20" strokeWidth="1.5" />
+              <circle className="end pt" data-id={p.id} cx={p.cx} cy={p.cy} r={p.r - END_RING / 2} fill="#B7F42A" stroke="#231F20" strokeWidth={END_RING} />
             ) : (
               <circle className="dot pt" data-id={p.id} cx={p.cx} cy={p.cy} r={p.r} fill="#231F20" />
             )}

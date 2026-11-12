@@ -158,6 +158,8 @@ export interface UsageView {
     limitKwh: number
     pesoAtForecast: number
     pesoUnderLimit: number
+    /** Discount tiers; the UI falls back to the 2026 DSWD tiers when absent. */
+    tiers?: { upTo: number; pctOff: number }[]
   }
   /** Shared meter only: V / K, pesos off the share per kWh saved. */
   perKwhValue?: number

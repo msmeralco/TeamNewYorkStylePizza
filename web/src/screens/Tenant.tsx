@@ -37,7 +37,7 @@ export default function Tenant() {
     <div className="screen no-nav" ref={ref}>
       <h1 className="title">{t('tenant.hi', { name: v.name })}</h1>
 
-      <div className="hero">
+      <div className="hero" style={{ ['--text-gap' as string]: '4.1px' }}>
         <p className="support" style={{ margin: 0, color: 'var(--white)', fontWeight: 600 }}>{t('share.label')}</p>
         <p className="hero-num lime" style={{ fontSize: 'calc(var(--hero) * 1.18)', marginTop: 6 }}><CountUp value={v.share} format={php} /></p>
         <span className="icon-chip lime corner"><ShieldCheck {...ICON} /></span>

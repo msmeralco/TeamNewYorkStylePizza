@@ -98,10 +98,10 @@ a { color: inherit; text-decoration: none; }
 /* ---------- surfaces ---------- */
 .card { background: var(--card); border-radius: var(--radius); padding: 18px 20px; }
 .card.list { padding: 4px 20px; }
-.hero { background: var(--ink); color: var(--white); border-radius: var(--radius); padding: 22px; position: relative; }
+.hero { --py: 22px; background: var(--ink); color: var(--white); border-radius: var(--radius); padding: var(--py) 22px; position: relative; }
 .hero .hero-num { color: var(--white); }
 .hero .hero-num.lime { color: var(--lime); }
-.lime-card { background: var(--lime); color: var(--ink); border-radius: var(--radius); padding: 20px 22px; position: relative; }
+.lime-card { --py: 20px; background: var(--lime); color: var(--ink); border-radius: var(--radius); padding: var(--py) 22px; position: relative; }
 
 .list-row { display: flex; align-items: center; gap: 14px; padding: var(--row-y) 0; width: 100%; text-align: left; }
 .list-row + .list-row { border-top: 1px solid var(--hairline); }
@@ -118,7 +118,10 @@ a { color: inherit; text-decoration: none; }
   background: var(--chip); color: var(--ink);
 }
 .icon-chip.lime { background: var(--lime); }
-.corner { position: absolute; top: 18px; right: 18px; }
+/* Corner icon: its top lines up with the top of the card's first line of text (the
+   glyphs, not the line box). Each card sets --text-gap, the gap between its first line's
+   box and its glyph tops: --text-gap = (line-height / 2 - 0.3991) x font size for Inter Tight. */
+.corner { position: absolute; top: calc(var(--py, 18px) + var(--text-gap, 0px)); right: 18px; }
 
 .chip {
   display: inline-flex; align-items: center; gap: 5px; align-self: flex-start;
@@ -309,11 +312,11 @@ a { color: inherit; text-decoration: none; }
   .btn { min-height: 48px; font-size: 16px; }
   .card { padding: 12px 16px; }
   .card.list { padding: 2px 16px; }
-  .hero { padding: 16px 18px; }
+  .hero { --py: 16px; padding: var(--py) 18px; }
   .avatar { width: 32px; height: 32px; font-size: 14px; }
   .icon-chip { width: 30px; height: 30px; }
   .support { font-size: 14px; }
-  .lime-card { padding: 16px 18px; }
+  .lime-card { --py: 16px; padding: var(--py) 18px; }
   .tile { padding: 12px; gap: 6px; }
   .usage-chart svg { max-height: 15dvh !important; }
 }
@@ -351,7 +354,8 @@ a { color: inherit; text-decoration: none; }
 /* Nav sits above the iPhone home indicator; screens leave room for it. */
 .nav { height: calc(var(--nav-h) + env(safe-area-inset-bottom)); }
 .nav-items { height: var(--nav-h); }
-.screen:not(.no-nav) { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + var(--gap)); }
+/* The lime nav bubble rises 20px above the bar; content keeps 12px clear of the bubble, not just the bar. */
+.screen:not(.no-nav) { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 32px); }
 
 /* Buttons: icon stays beside the text and the pair stays centred, even if a long translation wraps. */
 .btn, .link-btn { padding: 0 20px; text-align: center; line-height: 1.2; }
@@ -362,3 +366,20 @@ a { color: inherit; text-decoration: none; }
 .scan-foot { display: flex; flex-direction: column; margin-bottom: -6px; }
 .scan-foot .scan-hint { margin: 0; padding: 8px 0 10px; text-align: center; }
 .scan-foot .link-btn { min-height: 0; padding: 10px 20px; }
+
+/* ---------- lifeline tier bar (Usage, own meter) ---------- */
+.tier { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
+.tier-track { position: relative; padding-top: 18px; }
+.tier-bar { display: flex; gap: 3px; height: 24px; border-radius: 999px; overflow: hidden; }
+.tier-seg { display: flex; align-items: center; justify-content: center; min-width: 0; }
+.tier-seg span { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: clip; padding: 0 4px; }
+.tier-marker { position: absolute; top: 0; bottom: -3px; width: 0; z-index: 2; pointer-events: none; }
+.tier-marker i { position: absolute; top: 15px; bottom: 0; left: -0.75px; width: 1.5px; border-radius: 1px; background: var(--ink); opacity: 0.85; }
+.tier-marker-label {
+  position: absolute; top: 0; left: 0; translate: -50% 0; white-space: nowrap;
+  font-size: 12px; font-weight: 600; line-height: 14px; color: var(--ink);
+}
+.tier-axis { position: relative; height: 14px; font-size: 11px; font-weight: 500; color: var(--soft-on-white); }
+.tier-axis span { position: absolute; top: 0; translate: -50% 0; line-height: 14px; }
+.tier-axis span.first { translate: 0 0; }
+.tier-axis span.last { translate: -100% 0; }

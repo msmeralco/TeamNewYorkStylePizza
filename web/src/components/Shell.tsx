@@ -17,7 +17,7 @@ const TABS = [
 // Notch geometry. The bubble (r 28) sits centred 4px below the bar's top edge;
 // the notch is concentric with it, 6px wider, with rounded shoulders.
 const BUBBLE_R = 28
-const BUBBLE_DROP = 4
+const BUBBLE_DROP = 8 // bubble centre sits 8px below the bar's top, so it rises 20px above it
 const NOTCH_R = BUBBLE_R + 6
 const FILLET = 14
 
@@ -71,7 +71,6 @@ function BottomNav({ active }: { active: number }) {
   const bubbleIcon = useRef<HTMLSpanElement>(null)
   const prev = useRef<number | null>(null)
   const [shown, setShown] = useState(active) // icon inside the bubble
-  const LABEL_DROP = 4
 
   // Bubble + notch position (also on resize, without animating).
   useLayoutEffect(() => {
@@ -103,19 +102,15 @@ function BottomNav({ active }: { active: number }) {
     const from = prev.current
     prev.current = active
     if (from === null || from === active || reduceMotion()) {
-      labels.current.forEach((el, i) => gsap.set(el, { y: i === active ? LABEL_DROP : 0 }))
       setShown(active)
       return
     }
     const tl = gsap.timeline()
-    // Labels ease down under the bubble and back up as it leaves (icons follow the bubble in draw()).
-    tl.to(labels.current[active], { y: LABEL_DROP, duration: 0.45, ease: 'power3.out' }, 0.1)
-      .to(labels.current[from], { y: 0, duration: 0.45, ease: 'power3.out' }, 0)
-      // Bubble icon: shrink out, swap at the midpoint, pop back in with a small settle.
-      .to(bubbleIcon.current, { scale: 0.4, autoAlpha: 0, duration: 0.16, ease: 'power2.in' }, 0)
+    // Labels stay on one line for every tab; only the bubble and icons move.
+    // Bubble icon: fades out, swaps at the midpoint, fades back in. No bounce or dip.
+    tl.to(bubbleIcon.current, { scale: 0.85, autoAlpha: 0, duration: 0.16, ease: 'power1.in' }, 0)
       .add(() => setShown(active), 0.2)
-      .to(bubbleIcon.current, { scale: 1, autoAlpha: 1, duration: 0.4, ease: 'back.out(2.4)' }, 0.26)
-      .fromTo(bubbleRef.current, { y: 0 }, { y: 4, duration: 0.18, ease: 'power2.out', yoyo: true, repeat: 1 }, 0.4)
+      .to(bubbleIcon.current, { scale: 1, autoAlpha: 1, duration: 0.3, ease: 'power2.out' }, 0.26) // calm cross-fade, no overshoot
     return () => {
       tl.progress(1).kill()
     }
