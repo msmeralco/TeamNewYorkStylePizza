@@ -17,6 +17,7 @@ Kahati shows any household, including the ones behind someone else's meter, what
 ## Who it is for
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'fontFamily': 'Inter Tight, Inter, Segoe UI, Arial', 'fontSize': '15px', 'primaryColor': '#FFFFFF', 'primaryTextColor': '#231F20', 'primaryBorderColor': '#231F20', 'secondaryColor': '#F5F4F1', 'tertiaryColor': '#F5F4F1', 'lineColor': '#8A8685', 'textColor': '#231F20', 'clusterBkg': '#F5F4F1', 'clusterBorder': '#BDBAB8', 'edgeLabelBackground': '#F5F4F1', 'actorBkg': '#FFFFFF', 'actorBorder': '#231F20', 'actorTextColor': '#231F20', 'actorLineColor': '#8A8685', 'signalColor': '#5C5859', 'signalTextColor': '#231F20', 'noteBkgColor': '#B7F42A', 'noteTextColor': '#231F20', 'noteBorderColor': '#7A9F1B', 'labelBoxBkgColor': '#F5F4F1', 'labelBoxBorderColor': '#BDBAB8', 'loopTextColor': '#231F20'}}}%%
 flowchart LR
     M["One Meralco meter<br/>(the organizer's account)"] --> SM1["Sub-meter A<br/>Reyes"]
     M --> SM2["Sub-meter B<br/>Santos (Lorna)"]
@@ -25,6 +26,8 @@ flowchart LR
     O["Own enrolled meter<br/>Bautista"]
     SM2 -.->|"no Meralco account,<br/>Meralco's app cannot reach her"| L["Lorna sees her share,<br/>its lines and what each kWh costs"]
     O -.-> B["Bautista sees the forecast<br/>and the 50 kWh line"]
+    classDef key fill:#B7F42A,stroke:#231F20,stroke-width:2px,color:#231F20,font-weight:bold
+    class L key
 ```
 
 - **Shared meter (the way in):** tenants pay through someone else's account. Kahati splits the bill fairly, shows each household what it pays for, and checks the readings against the bill.
@@ -44,6 +47,7 @@ For private sub-meters Kahati does what ERC's redistribution rule already asks o
 ## How it works
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'fontFamily': 'Inter Tight, Inter, Segoe UI, Arial', 'fontSize': '15px', 'primaryColor': '#FFFFFF', 'primaryTextColor': '#231F20', 'primaryBorderColor': '#231F20', 'secondaryColor': '#F5F4F1', 'tertiaryColor': '#F5F4F1', 'lineColor': '#8A8685', 'textColor': '#231F20', 'clusterBkg': '#F5F4F1', 'clusterBorder': '#BDBAB8', 'edgeLabelBackground': '#F5F4F1', 'actorBkg': '#FFFFFF', 'actorBorder': '#231F20', 'actorTextColor': '#231F20', 'actorLineColor': '#8A8685', 'signalColor': '#5C5859', 'signalTextColor': '#231F20', 'noteBkgColor': '#B7F42A', 'noteTextColor': '#231F20', 'noteBorderColor': '#7A9F1B', 'labelBoxBkgColor': '#F5F4F1', 'labelBoxBorderColor': '#BDBAB8', 'loopTextColor': '#231F20'}}}%%
 flowchart LR
     subgraph Phone["Phone browser"]
         UI["web/ (Vite + React)<br/>7 screens + Ask Kahati<br/>state kept in the browser"]
@@ -63,6 +67,8 @@ flowchart LR
     UI -- "question" --> A
     A -- "only this household's facts" --> G
     E -- "shares, lines, forecast, checks" --> UI
+    classDef key fill:#B7F42A,stroke:#231F20,stroke-width:2px,color:#231F20,font-weight:bold
+    class E key
 ```
 
 The API keeps no database. The app holds the month's state (bill, readings) in the browser and sends it with every call, so any server instance can answer and nothing about a household is stored on the server. Photos are read and discarded.
@@ -70,6 +76,7 @@ The API keeps no database. The app holds the month's state (bill, readings) in t
 ## The demo path
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'fontFamily': 'Inter Tight, Inter, Segoe UI, Arial', 'fontSize': '15px', 'primaryColor': '#FFFFFF', 'primaryTextColor': '#231F20', 'primaryBorderColor': '#231F20', 'secondaryColor': '#F5F4F1', 'tertiaryColor': '#F5F4F1', 'lineColor': '#8A8685', 'textColor': '#231F20', 'clusterBkg': '#F5F4F1', 'clusterBorder': '#BDBAB8', 'edgeLabelBackground': '#F5F4F1', 'actorBkg': '#FFFFFF', 'actorBorder': '#231F20', 'actorTextColor': '#231F20', 'actorLineColor': '#8A8685', 'signalColor': '#5C5859', 'signalTextColor': '#231F20', 'noteBkgColor': '#B7F42A', 'noteTextColor': '#231F20', 'noteBorderColor': '#7A9F1B', 'labelBoxBkgColor': '#F5F4F1', 'labelBoxBorderColor': '#BDBAB8', 'loopTextColor': '#231F20'}}}%%
 flowchart TD
     S0["Home asks: one shared Meralco meter,<br/>or your own Meralco bill?"] --> S1
     S1["1 · Scan the sample bill<br/>180 kWh, ₱2,711.07, •••• 4821"] --> S2["2-5 · Scan four sub-meters<br/>serial must match each household"]
@@ -80,6 +87,8 @@ flowchart TD
     U --> C["Check: type 20 kWh for Dela Cruz<br/>Typed chip + 18 kWh missing"]
     C --> T["Tenant link: Lorna's share<br/>₱742.50 asked, ₱64.73 above the bill's rate"]
     T --> Q["Ask Kahati: why is my share this amount?"]
+    classDef key fill:#B7F42A,stroke:#231F20,stroke-width:2px,color:#231F20,font-weight:bold
+    class H key
 ```
 
 ## Try it yourself
@@ -93,6 +102,7 @@ Lab links also come as `#scenario=` (plain JSON), `#scenarioz=` (compressed) and
 ## The split
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'fontFamily': 'Inter Tight, Inter, Segoe UI, Arial', 'fontSize': '15px', 'primaryColor': '#FFFFFF', 'primaryTextColor': '#231F20', 'primaryBorderColor': '#231F20', 'secondaryColor': '#F5F4F1', 'tertiaryColor': '#F5F4F1', 'lineColor': '#8A8685', 'textColor': '#231F20', 'clusterBkg': '#F5F4F1', 'clusterBorder': '#BDBAB8', 'edgeLabelBackground': '#F5F4F1', 'actorBkg': '#FFFFFF', 'actorBorder': '#231F20', 'actorTextColor': '#231F20', 'actorLineColor': '#8A8685', 'signalColor': '#5C5859', 'signalTextColor': '#231F20', 'noteBkgColor': '#B7F42A', 'noteTextColor': '#231F20', 'noteBorderColor': '#7A9F1B', 'labelBoxBkgColor': '#F5F4F1', 'labelBoxBorderColor': '#BDBAB8', 'loopTextColor': '#231F20'}}}%%
 flowchart LR
     B["Bill total B = ₱2,711.07<br/>fixed charges F = ₱21.38"] --> F["F ÷ N households<br/>₱5.345 each"]
     B --> V["V = B − F = ₱2,689.69"]
@@ -101,6 +111,8 @@ flowchart LR
     F --> SUM["share = F ÷ N + V × k ÷ K"]
     X --> SUM
     SUM --> LR["rounded by largest remainder<br/>so shares add up to the bill exactly"]
+    classDef key fill:#B7F42A,stroke:#231F20,stroke-width:2px,color:#231F20,font-weight:bold
+    class SUM key
 ```
 
 | Household | kWh | Share |
@@ -118,6 +130,7 @@ Each household's share is also broken into the bill's seven lines (generation, t
 The realistic cheat is under-reporting kWh to pay less, which pushes cost onto the neighbours. Every check is anchored to the bill Meralco already prints.
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'fontFamily': 'Inter Tight, Inter, Segoe UI, Arial', 'fontSize': '15px', 'primaryColor': '#FFFFFF', 'primaryTextColor': '#231F20', 'primaryBorderColor': '#231F20', 'secondaryColor': '#F5F4F1', 'tertiaryColor': '#F5F4F1', 'lineColor': '#8A8685', 'textColor': '#231F20', 'clusterBkg': '#F5F4F1', 'clusterBorder': '#BDBAB8', 'edgeLabelBackground': '#F5F4F1', 'actorBkg': '#FFFFFF', 'actorBorder': '#231F20', 'actorTextColor': '#231F20', 'actorLineColor': '#8A8685', 'signalColor': '#5C5859', 'signalTextColor': '#231F20', 'noteBkgColor': '#B7F42A', 'noteTextColor': '#231F20', 'noteBorderColor': '#7A9F1B', 'labelBoxBkgColor': '#F5F4F1', 'labelBoxBorderColor': '#BDBAB8', 'loopTextColor': '#231F20'}}}%%
 flowchart TD
     P["New reading"] --> Q1{"Photo taken in the app?"}
     Q1 -- "typed" --> T1["Typed chip, seen by everyone"]
@@ -130,6 +143,8 @@ flowchart TD
     OK --> ADD{"All readings add up to the bill's kWh<br/>within 5% (about 9 kWh)?"}
     ADD -- "yes" --> GOOD["Readings add up: 180 of 180 kWh"]
     ADD -- "no" --> GAP["18 kWh missing<br/>gap split by kWh until fixed<br/>digit correction may suggest the misread digit"]
+    classDef key fill:#B7F42A,stroke:#231F20,stroke-width:2px,color:#231F20,font-weight:bold
+    class GOOD key
 ```
 
 Also: reading dates are aligned to the bill's read date, self-declared common-area use is capped and shown, the bill's own rate is checked against Meralco's published rate, and two people see every reading. Kahati shows a gap and never guesses its cause; it reports nothing to Meralco.
@@ -137,10 +152,13 @@ Also: reading dates are aligned to the bill's read date, self-declared common-ar
 ## The forecast, in stages
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'fontFamily': 'Inter Tight, Inter, Segoe UI, Arial', 'fontSize': '15px', 'primaryColor': '#FFFFFF', 'primaryTextColor': '#231F20', 'primaryBorderColor': '#231F20', 'secondaryColor': '#F5F4F1', 'tertiaryColor': '#F5F4F1', 'lineColor': '#8A8685', 'textColor': '#231F20', 'clusterBkg': '#F5F4F1', 'clusterBorder': '#BDBAB8', 'edgeLabelBackground': '#F5F4F1', 'actorBkg': '#FFFFFF', 'actorBorder': '#231F20', 'actorTextColor': '#231F20', 'actorLineColor': '#8A8685', 'signalColor': '#5C5859', 'signalTextColor': '#231F20', 'noteBkgColor': '#B7F42A', 'noteTextColor': '#231F20', 'noteBorderColor': '#7A9F1B', 'labelBoxBkgColor': '#F5F4F1', 'labelBoxBorderColor': '#BDBAB8', 'loopTextColor': '#231F20'}}}%%
 flowchart LR
     S1["Stage 1<br/>bill day<br/>next month about this month<br/>(labelled rough guess)"] --> S2["Stage 2<br/>one mid-month photo<br/>daily rate to the read date<br/>± 10% on the kWh still to come"]
     S2 --> S3["Stage 3<br/>after about 6 bills<br/>kWh = base + extra per hot degree<br/>(cooling degree days, Open-Meteo)"]
     S3 -.-> S4["Stage 4 (road ahead)<br/>SARIMAX after about 24 months"]
+    classDef key fill:#B7F42A,stroke:#231F20,stroke-width:2px,color:#231F20,font-weight:bold
+    class S2 key
 ```
 
 Bautista: 32 kWh by day 18, so 1.78 kWh a day, 12 days left, 53 kWh by 30 Nov (51 to 55). The lifeline tiers (ERC Res. No. 02, s. 2026: uniform 100% up to 50 kWh; Meralco's ERC-approved 51 to 100 kWh tiers, effective April 2026 billing) are 100% off most charges up to 50 kWh, 35% to 70, 20% to 100. Lifeline is for 4Ps or SWDO-certified low-income households, on one Meralco account and its meter. Pesos use the published Meralco rate from a team-updated table; before a month's rate is announced, last month's rate is used and labelled. Kahati never forecasts the rate.
@@ -148,6 +166,7 @@ Bautista: 32 kWh by day 18, so 1.78 kWh a day, 12 days left, 53 kWh by 30 Nov (5
 ## Ask Kahati (grounded chat)
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'fontFamily': 'Inter Tight, Inter, Segoe UI, Arial', 'fontSize': '15px', 'primaryColor': '#FFFFFF', 'primaryTextColor': '#231F20', 'primaryBorderColor': '#231F20', 'secondaryColor': '#F5F4F1', 'tertiaryColor': '#F5F4F1', 'lineColor': '#8A8685', 'textColor': '#231F20', 'clusterBkg': '#F5F4F1', 'clusterBorder': '#BDBAB8', 'edgeLabelBackground': '#F5F4F1', 'actorBkg': '#FFFFFF', 'actorBorder': '#231F20', 'actorTextColor': '#231F20', 'actorLineColor': '#8A8685', 'signalColor': '#5C5859', 'signalTextColor': '#231F20', 'noteBkgColor': '#B7F42A', 'noteTextColor': '#231F20', 'noteBorderColor': '#7A9F1B', 'labelBoxBkgColor': '#F5F4F1', 'labelBoxBorderColor': '#BDBAB8', 'loopTextColor': '#231F20'}}}%%
 flowchart TD
     Q["Question"] --> P{"Preset button?"}
     P -- "yes" --> TPL["Template answer from the computed numbers"]
@@ -161,6 +180,8 @@ flowchart TD
     TPL --> FOOT["Computed by Kahati. Not a Meralco statement."]
     ANS --> FOOT
     REF --> FOOT
+    classDef key fill:#B7F42A,stroke:#231F20,stroke-width:2px,color:#231F20,font-weight:bold
+    class ANS key
 ```
 
 The guard lets an answer through only if every number comes from the household's facts, it names no other household, makes no blame, legal or Meralco claims, has no links, and uses Latin script only. Preset answers are instant and the same every time.
@@ -170,6 +191,7 @@ What the organizer charged, refunds, rules and authorities are never discussed i
 ## Reading the photos
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'fontFamily': 'Inter Tight, Inter, Segoe UI, Arial', 'fontSize': '15px', 'primaryColor': '#FFFFFF', 'primaryTextColor': '#231F20', 'primaryBorderColor': '#231F20', 'secondaryColor': '#F5F4F1', 'tertiaryColor': '#F5F4F1', 'lineColor': '#8A8685', 'textColor': '#231F20', 'clusterBkg': '#F5F4F1', 'clusterBorder': '#BDBAB8', 'edgeLabelBackground': '#F5F4F1', 'actorBkg': '#FFFFFF', 'actorBorder': '#231F20', 'actorTextColor': '#231F20', 'actorLineColor': '#8A8685', 'signalColor': '#5C5859', 'signalTextColor': '#231F20', 'noteBkgColor': '#B7F42A', 'noteTextColor': '#231F20', 'noteBorderColor': '#7A9F1B', 'labelBoxBkgColor': '#F5F4F1', 'labelBoxBorderColor': '#BDBAB8', 'loopTextColor': '#231F20'}}}%%
 sequenceDiagram
     participant App
     participant API as /api/scan/meter

@@ -40,6 +40,7 @@ Scan routes render in `ScanOverlay`, a sheet that slides up over the last tab, s
 ### Screen flow
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'fontFamily': 'Inter Tight, Inter, Segoe UI, Arial', 'fontSize': '15px', 'primaryColor': '#FFFFFF', 'primaryTextColor': '#231F20', 'primaryBorderColor': '#231F20', 'secondaryColor': '#F5F4F1', 'tertiaryColor': '#F5F4F1', 'lineColor': '#8A8685', 'textColor': '#231F20', 'clusterBkg': '#F5F4F1', 'clusterBorder': '#BDBAB8', 'edgeLabelBackground': '#F5F4F1', 'actorBkg': '#FFFFFF', 'actorBorder': '#231F20', 'actorTextColor': '#231F20', 'actorLineColor': '#8A8685', 'signalColor': '#5C5859', 'signalTextColor': '#231F20', 'noteBkgColor': '#B7F42A', 'noteTextColor': '#231F20', 'noteBorderColor': '#7A9F1B', 'labelBoxBkgColor': '#F5F4F1', 'labelBoxBorderColor': '#BDBAB8', 'loopTextColor': '#231F20'}}}%%
 flowchart TD
     HOME["Home /"] -->|"Scan the bill"| SB["Scan bill /scan/bill<br/>step 1 of 6"]
     SB --> SA["Scan meter A to D<br/>steps 2 to 5"]
@@ -53,11 +54,14 @@ flowchart TD
     UBAU -->|"chat icon"| ASK
     LINK["Tenant link /t/:token"] --> TBILL["/t/:token/bill"]
     LINK --> TASK["/t/:token/ask"]
+    classDef key fill:#B7F42A,stroke:#231F20,stroke-width:2px,color:#231F20,font-weight:bold
+    class UBAU key
 ```
 
 ### Data flow
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'fontFamily': 'Inter Tight, Inter, Segoe UI, Arial', 'fontSize': '15px', 'primaryColor': '#FFFFFF', 'primaryTextColor': '#231F20', 'primaryBorderColor': '#231F20', 'secondaryColor': '#F5F4F1', 'tertiaryColor': '#F5F4F1', 'lineColor': '#8A8685', 'textColor': '#231F20', 'clusterBkg': '#F5F4F1', 'clusterBorder': '#BDBAB8', 'edgeLabelBackground': '#F5F4F1', 'actorBkg': '#FFFFFF', 'actorBorder': '#231F20', 'actorTextColor': '#231F20', 'actorLineColor': '#8A8685', 'signalColor': '#5C5859', 'signalTextColor': '#231F20', 'noteBkgColor': '#B7F42A', 'noteTextColor': '#231F20', 'noteBorderColor': '#7A9F1B', 'labelBoxBkgColor': '#F5F4F1', 'labelBoxBorderColor': '#BDBAB8', 'loopTextColor': '#231F20'}}}%%
 flowchart LR
     S["Screens"] --> C["KahatiApi<br/>src/api/client.ts"]
     C --> I{"VITE_API_URL set?"}
@@ -66,6 +70,8 @@ flowchart LR
     H -->|"stateless calls"| API["kahati.vercel.app<br/>../docs/API.md"]
     API --> H
     H -->|"maps shapes + error codes"| S
+    classDef key fill:#B7F42A,stroke:#231F20,stroke-width:2px,color:#231F20,font-weight:bold
+    class API key
 ```
 
 ## Code map
