@@ -4,13 +4,14 @@ import { ChartLine, House, ReceiptText, ScanLine, ShieldCheck } from 'lucide-rea
 import gsap from 'gsap'
 import { ICON } from './ui'
 import { reduceMotion } from './motion'
+import { useT } from '../i18n/copy'
 
 const TABS = [
-  { to: '/', label: 'Home', Icon: House, match: (p: string) => p === '/' },
-  { to: '/scan', label: 'Scan', Icon: ScanLine, match: (p: string) => p.startsWith('/scan') },
-  { to: '/bill', label: 'Bill', Icon: ReceiptText, match: (p: string) => p.startsWith('/bill') },
-  { to: '/usage', label: 'Usage', Icon: ChartLine, match: (p: string) => p.startsWith('/usage') },
-  { to: '/check', label: 'Check', Icon: ShieldCheck, match: (p: string) => p.startsWith('/check') },
+  { to: '/', label: 'nav.home' as const, Icon: House, match: (p: string) => p === '/' },
+  { to: '/scan', label: 'nav.scan' as const, Icon: ScanLine, match: (p: string) => p.startsWith('/scan') },
+  { to: '/bill', label: 'nav.bill' as const, Icon: ReceiptText, match: (p: string) => p.startsWith('/bill') },
+  { to: '/usage', label: 'nav.usage' as const, Icon: ChartLine, match: (p: string) => p.startsWith('/usage') },
+  { to: '/check', label: 'nav.check' as const, Icon: ShieldCheck, match: (p: string) => p.startsWith('/check') },
 ]
 
 // Notch geometry. The bubble (r 28) sits centred 4px below the bar's top edge;
@@ -44,6 +45,7 @@ function notchPath(w: number, h: number, cx: number) {
 }
 
 function BottomNav({ active }: { active: number }) {
+  const { t } = useT()
   const navRef = useRef<HTMLElement>(null)
   const pathRef = useRef<SVGPathElement>(null)
   const bubbleRef = useRef<HTMLDivElement>(null)
@@ -121,7 +123,7 @@ function BottomNav({ active }: { active: number }) {
 
   const BubbleIcon = TABS[shown].Icon
   return (
-    <nav className="nav" aria-label="Main" ref={navRef}>
+    <nav className="nav" aria-label={t('nav.main')} ref={navRef}>
       <svg className="nav-bar" width="100%" height={H} viewBox={`0 0 ${w} ${H}`} preserveAspectRatio="none" aria-hidden>
         <path ref={pathRef} fill="var(--ink)" />
       </svg>
@@ -131,7 +133,7 @@ function BottomNav({ active }: { active: number }) {
             <span className="nav-icon" ref={(el) => { icons.current[i] = el }}>
               <Icon {...ICON} size={22} />
             </span>
-            <span className="nav-label" ref={(el) => { labels.current[i] = el }}>{label}</span>
+            <span className="nav-label" ref={(el) => { labels.current[i] = el }}>{t(label)}</span>
           </NavLink>
         ))}
       </div>

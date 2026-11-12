@@ -5,30 +5,32 @@ import { api, type HouseholdMonth } from '../api'
 import { CountUp, GrowBar, useReveal } from '../components/motion'
 import { CheckSkeleton } from '../components/Skeletons'
 import { ErrorState, ICON, toast } from '../components/ui'
+import { useErrText } from '../i18n/copy'
 import { useT } from '../i18n/copy'
 import { day } from '../lib/format'
 import { notifyChange, useAsync } from '../lib/useAsync'
 
 export default function Check() {
   const { t } = useT()
+  const errText = useErrText()
   const { data, error, loading, reload } = useAsync(() => api.getMonth())
   const [editing, setEditing] = useState<string>()
   const [sending, setSending] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useReveal(ref, !!data)
 
-  if (error) return <div className="screen"><h1 className="title">Check</h1><ErrorState error={error} onRetry={reload} /></div>
+  if (error) return <div className="screen"><h1 className="title">{t('check.title')}</h1><ErrorState error={error} onRetry={reload} /></div>
   if (loading && !data) return <CheckSkeleton />
   const m = data!
 
   if (!m.bill || !m.check) {
     return (
       <div className="screen">
-        <h1 className="title">Check</h1>
+        <h1 className="title">{t('check.title')}</h1>
         <div className="card state">
-          <span className="body">The check runs once the bill and the readings are in.</span>
+          <span className="body">{t('check.empty')}</span>
           <Link className="btn" to={m.bill ? `/scan/meter/${m.households.find((h) => !h.reading)?.id ?? 'A'}` : '/scan/bill'}>
-            {m.bill ? 'Scan a meter' : 'Scan the bill'}
+            {m.bill ? t('check.scanMeter') : t('home.scanBill')}
           </Link>
         </div>
       </div>
@@ -41,16 +43,16 @@ export default function Check() {
 
   return (
     <div className="screen" ref={ref}>
-      <h1 className="title">Check</h1>
+      <h1 className="title">{t('check.title')}</h1>
 
       <div className="lime-card">
         <p className="hero-num" style={{ fontSize: c.addsUp ? 'calc(var(--hero) * 0.68)' : 'var(--hero)', paddingRight: 44 }}>
           {c.addsUp ? (
-            'Readings add up'
+            t('check.addsUp')
           ) : (
             <>
               <CountUp value={Math.abs(c.missingKwh)} format={(n) => `${Math.round(n)} kWh`} />{' '}
-              <span style={{ fontSize: 26, fontWeight: 700 }}>{c.missingKwh > 0 ? 'missing' : 'extra'}</span>
+              <span style={{ fontSize: 26, fontWeight: 700 }}>{c.missingKwh > 0 ? t('check.missingWord') : t('check.extraWord')}</span>
             </>
           )}
         </p>
@@ -59,7 +61,7 @@ export default function Check() {
         </span>
         <div style={{ marginTop: 16 }}><GrowBar pct={pct} /></div>
         <p className="body" style={{ margin: '12px 0 0', fontWeight: 500 }}>
-          {Math.round(c.readingsKwh)} of {c.masterKwh} kWh
+          {t('check.ofKwh', { a: Math.round(c.readingsKwh), b: c.masterKwh })}
         </p>
       </div>
 
@@ -68,11 +70,11 @@ export default function Check() {
           editing === h.id ? (
             <TypeRow key={h.id} h={h} onDone={() => setEditing(undefined)} />
           ) : (
-            <button key={h.id} className="list-row" onClick={() => setEditing(h.id)} aria-label={`Change ${h.name}'s reading`}>
+            <button key={h.id} className="list-row" onClick={() => setEditing(h.id)} aria-label={t('check.change', { name: h.name })}>
               <span className="avatar">{h.label}</span>
               <span className="grow">
                 <span className="body">
-                  {h.name} · {h.reading ? `${Math.round(h.reading.kwh)} kWh` : 'no reading'}
+                  {h.name} · {h.reading ? `${Math.round(h.reading.kwh)} kWh` : t('check.noReading')}
                 </span>
                 {h.reading && (
                   <span className="chip">
@@ -87,7 +89,7 @@ export default function Check() {
         <div className="list-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
           <span className="status-line" style={{ fontSize: 14 }}>
             <Calendar {...ICON} size={16} />
-            Reading dates aligned to the bill: {day(c.alignedTo)}
+            {t('check.aligned', { d: day(c.alignedTo) })}
           </span>
           {c.gapRuleApplied && (
             <span className="status-line" style={{ fontSize: 14 }}>
@@ -97,7 +99,7 @@ export default function Check() {
           )}
           <span className="status-line" style={{ fontSize: 14 }}>
             <Ruler {...ICON} size={16} />
-            Within {c.tolerancePct}% of the bill counts (about {Math.round(c.toleranceKwh)} kWh)
+            {t('check.tolerance', { p: c.tolerancePct, n: Math.round(c.toleranceKwh) })}
           </span>
         </div>
       </div>
@@ -110,15 +112,15 @@ export default function Check() {
             setSending(true)
             try {
               await api.requestNewPhoto(flagged.length ? flagged : m.households.map((h) => h.id))
-              toast(`Sent. They will see: "${t('check.second')}"`)
+              toast(t('check.sent', { msg: t('check.second') }))
             } catch (e) {
-              toast(e instanceof Error ? e.message : 'Could not send.')
+              toast(errText(e, 'check.errSend'))
             } finally {
               setSending(false)
             }
           }}
         >
-          <Camera {...ICON} /> Ask for a new photo
+          <Camera {...ICON} /> {t('check.askPhoto')}
         </button>
       )}
     </div>
@@ -127,6 +129,8 @@ export default function Check() {
 
 /** Type a reading in kWh. It is saved as "Typed", not photo-verified. */
 function TypeRow({ h, onDone }: { h: HouseholdMonth; onDone: () => void }) {
+  const { t } = useT()
+  const errText = useErrText()
   const [v, setV] = useState(h.reading ? String(Math.round(h.reading.kwh)) : '')
   const [err, setErr] = useState<string>()
   const save = async () => {
@@ -140,14 +144,14 @@ function TypeRow({ h, onDone }: { h: HouseholdMonth; onDone: () => void }) {
       notifyChange()
       onDone()
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not save.')
+      setErr(errText(e, 'check.errSave'))
     }
   }
   return (
     <div className="list-row" style={{ flexWrap: 'wrap' }}>
       <span className="avatar">{h.label}</span>
       <div className="field grow">
-        <label htmlFor={`kwh-${h.id}`}>{h.name}: kWh this month</label>
+        <label htmlFor={`kwh-${h.id}`}>{t('check.kwhThisMonth', { name: h.name })}</label>
         <input
           id={`kwh-${h.id}`}
           inputMode="numeric"
@@ -157,7 +161,7 @@ function TypeRow({ h, onDone }: { h: HouseholdMonth; onDone: () => void }) {
           onKeyDown={(e) => e.key === 'Enter' && v && save()}
         />
       </div>
-      <button className="icon-btn" style={{ background: 'var(--lime)', alignSelf: 'flex-end', marginBottom: 5 }} disabled={!v} onClick={save} aria-label="Save">
+      <button className="icon-btn" style={{ background: 'var(--lime)', alignSelf: 'flex-end', marginBottom: 5 }} disabled={!v} onClick={save} aria-label={t('common.save')}>
         <CheckIcon {...ICON} />
       </button>
       {err && <span className="support" style={{ width: '100%' }}>{err}</span>}

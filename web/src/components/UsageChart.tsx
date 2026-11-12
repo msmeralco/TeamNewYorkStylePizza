@@ -4,6 +4,7 @@ import { useGSAP } from '@gsap/react'
 import type { UsageView } from '../api'
 import { day } from '../lib/format'
 import { reduceMotion } from './motion'
+import { useT } from '../i18n/copy'
 
 interface Tip {
   id: string
@@ -18,6 +19,8 @@ interface Tip {
 const W = 320
 const H = 132
 const PAD = { l: 8, r: 14, t: 16, b: 24 }
+// White outline behind text so lines running under a label never cut through it.
+const HALO = { stroke: '#fff', strokeWidth: 4, strokeLinejoin: 'round' as const, paintOrder: 'stroke' }
 
 /** Forecast chart with hover (desktop) and tap (phone) details on each point. */
 export function UsageChart({ u, label }: { u: UsageView; label: string }) {
@@ -25,6 +28,9 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const tipRef = useRef<HTMLDivElement>(null)
   const [tip, setTip] = useState<Tip | null>(null)
+  const { t } = useT()
+  const limitLabel = useRef<SVGTextElement>(null)
+  const [labelBelow, setLabelBelow] = useState(false)
 
   const limit = u.lifeline?.limitKwh
   // Just enough headroom for the highest of the forecast range and the lifeline label.
@@ -36,6 +42,22 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
   const solid = u.points.map((p) => `${x(p.day)},${y(p.kwhUsed)}`).join(' ')
   const area = `M${x(0)},${y(0)} ${u.points.map((p) => `L${x(p.day)},${y(p.kwhUsed)}`).join(' ')} L${x(end.day)},${y(end.kwh)} L${x(end.day)},${y(0)} Z`
 
+  // The photo's kWh label sits above-left of its point unless that would put it on the lifeline line.
+  const photoLabelLow = limit != null && Math.abs(y(last.kwhUsed) - 10 - y(limit)) < 12
+
+  // Keep the lifeline label clear of the end point: if its measured box would touch
+  // the point (with a little room), move the label under the line instead.
+  useLayoutEffect(() => {
+    const t = limitLabel.current
+    if (!t || limit == null) return
+    const b = t.getBBox()
+    const right = PAD.l + 4 + b.width
+    const aboveTop = y(limit) - 8 - b.height
+    const r = 6 + 6
+    const hits = right > x(end.day) - r && y(end.kwh) + r > aboveTop && y(end.kwh) - r < y(limit) - 8 + 3
+    setLabelBelow(hits)
+  }, [label, limit, end.kwh, end.day]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Details for each point.
   const points = [
     ...u.points.map((p) => ({
@@ -43,21 +65,21 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
       cx: x(p.day),
       cy: y(p.kwhUsed),
       r: 4,
-      title: p.kind === 'bill' ? `${day(p.date)} · Bill reading` : `${day(p.date)} · Meter photo`,
+      title: t(p.kind === 'bill' ? 'chart.billReading' : 'chart.photo', { d: day(p.date) }),
       body:
         p.kind === 'bill'
-          ? 'Start of the month: 0 kWh used'
-          : `${p.kwhUsed} kWh used in ${p.day} days, about ${(p.kwhUsed / p.day).toFixed(1)} kWh a day`,
+          ? t('chart.start')
+          : t('chart.used', { n: p.kwhUsed, days: p.day, r: (p.kwhUsed / p.day).toFixed(1) }),
     })),
     {
       id: 'end',
       cx: x(end.day),
       cy: y(end.kwh),
       r: 6,
-      title: `${day(u.nextReadDate)} · Expected`,
+      title: t('chart.expected', { d: day(u.nextReadDate) }),
       body:
-        `${Math.round(end.kwh)} kWh (${Math.round(u.forecast.low)} to ${Math.round(u.forecast.high)})` +
-        (limit != null && end.kwh > limit ? `, about ${Math.round(end.kwh - limit)} kWh over the ${limit} kWh line` : ''),
+        t('chart.range', { n: Math.round(end.kwh), lo: Math.round(u.forecast.low), hi: Math.round(u.forecast.high) }) +
+        (limit != null && end.kwh > limit ? t('chart.over', { n: Math.round(end.kwh - limit), limit }) : ''),
     },
   ]
 
@@ -106,7 +128,7 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
       gsap
         .timeline({ delay: 0.25 })
         .from('.area', { autoAlpha: 0, duration: 0.6 })
-        .fromTo(line, { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 0.7, ease: 'power2.inOut' }, 0)
+        .fromTo(line, { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 0.7, ease: 'power2.inOut', clearProps: 'strokeDasharray,strokeDashoffset' }, 0)
         .from('.dot', { scale: 0, transformOrigin: '50% 50%', duration: 0.3, stagger: 0.15, ease: 'back.out(3)' }, 0.2)
         .from('.proj', { autoAlpha: 0, duration: 0.5 }, '-=0.1')
         .from('.end', { scale: 0, transformOrigin: '50% 50%', duration: 0.45, ease: 'back.out(3)' }, '-=0.2')
@@ -123,7 +145,7 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
         width="100%"
         style={{ display: 'block', maxHeight: '22dvh', overflow: 'visible' }}
         role="img"
-        aria-label={`Forecast ${Math.round(end.kwh)} kWh by ${day(u.nextReadDate)}`}
+        aria-label={t('chart.aria', { n: Math.round(end.kwh), d: day(u.nextReadDate) })}
       >
         <defs>
           <linearGradient id="fill" x1="0" x2="0" y1="0" y2="1">
@@ -135,20 +157,23 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
         <line x1={PAD.l} x2={W - PAD.r} y1={y(0)} y2={y(0)} stroke="#231F20" strokeOpacity="0.1" />
         {limit != null && (
           <>
-            <line x1={PAD.l} x2={W - PAD.r} y1={y(limit)} y2={y(limit)} stroke="#231F20" strokeWidth="1.5" strokeDasharray="1.5 4" strokeLinecap="round" />
-            <text className="lbl" x={PAD.l + 4} y={y(limit) - 8} fontSize="11" fontWeight="600" fill="#231F20">{label}</text>
+            {/* Quiet reference line: light, thin, full width; the end point's white ring covers the join. */}
+            <line x1={PAD.l} x2={W - PAD.r} y1={y(limit)} y2={y(limit)} stroke="#231F20" strokeOpacity="0.45" strokeWidth="1" strokeDasharray="1 3.5" strokeLinecap="round" />
+            <text ref={limitLabel} className="lbl" x={PAD.l + 4} y={labelBelow ? y(limit) + 15 : y(limit) - 8} fontSize="11" fontWeight="500" fill="#5C5859" {...HALO}>{label}</text>
           </>
         )}
-        <line x1={x(last.day)} x2={x(last.day)} y1={y(last.kwhUsed)} y2={y(0)} stroke="#231F20" strokeOpacity="0.15" strokeDasharray="2 3" />
-        <polyline className="solid" points={solid} fill="none" stroke="#231F20" strokeWidth="2.25" strokeLinecap="round" />
-        <line className="proj" x1={x(last.day)} y1={y(last.kwhUsed)} x2={x(end.day)} y2={y(end.kwh)} stroke="#231F20" strokeWidth="2" strokeDasharray="5 4" />
+        <line x1={x(last.day)} x2={x(last.day)} y1={y(last.kwhUsed)} y2={y(0)} stroke="#231F20" strokeOpacity="0.45" strokeWidth="1" strokeDasharray="1 3.5" strokeLinecap="round" />
+        <polyline className="solid" points={solid} fill="none" stroke="#231F20" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+        <line className="proj" x1={x(last.day)} y1={y(last.kwhUsed)} x2={x(end.day)} y2={y(end.kwh)} stroke="#231F20" strokeOpacity="0.8" strokeWidth="1.1" strokeDasharray="4 4" strokeLinecap="round" />
         {last.day > 0 && (
-          <text className="lbl" x={x(last.day) - 6} y={y(last.kwhUsed) - 10} fontSize="11" fontWeight="600" textAnchor="end" fill="#231F20">
+          <text className="lbl" x={x(last.day) + (photoLabelLow ? 8 : -6)} y={photoLabelLow ? y(last.kwhUsed) + 16 : y(last.kwhUsed) - 10} fontSize="11" fontWeight="600" textAnchor={photoLabelLow ? 'start' : 'end'} fill="#231F20" {...HALO}>
             {last.kwhUsed} kWh
           </text>
         )}
         {points.map((p) => (
           <g key={p.id}>
+            {/* White ring so the dotted and dashed lines pass behind the point, not through it. */}
+            <circle className={`${p.id === 'end' ? 'end' : 'dot'} pt`} data-id={p.id} cx={p.cx} cy={p.cy} r={p.r + 2.5} fill="#fff" />
             {p.id === 'end' ? (
               <circle className="end pt" data-id={p.id} cx={p.cx} cy={p.cy} r={p.r} fill="#B7F42A" stroke="#231F20" strokeWidth="1.5" />
             ) : (
@@ -175,9 +200,9 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
             />
           </g>
         ))}
-        <g fontSize="10.5" fontWeight="500" fill="#5C5859">
-          <text x={PAD.l} y={H - 4}>{day(u.readDate)} bill</text>
-          {last.day > 0 && <text x={x(last.day)} y={H - 4} textAnchor="middle">Day {last.day} photo</text>}
+        <g fontSize="10.5" fontWeight="500" fill="#5C5859" {...HALO}>
+          <text x={PAD.l} y={H - 4}>{t('chart.billAxis', { d: day(u.readDate) })}</text>
+          {last.day > 0 && <text x={x(last.day)} y={H - 4} textAnchor="middle">{t('chart.photoAxis', { n: last.day })}</text>}
           <text x={W - PAD.r + 8} y={H - 4} textAnchor="end">{day(u.nextReadDate)}</text>
         </g>
       </svg>

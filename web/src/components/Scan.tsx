@@ -4,18 +4,20 @@ import { X } from 'lucide-react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { ICON } from './ui'
+import { useT } from '../i18n/copy'
 
 export function ScanHeader({ step, total, title }: { step: number; total: number; title: string }) {
   const close = useCloseScan()
+  const { t } = useT()
   return (
     <div className="stack-lg">
       <div className="row-between">
-        <div className="dashes" aria-label={`Step ${step} of ${total}`}>
+        <div className="dashes" aria-label={t('scan.step', { n: step, total })}>
           {Array.from({ length: total }, (_, i) => (
             <span key={i} className={i < step ? 'on' : ''} />
           ))}
         </div>
-        <button className="icon-btn" aria-label="Close" onClick={close}>
+        <button className="icon-btn" aria-label={t('common.close')} onClick={close}>
           <X {...ICON} />
         </button>
       </div>
@@ -27,10 +29,11 @@ export function ScanHeader({ step, total, title }: { step: number; total: number
 /** Lime beam sweeping the frame while the model reads the photo. */
 export function ScanBeam() {
   const ref = useRef<HTMLDivElement>(null)
+  const { t } = useT()
   useGSAP(() => {
     gsap.fromTo(ref.current, { top: '18%' }, { top: '82%', duration: 1.1, ease: 'sine.inOut', repeat: -1, yoyo: true })
   })
-  return <div className="scan-beam" ref={ref} aria-label="Reading" />
+  return <div className="scan-beam" ref={ref} aria-label={t('scan.reading')} />
 }
 
 export function Brackets() {
@@ -60,12 +63,13 @@ export function CameraPanel({
   children: ReactNode
 }) {
   const input = useRef<HTMLInputElement>(null)
+  const { t } = useT()
   return (
     <button
       className="viewfinder"
       disabled={disabled}
       onClick={() => input.current?.click()}
-      aria-label="Take a photo"
+      aria-label={t('scan.takePhoto')}
     >
       {preview && <img src={preview} alt="" />}
       {children}

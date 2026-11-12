@@ -97,7 +97,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
   }, [onDone])
 
   return (
-    <div className="splash" ref={root} role="status" aria-label="Loading Kahati">
+    <div className="splash" ref={root} role="status" aria-label={(() => { try { return localStorage.getItem('kahati-lang') === 'fil' ? 'Naglo-load ang Kahati' : 'Loading Kahati' } catch { return 'Loading Kahati' } })()}>
       <div style={{ visibility: 'visible' }} dangerouslySetInnerHTML={{ __html: wordmark }} />
     </div>
   )

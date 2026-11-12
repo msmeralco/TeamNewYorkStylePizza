@@ -36,8 +36,11 @@ export interface KahatiApi {
 
 export class ApiError extends Error {
   status: number
-  constructor(message: string, status = 0) {
+  /** Stable code the UI translates (err.<code> in i18n/copy.tsx). */
+  code?: string
+  constructor(message: string, status = 0, code?: string) {
     super(message)
+    this.code = code
     this.status = status
   }
 }

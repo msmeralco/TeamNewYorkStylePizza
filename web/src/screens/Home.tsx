@@ -11,7 +11,7 @@ import { notifyChange, useAsync } from '../lib/useAsync'
 
 export default function Home() {
   const { data, error, loading, reload } = useAsync(() => api.getMonth())
-  const { lang, setLang } = useT()
+  const { lang, setLang, t } = useT()
   const nav = useNavigate()
   const ref = useRef<HTMLDivElement>(null)
   const [menu, setMenu] = useState(false)
@@ -25,7 +25,7 @@ export default function Home() {
   const header = (title: string) => (
     <div className="row-between">
       <h1 className="title">{title}</h1>
-      <button className="icon-btn ghost" aria-label="More" onClick={() => setMenu(true)}>
+      <button className="icon-btn ghost" aria-label={t('common.more')} onClick={() => setMenu(true)}>
         <Ellipsis {...ICON} />
       </button>
     </div>
@@ -40,7 +40,7 @@ export default function Home() {
       {usingMock && (
         <button className="list-row" onClick={async () => { await api.resetDemo(); notifyChange(); setMenu(false) }}>
           <span className="icon-chip"><RotateCcw {...ICON} /></span>
-          <span className="grow body">Reset the demo</span>
+          <span className="grow body">{t('home.reset')}</span>
         </button>
       )}
     </Sheet>
@@ -50,13 +50,13 @@ export default function Home() {
   if (!m.bill) {
     return (
       <div className="screen" ref={ref}>
-        {header('This month')}
+        {header(t('home.thisMonth'))}
         <div className="hero">
-          <p className="hero-num" style={{ fontSize: 30 }}>No bill yet</p>
-          <p className="support" style={{ margin: '8px 0 0' }}>Scan the Meralco bill to start the split.</p>
+          <p className="hero-num" style={{ fontSize: 30 }}>{t('home.noBill')}</p>
+          <p className="support" style={{ margin: '8px 0 0' }}>{t('home.noBillHint')}</p>
         </div>
         <button className="btn" onClick={() => nav('/scan/bill')}>
-          <ScanLine {...ICON} /> Scan the bill
+          <ScanLine {...ICON} /> {t('home.scanBill')}
         </button>
         {sheet}
       </div>
@@ -69,12 +69,12 @@ export default function Home() {
 
   return (
     <div className="screen" ref={ref}>
-      {header(`${monthName(bill.periodEnd)} bill`)}
+      {header(t('home.billTitle', { month: monthName(bill.periodEnd) }))}
 
       <div className="hero">
         <p className="hero-num"><CountUp value={bill.amount} format={php} /></p>
         <p className="body" style={{ margin: '10px 0 0', fontWeight: 500, fontSize: 15 }}>
-          {bill.kwh} kWh · {day(bill.periodStart)} to {day(bill.periodEnd)}
+          {bill.kwh} kWh · {t('common.range', { a: day(bill.periodStart), b: day(bill.periodEnd) })}
         </p>
         <span className="icon-chip lime corner"><Zap {...ICON} /></span>
       </div>
@@ -82,15 +82,15 @@ export default function Home() {
       {missing.length > 0 ? (
         <>
           <div className="row-between">
-            <span className="status-line"><CircleAlert {...ICON} />{missing.length} of {m.households.length} readings to go</span>
+            <span className="status-line"><CircleAlert {...ICON} />{t('home.toGo', { n: missing.length, total: m.households.length })}</span>
             {usingMock && (
               <button className="text-link" onClick={async () => { await api.loadSampleReadings(); notifyChange() }}>
-                Load the rest
+                {t('home.loadRest')}
               </button>
             )}
           </div>
           <button className="btn" onClick={() => nav(`/scan/meter/${missing[0].id}`)}>
-            <ScanLine {...ICON} /> Scan {missing[0].name}
+            <ScanLine {...ICON} /> {t('home.scanName', { name: missing[0].name })}
           </button>
         </>
       ) : (
@@ -98,8 +98,8 @@ export default function Home() {
           <Link to="/check" className="status-line">
             {check.addsUp ? <CircleCheck {...ICON} /> : <CircleAlert {...ICON} />}
             {check.addsUp
-              ? `Readings add up: ${Math.round(check.readingsKwh)} of ${check.masterKwh} kWh`
-              : `${Math.round(check.missingKwh)} kWh missing: ${Math.round(check.readingsKwh)} of ${check.masterKwh} kWh`}
+              ? t('home.addsUp', { a: Math.round(check.readingsKwh), b: check.masterKwh })
+              : t('home.missing', { n: Math.round(check.missingKwh), a: Math.round(check.readingsKwh), b: check.masterKwh })}
           </Link>
         )
       )}
@@ -112,7 +112,7 @@ export default function Home() {
               <span className="body">{h.name}</span>
               <span className="meta">
                 <Zap size={12} strokeWidth={1.75} />
-                {h.reading ? kwh(h.reading.kwh) : 'No reading yet'}
+                {h.reading ? kwh(h.reading.kwh) : t('home.noReading')}
               </span>
             </span>
             <span className="amount">{h.share ? <CountUp value={h.share.amount} format={php} /> : '–'}</span>
@@ -124,9 +124,9 @@ export default function Home() {
         <div className="card note">
           <span className="icon-chip lime"><TrendingUp {...ICON} /></span>
           <div className="stack" style={{ gap: 4 }}>
-            <span className="body">Charged rate is {php(m.rateNote.difference)} above the bill</span>
+            <span className="body">{t('home.rateAbove', { n: php(m.rateNote.difference) })}</span>
             <span className="support" style={{ fontSize: 14 }}>
-              {php(m.rateNote.chargedRate)} charged vs {php(m.rateNote.billRate)} on the bill
+              {t('home.rateVs', { a: php(m.rateNote.chargedRate), b: php(m.rateNote.billRate) })}
             </span>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { CircleAlert, CircleCheck, ShieldCheck } from 'lucide-react'
 import gsap from 'gsap'
 import { reduceMotion } from './motion'
+import { useErrText, useT } from '../i18n/copy'
 
 export const ICON = { size: 18, strokeWidth: 1.75 } as const
 
@@ -16,13 +17,15 @@ export function Footnote({ children }: { children: ReactNode }) {
 }
 
 export function ErrorState({ error, onRetry }: { error: Error; onRetry?: () => void }) {
+  const { t } = useT()
+  const errText = useErrText()
   return (
     <div className="card state">
       <CircleAlert size={28} strokeWidth={1.75} />
-      <div className="body">{error.message || 'Something went wrong.'}</div>
+      <div className="body">{errText(error, 'common.error')}</div>
       {onRetry && (
         <button className="btn dark" onClick={onRetry}>
-          Try again
+          {t('common.tryAgain')}
         </button>
       )}
     </div>

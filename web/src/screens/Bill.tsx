@@ -33,13 +33,14 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
   useGSAP(
     () => {
       if (!data || reduceMotion()) return
-      gsap.from('.stacked > div', { scaleX: 0, transformOrigin: '0 50%', duration: 0.6, stagger: 0.07, ease: 'power3.out', delay: 0.15 })
+      // One sweep left to right across the whole bar (segments keep their final size).
+      gsap.fromTo('.stacked', { clipPath: 'inset(0 100% 0 0 round 3px)' }, { clipPath: 'inset(0 0% 0 0 round 3px)', duration: 1.1, ease: 'power2.inOut', delay: 0.15, clearProps: 'clipPath' })
     },
     { scope: ref, dependencies: [data?.householdId] },
   )
 
   const back = tenant && (
-    <Link to={`/t/${params.token}`} className="icon-btn" aria-label="Back">
+    <Link to={`/t/${params.token}`} className="icon-btn" aria-label={t('common.back')}>
       <ArrowLeft {...ICON} />
     </Link>
   )
@@ -49,9 +50,9 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
     return (
       <div className={cls}>
         {back}
-        <h1 className="title">What you pay for</h1>
+        <h1 className="title">{t('bill.whatYouPay')}</h1>
         <ErrorState error={error} onRetry={reload} />
-        {!tenant && <Link className="btn" to="/">Go to Home</Link>}
+        {!tenant && <Link className="btn" to="/">{t('bill.goHome')}</Link>}
       </div>
     )
   if (loading && !data) return <BillSkeleton noNav={tenant} />

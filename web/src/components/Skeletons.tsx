@@ -2,6 +2,7 @@ import { useRef, type CSSProperties, type ReactNode } from 'react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { reduceMotion } from './motion'
+import { useT } from '../i18n/copy'
 
 /** One grey block. */
 export function Sk({ w = '100%', h = 16, r = 8, style }: { w?: number | string; h?: number | string; r?: number; style?: CSSProperties }) {
@@ -11,6 +12,7 @@ export function Sk({ w = '100%', h = 16, r = 8, style }: { w?: number | string; 
 /** Screen wrapper that pulses its blocks with a travelling GSAP wave. */
 function SkScreen({ children, dark, noNav }: { children: ReactNode; dark?: boolean; noNav?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
+  const { t } = useT()
   useGSAP(
     () => {
       if (reduceMotion()) return
@@ -21,7 +23,7 @@ function SkScreen({ children, dark, noNav }: { children: ReactNode; dark?: boole
     { scope: ref },
   )
   return (
-    <div ref={ref} className={`screen${noNav ? ' no-nav' : ''}${dark ? ' sk-dark' : ''}`} aria-busy="true" aria-label="Loading">
+    <div ref={ref} className={`screen${noNav ? ' no-nav' : ''}${dark ? ' sk-dark' : ''}`} aria-busy="true" aria-label={t('common.loading')}>
       {children}
     </div>
   )

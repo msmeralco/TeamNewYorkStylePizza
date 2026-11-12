@@ -191,7 +191,7 @@ export const mockApi: KahatiApi = {
   async scanMeter(householdId) {
     await wait(1500)
     const h = HOUSEHOLDS.find((x) => x.id === householdId)
-    if (!h) throw new ApiError('Unknown household', 404)
+    if (!h) throw new ApiError('Unknown household', 404, 'unknown_household')
     const value = METER_FACES[h.id]
     return {
       householdId,
@@ -208,9 +208,9 @@ export const mockApi: KahatiApi = {
   async confirmReading({ householdId, value, source, capturedAt }) {
     await wait(250)
     const h = HOUSEHOLDS.find((x) => x.id === householdId)
-    if (!h) throw new ApiError('Unknown household', 404)
+    if (!h) throw new ApiError('Unknown household', 404, 'unknown_household')
     if (value < h.previousReading) {
-      throw new ApiError("This reading is below last month's. Check the number.", 422)
+      throw new ApiError("This reading is below last month's. Check the number.", 422, 'reading_below')
     }
     const r: Reading = {
       householdId,
@@ -229,8 +229,8 @@ export const mockApi: KahatiApi = {
     await wait(200)
     const m = month()
     const h = m.households.find((x) => x.id === householdId)
-    if (!h) throw new ApiError('Unknown household', 404)
-    if (!h.share) throw new ApiError('Shares appear once the bill and all readings are in.', 409)
+    if (!h) throw new ApiError('Unknown household', 404, 'unknown_household')
+    if (!h.share) throw new ApiError('Shares appear once the bill and all readings are in.', 409, 'shares_pending')
     return { ...h.share, name: h.name }
   },
 
@@ -274,7 +274,7 @@ export const mockApi: KahatiApi = {
     }
     const m = month()
     const h = m.households.find((x) => x.id === householdId)
-    if (!h) throw new ApiError('Unknown household', 404)
+    if (!h) throw new ApiError('Unknown household', 404, 'unknown_household')
     const last = h.reading?.kwh ?? 45
     const bill = m.bill ?? { ...SAMPLE_BILL, id: 'sample' }
     return {
@@ -300,7 +300,7 @@ export const mockApi: KahatiApi = {
   async getTenantView(token) {
     await wait(300)
     const id = TENANT_TOKENS[token]
-    if (!id) throw new ApiError('This link has expired. Ask the organizer for a new one.', 404)
+    if (!id) throw new ApiError('This link has expired. Ask the organizer for a new one.', 404, 'link_expired')
     const m = month()
     const h = m.households.find((x) => x.id === id)!
     // A tenant link only exists once the split is done; show the sample split if not.

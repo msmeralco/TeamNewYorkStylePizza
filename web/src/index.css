@@ -160,8 +160,9 @@ a { color: inherit; text-decoration: none; }
 .dashes span { width: 18px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.2); }
 .dashes span.on { background: var(--white); }
 
-.bar { height: 6px; border-radius: 3px; background: rgba(35, 31, 32, 0.12); overflow: hidden; }
-.bar > div { height: 100%; background: var(--ink); border-radius: 3px; transition: width 0.4s; }
+.bar { height: 8px; border-radius: 999px; background: rgba(35, 31, 32, 0.12); overflow: hidden; }
+/* Width is animated by GSAP only (no CSS transition, which would fight it every frame). */
+.bar > div { height: 100%; background: var(--ink); border-radius: 999px; will-change: width; }
 
 .stacked { display: flex; gap: 3px; height: 10px; }
 .stacked > div { border-radius: 3px; }
@@ -351,3 +352,13 @@ a { color: inherit; text-decoration: none; }
 .nav { height: calc(var(--nav-h) + env(safe-area-inset-bottom)); }
 .nav-items { height: var(--nav-h); }
 .screen:not(.no-nav) { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + var(--gap)); }
+
+/* Buttons: icon stays beside the text and the pair stays centred, even if a long translation wraps. */
+.btn, .link-btn { padding: 0 20px; text-align: center; line-height: 1.2; }
+.btn > svg, .link-btn > svg { flex: none; }
+
+/* Scan sheet footer: hint and text links share one even rhythm (20px between lines),
+   with extra room between the card above and the hint. */
+.scan-foot { display: flex; flex-direction: column; margin-bottom: -6px; }
+.scan-foot .scan-hint { margin: 0; padding: 8px 0 10px; text-align: center; }
+.scan-foot .link-btn { min-height: 0; padding: 10px 20px; }

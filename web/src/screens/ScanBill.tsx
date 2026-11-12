@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Banknote, Calendar, Check, Hash, Keyboard, Lock, Zap } from 'lucide-react'
-import { api, usingMock, type BillScan } from '../api'
+import { api, showDevTools, type BillScan } from '../api'
+import { useErrText, useT } from '../i18n/copy'
 import { SAMPLE_BILL } from '../api/mock'
 import { Brackets, CameraPanel, ScanBeam, ScanHeader } from '../components/Scan'
 import { useReveal } from '../components/motion'
@@ -38,6 +39,8 @@ export default function ScanBill() {
   const [scan, setScan] = useState<BillScan>()
   const [preview, setPreview] = useState<string>()
   const [err, setErr] = useState<string>()
+  const { t } = useT()
+  const errText = useErrText()
   const ref = useRef<HTMLDivElement>(null)
   useReveal(ref, true, `${consented}-${phase === 'typing'}-${!!scan}`)
 
@@ -51,7 +54,7 @@ export default function ScanBill() {
       setScan(await api.scanBill(file))
       setPhase('read')
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not read the bill.')
+      setErr(errText(e, 'scan.errReadBill'))
       setPhase('idle')
     }
   }
@@ -63,7 +66,7 @@ export default function ScanBill() {
       notifyChange()
       nav('/scan/meter/A')
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not save the bill.')
+      setErr(errText(e, 'scan.errSaveBill'))
       setPhase('read')
     }
   }
@@ -71,17 +74,14 @@ export default function ScanBill() {
   if (!consented) {
     return (
       <div className="screen no-nav" ref={ref}>
-        <ScanHeader step={0} total={5} title="Before you scan" />
+        <ScanHeader step={0} total={5} title={t('scan.before')} />
         <div className="spacer" />
         <div className="scan-sheet">
           <div className="note">
             <span className="icon-chip lime"><Lock {...ICON} /></span>
             <div className="stack" style={{ gap: 6 }}>
-              <span className="body">Name, address and account number are covered on your phone first.</span>
-              <span className="support">
-                Kahati sends only the covered photo to read the bill. It keeps the period, kWh, amount, the charge lines and
-                the last 4 digits of the account. The photo is not kept.
-              </span>
+              <span className="body">{t('scan.consentTitle')}</span>
+              <span className="support">{t('scan.consentBody')}</span>
             </div>
           </div>
           <button
@@ -91,7 +91,7 @@ export default function ScanBill() {
               setConsented(true)
             }}
           >
-            <Check {...ICON} /> I understand
+            <Check {...ICON} /> {t('scan.understand')}
           </button>
         </div>
       </div>
@@ -101,15 +101,15 @@ export default function ScanBill() {
   if (phase === 'typing') return <TypeBill onCancel={() => setPhase('idle')} onDone={confirm} />
 
   const rows = [
-    { Icon: Calendar, k: 'Period', v: scan ? `${day(scan.periodStart)} to ${day(scan.periodEnd)}` : '–' },
-    { Icon: Zap, k: 'Total kWh', v: scan ? String(scan.kwh) : '–' },
-    { Icon: Banknote, k: 'Amount', v: scan ? php(scan.amount) : '–' },
-    { Icon: Hash, k: 'Account', v: scan ? `•••• ${scan.accountLast4}` : '–' },
+    { Icon: Calendar, k: t('scan.period'), v: scan ? t('common.range', { a: day(scan.periodStart), b: day(scan.periodEnd) }) : '–' },
+    { Icon: Zap, k: t('scan.totalKwh'), v: scan ? String(scan.kwh) : '–' },
+    { Icon: Banknote, k: t('scan.amount'), v: scan ? php(scan.amount) : '–' },
+    { Icon: Hash, k: t('scan.account'), v: scan ? `•••• ${scan.accountLast4}` : '–' },
   ]
 
   return (
     <div className="screen no-nav" ref={ref}>
-      <ScanHeader step={1} total={5} title="Scan the bill" />
+      <ScanHeader step={1} total={5} title={t('scan.billTitle')} />
       <CameraPanel onPhoto={(f) => { setPreview(URL.createObjectURL(f)); read(f) }} disabled={phase === 'reading'} preview={preview}>
         {!preview && <BillDrawing />}
         {phase === 'reading' && <ScanBeam />}
@@ -126,23 +126,26 @@ export default function ScanBill() {
             </div>
           ))}
         </div>
-        {scan ? (
+        {scan && (
           <button className="btn" disabled={phase === 'saving'} onClick={() => confirm(scan)}>
-            <Check {...ICON} /> Confirm bill
-          </button>
-        ) : (
-          <p className="support" style={{ textAlign: 'center', margin: 0 }}>
-            {phase === 'reading' ? 'Reading the bill…' : 'Tap the frame to take a photo of the bill.'}
-          </p>
-        )}
-        <button className="link-btn" onClick={() => setPhase('typing')}>
-          <Keyboard {...ICON} /> Type it instead
-        </button>
-        {usingMock && !scan && (
-          <button className="link-btn support" onClick={() => read(new Blob())}>
-            Use the sample bill (mock)
+            <Check {...ICON} /> {t('scan.confirmBill')}
           </button>
         )}
+        <div className="scan-foot">
+          {!scan && (
+            <p className="support scan-hint">
+              {phase === 'reading' ? t('scan.readingBill') : t('scan.tapBill')}
+            </p>
+          )}
+          <button className="link-btn" onClick={() => setPhase('typing')}>
+            <Keyboard {...ICON} /> {t('scan.typeInstead')}
+          </button>
+          {showDevTools && !scan && (
+            <button className="link-btn support" onClick={() => read(new Blob())}>
+              {t('scan.sampleBill')}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -159,17 +162,18 @@ function TypeBill({ onCancel, onDone }: { onCancel: () => void; onDone: (s: Bill
   const kwhN = Number(f.kwh)
   const amtN = Number(f.amount)
   const valid = kwhN > 0 && amtN > 0 && /^\d{4}$/.test(f.last4) && f.periodEnd > f.periodStart
+  const { t } = useT()
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value })
 
   return (
     <div className="screen no-nav" style={{ gap: 20 }}>
-      <ScanHeader step={1} total={5} title="Type the bill" />
+      <ScanHeader step={1} total={5} title={t('scan.typeTitle')} />
       <div className="scan-sheet" style={{ borderRadius: 28 }}>
-        <div className="field"><label>Period start</label><input type="date" value={f.periodStart} onChange={set('periodStart')} /></div>
-        <div className="field"><label>Period end (read date)</label><input type="date" value={f.periodEnd} onChange={set('periodEnd')} /></div>
-        <div className="field"><label>Total kWh</label><input inputMode="numeric" value={f.kwh} onChange={set('kwh')} placeholder="180" /></div>
-        <div className="field"><label>Amount (₱)</label><input inputMode="decimal" value={f.amount} onChange={set('amount')} placeholder="2711.07" /></div>
-        <div className="field"><label>Last 4 digits of the account</label><input inputMode="numeric" maxLength={4} value={f.last4} onChange={set('last4')} placeholder="4821" /></div>
+        <div className="field"><label>{t('scan.periodStart')}</label><input type="date" value={f.periodStart} onChange={set('periodStart')} /></div>
+        <div className="field"><label>{t('scan.periodEnd')}</label><input type="date" value={f.periodEnd} onChange={set('periodEnd')} /></div>
+        <div className="field"><label>{t('scan.totalKwh')}</label><input inputMode="numeric" value={f.kwh} onChange={set('kwh')} placeholder="180" /></div>
+        <div className="field"><label>{t('scan.amountPeso')}</label><input inputMode="decimal" value={f.amount} onChange={set('amount')} placeholder="2711.07" /></div>
+        <div className="field"><label>{t('scan.last4')}</label><input inputMode="numeric" maxLength={4} value={f.last4} onChange={set('last4')} placeholder="4821" /></div>
         <button
           className="btn"
           disabled={!valid}
@@ -189,9 +193,9 @@ function TypeBill({ onCancel, onDone }: { onCancel: () => void; onDone: (s: Bill
             })
           }
         >
-          <Check {...ICON} /> Confirm bill
+          <Check {...ICON} /> {t('scan.confirmBill')}
         </button>
-        <button className="link-btn" onClick={onCancel}>Back to the camera</button>
+        <button className="link-btn" onClick={onCancel}>{t('scan.backCamera')}</button>
       </div>
     </div>
   )

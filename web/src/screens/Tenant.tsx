@@ -21,15 +21,12 @@ export default function Tenant() {
   const v = data!
 
   async function askForComputation() {
-    const text =
-      `Hi! Kahati computed my share of the bill as ${php(v.share)} for ${v.kwh} kWh, ` +
-      `using the bill's own lines. Could we go over the computation together? ` +
-      `${window.location.origin}/t/${token}/bill`
+    const text = t('tenant.message', { share: php(v.share), kwh: v.kwh, link: `${window.location.origin}/t/${token}/bill` })
     try {
       if (navigator.share) await navigator.share({ text })
       else {
         await navigator.clipboard.writeText(text)
-        toast('Message copied. Paste it to the organizer.')
+        toast(t('tenant.copied'))
       }
     } catch {
       /* user closed the share sheet */
@@ -38,7 +35,7 @@ export default function Tenant() {
 
   return (
     <div className="screen no-nav" ref={ref}>
-      <h1 className="title">Hi, {v.name}</h1>
+      <h1 className="title">{t('tenant.hi', { name: v.name })}</h1>
 
       <div className="hero">
         <p className="support" style={{ margin: 0, color: 'var(--white)', fontWeight: 600 }}>{t('share.label')}</p>
@@ -50,12 +47,12 @@ export default function Tenant() {
         <div className="tiles">
           <div className="tile">
             <span className="icon-chip"><ReceiptText {...ICON} size={16} /></span>
-            <span className="support" style={{ fontSize: 14 }}>You were asked to pay</span>
+            <span className="support" style={{ fontSize: 14 }}>{t('tenant.asked')}</span>
             <span className="num">{php(v.askedToPay)}</span>
           </div>
           <div className="tile">
             <span className="icon-chip"><TrendingUp {...ICON} size={16} /></span>
-            <span className="support" style={{ fontSize: 14 }}>Above the bill's rate by</span>
+            <span className="support" style={{ fontSize: 14 }}>{t('tenant.above')}</span>
             <span className="num">{php(v.aboveBillRate)}</span>
           </div>
         </div>
@@ -70,10 +67,10 @@ export default function Tenant() {
       <Footnote>{t('footer.source')}</Footnote>
       <div className="stack">
         <Link className="btn" to={`/t/${token}/bill`}>
-          <ReceiptText {...ICON} /> See what you pay for
+          <ReceiptText {...ICON} /> {t('tenant.seePay')}
         </Link>
         <button className="link-btn" onClick={askForComputation}>
-          <MessageCircle {...ICON} /> Ask for the computation
+          <MessageCircle {...ICON} /> {t('tenant.askComp')}
         </button>
       </div>
     </div>

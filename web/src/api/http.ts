@@ -105,7 +105,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
     try {
       res = await fetch(baseUrl + path, init)
     } catch {
-      throw new ApiError('No connection. Check the Wi-Fi or switch to the hotspot.')
+      throw new ApiError('No connection. Check the Wi-Fi or switch to the hotspot.', 0, 'offline')
     }
     const text = await res.text().catch(() => '')
     if (!res.ok) {
@@ -284,7 +284,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
       const s = await state()
       const hid = toB(householdId)
       const m = meterOf(s, hid)
-      if (!m) throw new ApiError('Unknown household', 404)
+      if (!m) throw new ApiError('Unknown household', 404, 'unknown_household')
       const previous = prevOf(s, m.id)
       const r = await post<{
         scan: { value: number; serial: string | null; confidence: number }
@@ -306,9 +306,9 @@ export function createHttpApi(baseUrl: string): KahatiApi {
       const s = await state()
       const hid = toB(householdId)
       const m = meterOf(s, hid)
-      if (!m) throw new ApiError('Unknown household', 404)
+      if (!m) throw new ApiError('Unknown household', 404, 'unknown_household')
       const p = prevOf(s, m.id)
-      if (p && value < p.value) throw new ApiError("This reading is below last month's. Check the number.", 422)
+      if (p && value < p.value) throw new ApiError("This reading is below last month's. Check the number.", 422, 'reading_below')
       s.currentReadings = s.currentReadings.filter((r) => r.meterId !== m.id)
       s.currentReadings.push({
         id: `r-${m.id}-${Date.now()}`, meterId: m.id, value, source,
@@ -326,7 +326,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
       const src = local.billConfirmed && allIn(s) ? s : await sample()
       const split = await post<BSplit>('/api/split', { state: src })
       const sh = split.shares.find((x) => x.householdId === hid)
-      if (!sh) throw new ApiError('Unknown household', 404)
+      if (!sh) throw new ApiError('Unknown household', 404, 'unknown_household')
       const name = src.households.find((h) => h.id === hid)?.displayName ?? householdId
       return { ...toShare(sh), name }
     },
