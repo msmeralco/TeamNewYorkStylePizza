@@ -63,7 +63,7 @@ export default function Tenant() {
         <span className="body">{t('usage.perkwh', { n: Math.round(v.perKwhValue) })}</span>
       </div>
 
-      <p className="support" style={{ margin: 0 }}>{t('tenant.wholeBill', { amount: php(v.billAmount), kwh: kwhText(v.billKwh) })}</p>
+      <p className="support tenant-whole" style={{ margin: 0 }}>{t('tenant.wholeBill', { amount: php(v.billAmount), kwh: kwhText(v.billKwh) })}</p>
 
       <div className="spacer" />
       <Footnote>
@@ -71,7 +71,7 @@ export default function Tenant() {
         <span className="fn-extra">{t('tenant.readNote')}</span>
         {t('footer.tenant')}
       </Footnote>
-      <div className="stack">
+      <div className="stack tenant-actions">
         <Link className="btn" to={`/t/${token}/bill`}>
           <ReceiptText {...ICON} /> {t('tenant.seePay')}
         </Link>
