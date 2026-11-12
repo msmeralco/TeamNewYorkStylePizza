@@ -86,6 +86,19 @@ const TENANT_FIRST_NAMES: Record<string, string> = { B: 'Lorna' }
 /** The demo tenant link in the design ("/t/demo-santos") mints a real signed link. */
 const DEMO_TOKENS: Record<string, string> = { 'demo-santos': 'hB' }
 const RATE_SOURCE = 'Meralco rate announcement (team rate table)'
+/**
+ * Backend error codes (docs/API.md) mapped to the UI's translated err.* keys.
+ * Codes not listed pass through; the UI falls back to the backend's English message.
+ */
+const BACKEND_CODES: Record<string, string> = {
+  expired: 'link_expired',
+  bad_signature: 'link_expired',
+  malformed: 'link_expired',
+  missing_reading: 'shares_pending',
+  no_usage: 'shares_pending',
+  unknown_household: 'unknown_household',
+  below_previous: 'reading_below',
+}
 
 /**
  * Demo clock. The sample bill is dated 31 Oct 2026, so a reading confirmed today
@@ -110,13 +123,15 @@ export function createHttpApi(baseUrl: string): KahatiApi {
     const text = await res.text().catch(() => '')
     if (!res.ok) {
       let msg = text || `Request failed (${res.status})`
+      let code: string | undefined
       try {
-        const e = JSON.parse(text) as { error?: { message?: string; next?: string } }
+        const e = JSON.parse(text) as { error?: { code?: string; message?: string; next?: string } }
         if (e.error?.message) msg = e.error.next ? `${e.error.message} ${e.error.next}` : e.error.message
+        code = e.error?.code ? (BACKEND_CODES[e.error.code] ?? e.error.code) : undefined
       } catch {
         /* plain text */
       }
-      throw new ApiError(msg, res.status)
+      throw new ApiError(msg, res.status, code)
     }
     return (text ? JSON.parse(text) : undefined) as T
   }
