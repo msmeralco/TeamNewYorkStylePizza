@@ -18,7 +18,7 @@ function stubWeather() {
   const f = vi.fn(async (u: string) => {
     const p = new URL(u).searchParams;
     const time = dates(p.get("start_date")!, p.get("end_date")!);
-    return new Response(JSON.stringify({ daily: { time, temperature_2m_mean: time.map((d) => 24 + ((kwh.get(d.slice(0, 7)) ?? 180) - 160) / 10) } }));
+    return new Response(JSON.stringify({ daily: { time, temperature_2m_mean: time.map((d) => 24 + ((kwh.get(d.slice(0, 7)) ?? 50) - 50) / 2) } }));
   });
   vi.stubGlobal("fetch", f);
   return f;

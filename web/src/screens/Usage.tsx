@@ -7,7 +7,7 @@ import { UsageChart } from '../components/UsageChart'
 import { LifelineBar } from '../components/LifelineBar'
 import { CountUp, reduceMotion, useReveal } from '../components/motion'
 import { UsageSkeleton } from '../components/Skeletons'
-import { ErrorState, ICON, Sheet } from '../components/ui'
+import { ErrorState, Footnote, ICON, Sheet } from '../components/ui'
 import { useT } from '../i18n/copy'
 import { day, localMonth, monthName, phpWhole } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
@@ -21,6 +21,42 @@ const PEOPLE = [
 ]
 const ACTION_ICON = { plug: Plug, clock: Clock, snowflake: Snowflake }
 const whole = (n: number) => `${Math.round(n)} kWh`
+
+/** An .ics with one event on the 15th at 9:00 Asia/Manila. Unknown or past period: the next 15th. */
+function downloadReminder(periodDate?: string) {
+  const now = new Date()
+  let y = now.getFullYear()
+  let m = now.getMonth()
+  const p = periodDate ? new Date(periodDate) : null
+  if (p && !Number.isNaN(p.getTime())) {
+    const cand = new Date(p.getFullYear(), p.getMonth(), 15, 23, 59)
+    if (cand >= now) { y = p.getFullYear(); m = p.getMonth() }
+    else if (now.getDate() > 15) m += 1
+  } else if (now.getDate() > 15) m += 1
+  const d = new Date(y, m, 15)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const ymd = `${d.getFullYear()}${pad(d.getMonth() + 1)}15`
+  const stamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`
+  const ics = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Kahati//Reminder//EN', 'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    `UID:kahati-${ymd}@kahati`,
+    `DTSTAMP:${stamp}`,
+    `DTSTART;TZID=Asia/Manila:${ymd}T090000`,
+    `DTEND;TZID=Asia/Manila:${ymd}T093000`,
+    'SUMMARY:Kahati: take a meter photo',
+    `DESCRIPTION:Open Kahati to scan your meter: ${window.location.origin}`,
+    'END:VEVENT', 'END:VCALENDAR',
+  ].join('\r\n') + '\r\n'
+  const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'kahati-reminder.ics'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
 
 export default function Usage() {
   const { householdId = 'BAU' } = useParams()
@@ -109,12 +145,21 @@ export default function Usage() {
                 {t(u.lifeline.pesoUnderLimit < 0.005 ? 'usage.stayUnderFree' : 'usage.stayUnder', { limit: u.lifeline.limitKwh, a: phpWhole(u.lifeline.pesoUnderLimit), b: phpWhole(u.lifeline.pesoAtForecast) })}
               </span>
               {u.rate.isFallback && (
-                <span className="support">{t('usage.usingRate', { month: localMonth(u.rate.month) })}</span>
+                <span className="support">
+                  {u.lifeline.pesoLow != null && u.lifeline.pesoHigh != null
+                    ? t('usage.usingRateRange', { month: localMonth(u.rate.month), low: phpWhole(u.lifeline.pesoLow), high: phpWhole(u.lifeline.pesoHigh) })
+                    : t('usage.usingRate', { month: localMonth(u.rate.month) })}
+                </span>
               )}
             </div>
           </div>
           {/* The tiers as a to-scale bar, replacing the "100% off up to 50 kWh..." line. */}
           <LifelineBar forecastKwh={f.kwh} tiers={u.lifeline.tiers} />
+          {!u.rate.isFallback && u.lifeline.pesoLow != null && u.lifeline.pesoHigh != null && (
+            <span className="support">
+              {t('usage.lifelineRange', { month: monthName(u.nextReadDate), low: phpWhole(u.lifeline.pesoLow), high: phpWhole(u.lifeline.pesoHigh) })}
+            </span>
+          )}
         </div>
       ) : (
         u.perKwhValue != null && (
@@ -152,7 +197,7 @@ export default function Usage() {
 
       <button
         className={`btn compact${reminded ? ' done' : ''}`}
-        onClick={() => setRemindedFor(householdId)}
+        onClick={() => { downloadReminder(u.readDate); setRemindedFor(householdId) }}
         aria-disabled={reminded}
         aria-live="polite"
       >
@@ -162,6 +207,7 @@ export default function Usage() {
           <span className="btn-label" key="ask"><Bell {...ICON} /> {t('usage.remind')}</span>
         )}
       </button>
+      <div style={{ marginTop: 'calc(var(--gap) * -0.5)' }}><Footnote>{t('footer.source')}</Footnote></div>
       {picker}
     </div>
   )

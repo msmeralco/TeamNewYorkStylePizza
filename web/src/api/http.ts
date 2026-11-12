@@ -60,14 +60,14 @@ interface BShare { householdId: string; kwh: number; amountExact: number; amount
 interface BSplit { shares: BShare[]; total: number; effectiveRate: number; perKwhValue: number }
 interface BCheck {
   status: 'ok' | 'gap'; billKwh: number; readingsKwh: number; missingKwh: number; tolerancePct: number; toleranceKwh: number
-  households: { householdId: string; kwh: number; chip: string; flags: string[]; suggestion?: { to: string } | null }[]
+  households: { householdId: string; kwh: number; chip: string; flags: string[]; suggestion?: { householdId?: string; from?: string; to: string; message: string } | null }[]
   gapRule: string | null
 }
 interface BForecast {
   stage: 1 | 2 | 3; readDate: string; kwh: number; low: number; high: number
   points: { date: string; day: number; kwhUsed: number; kind: 'bill' | 'photo' | 'projection' }[]
   rate: { perKwh: number; month: string; isFallback: boolean; note: string | null }
-  lifeline: null | { forecastPeso: number; underLinePeso: number; tiers?: { maxKwh: number; discount: number }[] }
+  lifeline: null | { forecastPeso: number; underLinePeso: number; pesoLow?: number; pesoHigh?: number; tiers?: { maxKwh: number; discount: number }[] }
   perKwhValue: number | null
   spike: null | { percentAbove: number }
   actions: string[]
@@ -75,6 +75,7 @@ interface BForecast {
 interface BTenant {
   household: { id: string; displayName: string; label: string }
   share: BShare
+  bill: { kwh: number; amount: number }
   rateCheck: null | { askedAmount: number; aboveBy: number }
   perKwhValue: number
   expiresAt: string
@@ -287,6 +288,8 @@ export function createHttpApi(baseUrl: string): KahatiApi {
           meterSerial: m?.serial ?? '', previousReading: (m && prevOf(s, m.id)?.value) ?? 0,
           reading: toReading(s, h.id, ck?.kwh),
           share: sh ? toShare(sh) : undefined,
+          flags: ck?.flags,
+          suggestion: ck?.suggestion ? { value: Number(ck.suggestion.to), message: ck.suggestion.message } : null,
         }
       })
       const summary: CheckSummary | null = check && bill ? {
@@ -306,12 +309,18 @@ export function createHttpApi(baseUrl: string): KahatiApi {
     },
 
     async scanBill(image): Promise<BillScan> {
-      const r = await post<{ scan: BBill & { confidence: number } }>('/api/scan/bill', await toDataUrl(image))
+      const r = await post<{
+        scan: BBill & { confidence: number }
+        sanity?: { linesAddUp?: boolean; linesNote?: string | null; withinBand?: boolean; note?: string | null }
+      }>('/api/scan/bill', await toDataUrl(image))
       const sc = r.scan
+      const sn = r.sanity
       return {
         periodStart: sc.periodStart, periodEnd: sc.periodEnd, readDate: sc.readDate, nextReadDate: sc.nextReadDate,
         kwh: sc.kwh, amount: sc.amount, fixedCharges: sc.fixedCharges, lines: billLines(sc),
         accountLast4: sc.accountLast4, presentReading: sc.presentReading ?? undefined, confidence: sc.confidence,
+        linesAddUp: sn?.linesAddUp ?? true,
+        sanityNote: sn?.linesNote ?? (sn?.withinBand === false ? (sn.note ?? null) : null),
       }
     },
 
@@ -347,6 +356,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
         kwhSinceLast: r.validation.kwhSinceLast ?? (previous ? r.scan.value - previous.value : 0),
         serial: r.scan.serial ?? '',
         serialMatches: r.validation.serialMatches === true,
+        serialRead: !!r.scan.serial,
         confidence: r.scan.confidence,
         capturedAt: new Date().toISOString(),
         needsSecondLook: !r.validation.ok,
@@ -354,7 +364,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
       }
     },
 
-    async confirmReading({ householdId, value, source, capturedAt }): Promise<Reading> {
+    async confirmReading({ householdId, value, source, capturedAt, confidence, serialRead }): Promise<Reading> {
       const own = householdId === 'BAU'
       const s = own ? await bauState() : await state()
       const hid = toB(householdId)
@@ -366,7 +376,8 @@ export function createHttpApi(baseUrl: string): KahatiApi {
       s.currentReadings.push({
         id: `r-${m.id}-${Date.now()}`, meterId: m.id, value, source,
         capturedAt: DEMO_CLOCK ? (own ? BAU_DEMO_PHOTO_AT : `${s.bill.readDate}T09:00:00+08:00`) : capturedAt,
-        confidence: source === 'photo' ? 0.95 : null, confirmed: true, serialRead: source === 'photo' ? m.serial : null,
+        confidence: source === 'photo' ? (confidence ?? null) : null, confirmed: true,
+        serialRead: source === 'photo' ? (serialRead ?? null) : null,
       })
       save()
       return toReading(s, hid)!
@@ -404,6 +415,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
         forecast: { kwh: f.kwh, low: f.low, high: f.high },
         lifeline: f.lifeline ? {
           limitKwh: 50, pesoAtForecast: f.lifeline.forecastPeso, pesoUnderLimit: f.lifeline.underLinePeso,
+          pesoLow: f.lifeline.pesoLow, pesoHigh: f.lifeline.pesoHigh,
           // The backend's tier table (2026 DSWD) feeds the Usage tier bar.
           tiers: f.lifeline.tiers?.map((t) => ({ upTo: t.maxKwh, pctOff: Math.round(t.discount * 100) })),
         } : undefined,
@@ -429,7 +441,18 @@ export function createHttpApi(baseUrl: string): KahatiApi {
         aboveBillRate: v.rateCheck?.aboveBy ?? null,
         perKwhValue: v.perKwhValue,
         expiresAt: v.expiresAt,
+        billKwh: v.bill.kwh,
+        billAmount: v.bill.amount,
       }
+    },
+
+    async createTenantLink(householdId): Promise<{ url: string; expiresAt: string }> {
+      const s = await state()
+      const src = local.billConfirmed && allIn(s) ? s : await sample()
+      const r = await post<{ url: string; expiresAt: string }>('/api/tenant-link', {
+        state: src, householdId: toB(householdId), baseUrl: window.location.origin,
+      })
+      return { url: r.url, expiresAt: r.expiresAt }
     },
 
     async getAskPresets(language = 'en'): Promise<AskPreset[]> {

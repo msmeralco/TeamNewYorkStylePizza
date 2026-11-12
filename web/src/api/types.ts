@@ -49,6 +49,10 @@ export interface BillScan {
   accountLast4: string
   presentReading?: number
   confidence: number
+  /** False when the printed lines do not add up to the total. */
+  linesAddUp?: boolean
+  /** Plain note about the lines or the rate sanity check; null when all is well. */
+  sanityNote?: string | null
 }
 
 export type MeterKind = 'sub' | 'own'
@@ -81,6 +85,8 @@ export interface MeterScan {
   kwhSinceLast: number
   serial: string
   serialMatches: boolean
+  /** True when the model read a serial off the meter (serial is "" otherwise). */
+  serialRead: boolean
   confidence: number
   capturedAt: string
   /** Set when the model's two reads disagree or the value is out of pattern. */
@@ -127,6 +133,10 @@ export interface RateNote {
 export interface HouseholdMonth extends Household {
   reading?: Reading
   share?: Share
+  /** Backend check flags for this reading (never shown by name to others). */
+  flags?: string[]
+  /** Digit-correction suggestion: the value the meter most likely shows. */
+  suggestion?: { value: number; message: string } | null
 }
 
 export interface MonthView {
@@ -160,6 +170,9 @@ export interface UsageView {
     limitKwh: number
     pesoAtForecast: number
     pesoUnderLimit: number
+    /** Peso range across the forecast band, when the backend gives it. */
+    pesoLow?: number
+    pesoHigh?: number
     /** Discount tiers; the UI falls back to the 2026 DSWD tiers when absent. */
     tiers?: { upTo: number; pctOff: number }[]
   }
@@ -179,6 +192,9 @@ export interface TenantView {
   aboveBillRate: number | null
   perKwhValue: number
   expiresAt: string
+  /** The whole bill, for the "your share of what" line. */
+  billKwh: number
+  billAmount: number
 }
 
 // ---------- Ask Kahati (chat). Mirrors AskRequest/AskAnswer in ../../src/types/index.ts ----------

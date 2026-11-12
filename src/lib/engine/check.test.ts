@@ -153,6 +153,24 @@ describe("check hardening", () => {
   });
 });
 
+describe("check cheat state and serial formats", () => {
+  it("offers no digit fix when another household is typed, even with live confidence below 0.9", () => {
+    const s = sampleCompoundState();
+    s.currentReadings = s.currentReadings.map((r) =>
+      r.meterId === "mB" ? { ...r, value: 4592, confidence: 0.6 } : r.meterId === "mC" ? { ...r, value: 2202, source: "typed" as const } : r,
+    );
+    const r = checkCompound(s);
+    expect(r.status).toBe("gap");
+    for (const h of r.households) expect(h.suggestion).toBeNull();
+  });
+  it("does not flag a serial that differs only by spaces, hyphens or case", () => {
+    for (const serial of ["SM 0214", "SM0214", "sm-0214"]) {
+      const r = checkCompound(withCurrent("mB", { serialRead: serial }));
+      expect(r.households.find((h) => h.householdId === "hB")!.flags).toEqual([]);
+    }
+  });
+});
+
 describe("suggestDigitFix odd values", () => {
   it.each([-5, 1e21, 45.5])("never suggests a fix for value %s", (value) => {
     const prev = { id: "p", meterId: "mB", value: 4400, capturedAt: "2026-09-30", source: "photo" as const, confidence: 1, confirmed: true };

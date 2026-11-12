@@ -1,6 +1,7 @@
 // Preset questions for Ask Kahati, answered from templates (no AI): instant, stage-proof, same every time.
 // Built only from ctx.facts. Wording rules: no "overcharged"/"owed"/"utang", no legal claims, no other
 // household's name, never speaks for Meralco, no em dashes. The Filipino is a draft for Clarence to check.
+import { RATES } from "@/data/tables";
 import { LINE_KEYS, type AskPreset, type AskPresetId, type AskSource, type LineKey } from "@/types";
 import type { AskContext, AskLanguage } from "./context";
 
@@ -33,6 +34,11 @@ export const ASK_FOOTER: Record<"en" | "fil", string> = {
 const peso = (n: number) => `₱${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const pesoWhole = (n: number) => `₱${Math.round(n).toLocaleString("en-US")}`;
 const kwh = (n: number) => String(Number(n.toFixed(1)));
+
+const MONTH_FULL: Record<AskLanguage, string[]> = {
+  en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+  fil: ["Enero", "Pebrero", "Marso", "Abril", "Mayo", "Hunyo", "Hulyo", "Agosto", "Setyembre", "Oktubre", "Nobyembre", "Disyembre"],
+};
 
 const MONTHS: Record<AskLanguage, string[]> = {
   en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
@@ -177,14 +183,24 @@ function saveKwh(ctx: AskContext): Answer {
       sources,
     };
   }
-  let answer = fil
-    ? `Bawat kWh na matipid mo, mga ${pesoWhole(per)} ang bawas sa bahagi mo (${peso(per)} sa bill na ito). Hindi nagbabago ang nakapirming singil sa gamit mo.`
-    : `Each kWh you save takes about ${pesoWhole(per)} off your share (${peso(per)} on this bill). Fixed charges do not change with your use.`;
+  const own = ctx.mode === "single";
+  const row = [...RATES].sort((x, y) => x.month.localeCompare(y.month)).at(-1);
+  let answer: string;
+  if (own && row) {
+    const mi = Number(row.month.slice(5, 7)) - 1;
+    answer = fil
+      ? `Bawat kWh na matipid mo, mga ${peso(row.perKwh)} ang bawas sa bill sa rate ng ${MONTH_FULL.fil[mi]}, bago ang anumang lifeline na diskwento. Sa metrong naka-enroll, 100% diskwento kapag 50 kWh o mas mababa. Hindi nagbabago ang nakapirming singil sa gamit mo.`
+      : `Each kWh you save takes about ${peso(row.perKwh)} off the bill at ${MONTH_FULL.en[mi]}'s rate, before any lifeline discount. On an enrolled meter, staying at 50 kWh or less is 100% off. Fixed charges do not change with your use.`;
+  } else {
+    answer = fil
+      ? `Bawat kWh na matipid mo, mga ${pesoWhole(per)} ang bawas sa bahagi mo (${peso(per)} sa bill na ito). Hindi nagbabago ang nakapirming singil sa gamit mo.`
+      : `Each kWh you save takes about ${pesoWhole(per)} off your share (${peso(per)} on this bill). Fixed charges do not change with your use.`;
+  }
   // The 50 kWh line is only for a household's own meter, so a shared meter never mentions it here.
-  if (ctx.mode === "single" && f.lifelineForecastPeso != null && f.lifelineUnderPeso != null && (f.forecastKwh ?? 0) > 50) {
+  if (own && f.lifelineForecastPeso != null && f.lifelineUnderPeso != null && (f.forecastKwh ?? 0) > 50) {
     answer += fil
-      ? ` Mas malaki ang pagbabago kapag 50 kWh o mas mababa: ${underLine(f.lifelineUnderPeso, true)} sa halip na mga ${pesoWhole(f.lifelineForecastPeso)}.`
-      : ` Getting to 50 kWh or less is a bigger change: ${underLine(f.lifelineUnderPeso, false)} instead of about ${pesoWhole(f.lifelineForecastPeso)}.`;
+      ? ` Para sa iyo, ${underLine(f.lifelineUnderPeso, true)} sa halip na mga ${pesoWhole(f.lifelineForecastPeso)} kapag 50 kWh o mas mababa.`
+      : ` For you, that is ${underLine(f.lifelineUnderPeso, false)} instead of about ${pesoWhole(f.lifelineForecastPeso)} at 50 kWh or less.`;
     sources.push("lifeline");
   }
   return { answer, sources };

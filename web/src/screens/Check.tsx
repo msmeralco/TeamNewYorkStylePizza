@@ -4,11 +4,12 @@ import { Calendar, Camera, Check as CheckIcon, CircleCheck, Keyboard, Ruler, Sea
 import { api, type HouseholdMonth } from '../api'
 import { CountUp, GrowBar, useReveal } from '../components/motion'
 import { CheckSkeleton } from '../components/Skeletons'
-import { ErrorState, ICON, toast } from '../components/ui'
+import { ErrorState, Footnote, ICON, toast } from '../components/ui'
 import { useErrText } from '../i18n/copy'
 import { useT } from '../i18n/copy'
 import { day } from '../lib/format'
 import { notifyChange, useAsync } from '../lib/useAsync'
+
 
 export default function Check() {
   const { t } = useT()
@@ -38,6 +39,16 @@ export default function Check() {
   }
 
   const c = m.check
+  async function applySuggestion(h: HouseholdMonth) {
+    if (!h.suggestion) return
+    try {
+      await api.confirmReading({ householdId: h.id, value: h.suggestion.value, source: 'typed', capturedAt: new Date().toISOString() })
+      notifyChange()
+      reload()
+    } catch (e) {
+      toast(errText(e, 'check.errSave'))
+    }
+  }
   const flagged = m.households.filter((h) => h.reading?.source === 'typed').map((h) => h.id)
   const pct = Math.min(100, (c.readingsKwh / c.masterKwh) * 100)
 
@@ -91,6 +102,18 @@ export default function Check() {
                   <Zap size={12} strokeWidth={1.75} />
                   {h.reading ? `${Math.round(h.reading.kwh)} kWh` : t('check.noReading')}
                 </span>
+                {h.flags?.[0] && <span className="meta">{h.flags[0]}</span>}
+                {h.suggestion && (
+                  <span
+                    className="chip sm"
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => { e.stopPropagation(); applySuggestion(h) }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); e.preventDefault(); applySuggestion(h) } }}
+                  >
+                    {h.suggestion.message}
+                  </span>
+                )}
               </span>
               {h.reading && (
                 <span className="chip sm row-badge">
@@ -104,16 +127,12 @@ export default function Check() {
       </div>
 
       {/* How the check works: its own card, laid out like Usage's tips card (16px icon, 15px text, dividers).
-          When the readings don't add up, only the gap-rule row shows (it explains the problem) so the
-          screen still fits with the "Ask for a new photo" button; the dates and 5% rows return once it adds up. */}
-      {(c.addsUp || c.gapRuleApplied) && (
-        <div className="card list">
-          {c.addsUp && (
-            <div className="list-row">
-              <Calendar {...ICON} size={16} style={{ flex: 'none' }} />
-              <span className="tip">{t('check.aligned', { d: day(c.alignedTo) })}</span>
-            </div>
-          )}
+          The dates row shows in both states; the 5% row returns once it adds up. */}
+      <div className="card list">
+          <div className="list-row">
+            <Calendar {...ICON} size={16} style={{ flex: 'none' }} />
+            <span className="tip">{t('check.aligned', { d: day(c.alignedTo) })}</span>
+          </div>
           {c.gapRuleApplied && (
             <div className="list-row">
               <Split {...ICON} size={16} style={{ flex: 'none' }} />
@@ -127,7 +146,6 @@ export default function Check() {
             </div>
           )}
         </div>
-      )}
 
       {!c.addsUp && (
         <button
@@ -136,8 +154,17 @@ export default function Check() {
           onClick={async () => {
             setSending(true)
             try {
-              await api.requestNewPhoto(flagged.length ? flagged : m.households.map((h) => h.id))
-              toast(t('check.sent', { msg: t('check.second') }))
+              try { await api.requestNewPhoto(flagged.length ? flagged : m.households.map((h) => h.id)) } catch { /* harmless */ }
+              const text = t('check.askMessage', { url: window.location.origin })
+              if (typeof navigator.share === 'function') {
+                try {
+                  await navigator.share({ text })
+                  toast(t('check.messageReady'))
+                } catch { /* share sheet dismissed */ }
+              } else {
+                await navigator.clipboard.writeText(text)
+                toast(t('check.copied'))
+              }
             } catch (e) {
               toast(errText(e, 'check.errSend'))
             } finally {
@@ -148,6 +175,7 @@ export default function Check() {
           <Camera {...ICON} /> {t('check.askPhoto')}
         </button>
       )}
+      <Footnote>{t('footer.source')}</Footnote>
     </div>
   )
 }

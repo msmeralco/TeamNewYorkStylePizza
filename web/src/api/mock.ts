@@ -43,6 +43,8 @@ export const SAMPLE_BILL: BillScan = {
   accountLast4: '4821',
   presentReading: 12520,
   confidence: 0.97,
+  linesAddUp: true,
+  sanityNote: null,
 }
 
 const HOUSEHOLDS: Household[] = [
@@ -221,6 +223,7 @@ export const mockApi: KahatiApi = {
         kwhSinceLast: BAUTISTA_FACE - BAUTISTA.previousReading,
         serial: BAUTISTA.meterSerial,
         serialMatches: true,
+        serialRead: true,
         confidence: 0.95,
         capturedAt: nowIso(),
         needsSecondLook: false,
@@ -235,6 +238,7 @@ export const mockApi: KahatiApi = {
       kwhSinceLast: value - h.previousReading,
       serial: h.meterSerial,
       serialMatches: true,
+      serialRead: true,
       confidence: 0.95,
       capturedAt: nowIso(),
       needsSecondLook: false,
@@ -376,7 +380,18 @@ export const mockApi: KahatiApi = {
       aboveBillRate: asked - share.amount,
       perKwhValue: (bill.amount - bill.fixedCharges) / bill.kwh,
       expiresAt: bill.nextReadDate,
+      billKwh: 180,
+      billAmount: 2711.07,
     }
+  },
+
+  // Mock limitation: every household gets the same demo link (the mock only knows "demo-santos").
+  async createTenantLink() {
+    await wait(300)
+    const next = (state.bill ?? SAMPLE_BILL).nextReadDate
+    const d = new Date(`${next}T00:00:00Z`)
+    d.setUTCDate(d.getUTCDate() + 7)
+    return { url: `${window.location.origin}/t/demo-santos`, expiresAt: d.toISOString().slice(0, 10) }
   },
 
   async getAskPresets(language = 'en') {

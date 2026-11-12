@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useCloseScan } from './ScanOverlay'
-import { RotateCcw, X } from 'lucide-react'
+import { ImageUp, RotateCcw, X } from 'lucide-react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { ICON } from './ui'
@@ -81,6 +81,7 @@ export function CameraPanel({
   useEffect(() => () => { if (latest.current) URL.revokeObjectURL(latest.current) }, [])
 
   const fallback = useCallback(() => setMode('fallback'), [])
+  const upload = useRef<HTMLInputElement>(null)
 
   if (mode === 'fallback') {
     return (
@@ -120,6 +121,33 @@ export function CameraPanel({
             onPhoto(f, at)
           }}
         />
+      )}
+      {mode === 'live' && !disabled && (
+        <>
+          <button
+            type="button"
+            className="lc-upload"
+            aria-label={t('scan.upload')}
+            onClick={() => upload.current?.click()}
+          >
+            <ImageUp {...ICON} /> {t('scan.uploadShort')}
+          </button>
+          {/* No capture attribute: phones offer the photo library as well as the camera. */}
+          <input
+            ref={upload}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              e.target.value = ''
+              if (!f) return
+              setFrame(URL.createObjectURL(f))
+              setMode('frozen')
+              onPhoto(f, new Date(f.lastModified || Date.now()).toISOString())
+            }}
+          />
+        </>
       )}
       {mode === 'frozen' && frozen && <img className="lc-frozen" src={frozen} alt="" />}
       {children}

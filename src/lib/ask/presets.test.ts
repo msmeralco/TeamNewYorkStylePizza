@@ -122,6 +122,18 @@ describe("Bautista, own meter", () => {
     expect(a).toContain("50 kWh or less");
     expect(a).toContain("₱519");
   });
+  it("save_kwh on an own meter uses October's rate, not the share or the compound's rate", () => {
+    const en = answerPreset("save_kwh", ctx).answer;
+    expect(en).toContain("about ₱15.06 off the bill at October's rate, before any lifeline discount");
+    expect(en).toContain("staying at 50 kWh or less is 100% off");
+    expect(en).not.toMatch(/your share|14\.94/);
+    const fil = answerPreset("save_kwh", buildContextFromState(sampleBautistaState(), "hBautista", "fil")).answer;
+    expect(fil).toContain("₱15.06");
+    expect(fil).toContain("Oktubre");
+    expect(fil).not.toMatch(/bahagi mo|14\.94/);
+    selfCheck(en, ctx);
+    selfCheck(fil, ctx);
+  });
   it("rate_check says no rate was entered", () => {
     const a = answerPreset("rate_check", ctx).answer;
     expect(a).toContain("No per-kWh rate was entered");
@@ -222,7 +234,7 @@ describe("regressions: rate check sign and single-mode kWh", () => {
     it(`why_share in own-meter mode uses the bill kWh (${lang})`, () => {
       const ctx = buildContextFromState(sampleBautistaState(), "hBautista", lang);
       const a = answerPreset("why_share", ctx).answer;
-      expect(a).toContain("180 kWh");
+      expect(a).toContain("48 kWh");
       expect(a).not.toContain("32 kWh");
       expect(ctx.factSheet).not.toContain("used for the split");
     });

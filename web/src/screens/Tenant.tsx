@@ -6,7 +6,7 @@ import { CountUp, useReveal } from '../components/motion'
 import { TenantSkeleton } from '../components/Skeletons'
 import { ErrorState, Footnote, ICON, toast } from '../components/ui'
 import { useT } from '../i18n/copy'
-import { php } from '../lib/format'
+import { kwh as kwhText, php } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
 
 export default function Tenant() {
@@ -62,6 +62,8 @@ export default function Tenant() {
         <span className="icon-chip lime"><Leaf {...ICON} /></span>
         <span className="body">{t('usage.perkwh', { n: Math.round(v.perKwhValue) })}</span>
       </div>
+
+      <p className="support" style={{ margin: 0 }}>{t('tenant.wholeBill', { amount: php(v.billAmount), kwh: kwhText(v.billKwh) })}</p>
 
       <div className="spacer" />
       <Footnote>{t('footer.source')}</Footnote>

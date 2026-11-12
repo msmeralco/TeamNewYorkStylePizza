@@ -28,7 +28,7 @@ describe("rates", () => {
     expect(r.month).toBe("2026-10");
     expect(r.isFallback).toBe(true);
     expect(r.note).toBe("Using October's rate. November's is announced mid-month.");
-    expect(r.rangeFactor).toBe(0);
+    expect(r.rangeFactor).toBeCloseTo(0.3191 / 14.7424, 6);
   });
   it("computes the range factor from the table", () => {
     const t = [
@@ -99,7 +99,9 @@ describe("forecast: Bautista (own meter, stage 2)", () => {
       lineKwh: 50,
       forecastPeso: 518.87,
       underLinePeso: 0,
-      message: "Stay under 50 kWh: 100% off instead of about ₱519",
+      pesoLow: expect.any(Number),
+      pesoHigh: expect.any(Number),
+      message: expect.stringContaining("Stay under 50 kWh: 100% off instead of about ₱519"),
       tierLine: "4Ps lifeline: 100% off up to 50 kWh, 35% off from 51 to 70",
     });
     expect(f.perKwhValue).toBeNull();
@@ -110,10 +112,10 @@ describe("forecast: Bautista (own meter, stage 2)", () => {
   });
   it("warns on a spike", () => {
     const s = sampleBautistaState();
-    s.currentReadings[0].value = 12520 + 180; // 10 kWh a day against about 5.8 usual
+    s.currentReadings[0].value = 12520 + 90; // 5 kWh a day against about 1.5 usual
     const g = forecast({ state: s, householdId: "hBautista" });
-    expect(g.spike?.percentAbove).toBe(72);
-    expect(g.spike?.message).toBe("Your use so far this month is 72% above your usual.");
+    expect(g.spike?.percentAbove).toBe(223);
+    expect(g.spike?.message).toBe("Your use so far this month is 223% above your usual.");
     expect(g.actions.some((a) => a.includes("about 30 kWh a month (assumes about 1 kW)"))).toBe(true);
   });
   it("falls back to stage 1 without a photo", () => {
@@ -122,9 +124,9 @@ describe("forecast: Bautista (own meter, stage 2)", () => {
     const g = forecast({ state: s, householdId: "hBautista" });
     expect(g.stage).toBe(1);
     expect(g.label).toBe("Rough guess");
-    expect(g.kwh).toBe(180);
-    expect(g.low).toBe(162);
-    expect(g.high).toBe(198);
+    expect(g.kwh).toBe(48);
+    expect(g.low).toBe(43);
+    expect(g.high).toBe(53);
   });
 });
 
@@ -166,9 +168,9 @@ describe("forecast: shared compound", () => {
 
 describe("rates: before the table", () => {
   it("labels the earliest row honestly", () => {
-    const r = rateFor("2026-09");
-    expect(r.month).toBe("2026-10");
-    expect(r.note).toBe("Using October's rate, the earliest in the table.");
+    const r = rateFor("2026-08");
+    expect(r.month).toBe("2026-09");
+    expect(r.note).toBe("Using September's rate, the earliest in the table.");
   });
 });
 

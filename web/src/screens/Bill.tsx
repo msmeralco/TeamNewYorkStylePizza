@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
-import { ArrowLeft, ChevronDown, Gauge, Sparkles, Landmark, Layers, Network, TrendingDown, UtilityPole, Zap, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Gauge, Share2, Sparkles, Landmark, Layers, Network, TrendingDown, UtilityPole, Zap, type LucideIcon } from 'lucide-react'
 import { api, type LineKey } from '../api'
 import { CountUp, reduceMotion, useReveal } from '../components/motion'
 import { BillSkeleton } from '../components/Skeletons'
-import { ErrorState, Footnote, ICON, Sheet } from '../components/ui'
+import { ErrorState, Footnote, ICON, Sheet, toast } from '../components/ui'
 import { lineKey, useT } from '../i18n/copy'
 import { kwh as kwhText, php } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
@@ -30,6 +30,7 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
   }, [params.householdId, params.token])
   const nav = useNavigate()
   const [picking, setPicking] = useState(false)
+  const [sharing, setSharing] = useState(false)
   // Organizer only: the households A to D for the picker (the tenant view has no picker).
   const { data: month } = useAsync(async () => (tenant ? null : api.getMonth()), [tenant])
   const people = (month?.households ?? []).filter((h) => h.meterKind === 'sub')
@@ -87,6 +88,27 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
       <Sparkles {...ICON} size={tenant ? ICON.size : 16} />
     </Link>
   )
+  async function shareLink() {
+    if (sharing) return
+    setSharing(true)
+    try {
+      const { url } = await api.createTenantLink(s.householdId)
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: 'Kahati', text: t('bill.shareText'), url })
+        } catch {
+          /* user closed the share sheet */
+        }
+      } else {
+        await navigator.clipboard.writeText(url)
+        toast(t('bill.linkCopied'))
+      }
+    } catch {
+      toast(t('bill.shareFailed'))
+    } finally {
+      setSharing(false)
+    }
+  }
   const total = s.lines.reduce((a, l) => a + l.amount, 0)
 
   return (
@@ -111,7 +133,12 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
             ) : (
               <h1 className="title">{t('bill.title', { household: s.name })}</h1>
             )}
-            {askBtn}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button className="icon-btn sm" onClick={shareLink} disabled={sharing} aria-busy={sharing} aria-label={t('bill.shareLink')}>
+                <Share2 {...ICON} size={16} />
+              </button>
+              {askBtn}
+            </div>
           </div>
         )}
         <p className="hero-num"><CountUp value={s.amount} format={php} /></p>

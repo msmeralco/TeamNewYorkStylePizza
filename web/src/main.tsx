@@ -4,6 +4,9 @@ import { ScanOverlay, isScanPath } from './components/ScanOverlay'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Navigate, Route, Routes, useLocation, type Location } from 'react-router-dom'
 import './index.css'
+import { api } from './api'
+import { useAsync } from './lib/useAsync'
+import { ScanSkeleton } from './components/Skeletons'
 import { LangProvider } from './i18n/copy'
 import { BareShell, TabShell } from './components/Shell'
 import { ToastHost } from './components/ui'
@@ -48,6 +51,16 @@ function lastBill() {
   try { return sessionStorage.getItem('kahati-last-bill') || 'B' } catch { return 'B' }
 }
 
+/** /scan goes to the next step not yet done, so the bill is never re-confirmed by accident. */
+function ScanRedirect() {
+  const { data, error } = useAsync(() => api.getMonth(), [])
+  if (error) return <Navigate to="/scan/bill" replace />
+  if (!data) return <ScanSkeleton />
+  if (!data.bill) return <Navigate to="/scan/bill" replace />
+  const next = data.households.find((h) => !h.reading)
+  return <Navigate to={next ? `/scan/meter/${next.id}` : '/scan/meter/BAU?flow=1'} replace />
+}
+
 /** Tabs and tenant pages render normally; scan routes render in a sheet over the last tab. */
 function AppRoutes() {
   const loc = useLocation()
@@ -74,7 +87,7 @@ function AppRoutes() {
           <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <ScanOverlay background={lastTab.current}>
-        <Route path="scan" element={<Navigate to="/scan/bill" replace />} />
+        <Route path="scan" element={<ScanRedirect />} />
         <Route path="scan/bill" element={<ScanBill />} />
         <Route path="scan/meter/:householdId" element={<ScanMeter />} />
       </ScanOverlay>

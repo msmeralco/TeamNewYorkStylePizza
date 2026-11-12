@@ -110,6 +110,50 @@ export const BAUTISTA_METER: Meter = {
   digits: 5,
 };
 
+/**
+ * Bautista's own small October bill: 48 kWh, 30 Sep to 31 Oct 2026. The compound bill's per-kWh lines
+ * scaled by 48/180 (the 21.38 fixed charge stays inside supplyMetering), each rounded to centavos;
+ * "other" takes the rounding remainder so the lines add up exactly to the amount.
+ */
+export const BAUTISTA_BILL: Bill = {
+  id: "bBautista2026-10",
+  compoundId: "cBautista",
+  periodStart: "2026-09-30",
+  periodEnd: "2026-10-31",
+  readDate: "2026-10-31",
+  nextReadDate: "2026-11-30",
+  kwh: 48,
+  amount: 738.63,
+  lines: {
+    generation: 450.67,
+    transmission: 61.33,
+    systemLoss: 40.0,
+    distribution: 88.0,
+    supplyMetering: 34.35, // 12.97 variable + 21.38 fixed
+    taxes: 50.67,
+    other: 13.61, // scaled 13.62, less 0.01 rounding remainder
+  },
+  fixedCharges: 21.38,
+  previousReading: 12472,
+  presentReading: 12520,
+  history: [
+    { month: "2025-11", kwh: 52 },
+    { month: "2025-12", kwh: 55 },
+    { month: "2026-01", kwh: 47 },
+    { month: "2026-02", kwh: 44 },
+    { month: "2026-03", kwh: 50 },
+    { month: "2026-04", kwh: 58 },
+    { month: "2026-05", kwh: 62 },
+    { month: "2026-06", kwh: 56 },
+    { month: "2026-07", kwh: 51 },
+    { month: "2026-08", kwh: 49 },
+    { month: "2026-09", kwh: 46 },
+    { month: "2026-10", kwh: 48 },
+  ],
+  accountLast4: "7731",
+  source: "seed",
+};
+
 /** Read-day reading printed on the bill (31 Oct) and the day-18 photo (18 Nov): 32 kWh used. */
 export const BAUTISTA_READINGS: Reading[] = [
   { id: "rBa0", meterId: "mBautista", value: 12520, capturedAt: "2026-10-31", source: "bill", confidence: null, confirmed: true },

@@ -1,7 +1,7 @@
 // Builds the sample CompoundState objects served by GET /api/sample.
 import type { CompoundState } from "@/types";
 import {
-  BAUTISTA_COMPOUND, BAUTISTA_HOUSEHOLD, BAUTISTA_METER, BAUTISTA_NEXT_READ_DATE, BAUTISTA_READINGS,
+  BAUTISTA_BILL, BAUTISTA_COMPOUND, BAUTISTA_HOUSEHOLD, BAUTISTA_METER, BAUTISTA_READINGS,
   SAMPLE_BILL, SAMPLE_CHARGED_RATE, SAMPLE_COMPOUND, SAMPLE_CURRENT_READINGS, SAMPLE_HOUSEHOLDS,
   SAMPLE_METERS, SAMPLE_PREVIOUS_READINGS,
 } from "./seed";
@@ -27,7 +27,7 @@ export function sampleBautistaState(): CompoundState {
     compound: BAUTISTA_COMPOUND,
     households: [BAUTISTA_HOUSEHOLD],
     meters: [BAUTISTA_METER],
-    bill: { ...SAMPLE_BILL, id: "bBautista2026-10", compoundId: BAUTISTA_COMPOUND.id, nextReadDate: BAUTISTA_NEXT_READ_DATE },
+    bill: BAUTISTA_BILL,
     previousReadings: [BAUTISTA_READINGS[0]],
     currentReadings: [BAUTISTA_READINGS[1]],
     unmeteredKwh: 0,

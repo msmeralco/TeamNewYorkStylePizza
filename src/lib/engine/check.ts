@@ -22,6 +22,8 @@ function shortDate(iso: string): string {
 
 const tidy = (n: number) => String(Number(n.toFixed(1)));
 
+const normSerial = (s: string) => s.replace(/[\s-]/g, "").toUpperCase();
+
 const round1 = (n: number) => Math.round(n * 10) / 10 + 0;
 
 export function checkCompound(state: CompoundState, opts: CheckOptions = {}): CheckResult {
@@ -56,7 +58,9 @@ export function checkCompound(state: CompoundState, opts: CheckOptions = {}): Ch
   const status = Math.abs(missingKwh) > toleranceKwh ? "gap" : "ok";
 
   // The gap is on aligned kWh, so the digit fix aligns its candidate the same way (see digitFix.ts).
-  const fix = suggestDigitFix({ candidates, gapKwh: missingRaw, toleranceKwh, readDate: bill.readDate });
+  // Only offered when every reading came from a photo: a typed reading means someone chose that number.
+  const anyTypedReading = usage.some((u) => u.current?.source === "typed");
+  const fix = anyTypedReading ? null : suggestDigitFix({ candidates, gapKwh: missingRaw, toleranceKwh, readDate: bill.readDate });
 
   const householdIds = state.households.map((h) => h.id);
   const households: HouseholdCheck[] = householdIds.map((householdId) => {
@@ -83,7 +87,7 @@ export function checkCompound(state: CompoundState, opts: CheckOptions = {}): Ch
       if (u.previous && u.current.value < u.previous.value) {
         flags.push("Reading needs a second look: it is below the previous reading.");
       }
-      if (u.current.serialRead && meter && u.current.serialRead !== meter.serial) {
+      if (u.current.serialRead && meter && normSerial(u.current.serialRead) !== normSerial(meter.serial)) {
         flags.push("Reading needs a second look: the meter serial does not match.");
       }
       if (u.current.source !== "bill") {

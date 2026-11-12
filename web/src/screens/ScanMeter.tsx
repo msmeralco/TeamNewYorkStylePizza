@@ -16,6 +16,7 @@ import { notifyChange, useAsync } from '../lib/useAsync'
 export const SCAN_STEPS = 6
 
 /** Bautista's own meter (printed prop MM-5520); the bill's read-day reading was 12520. */
+
 const OWN = { id: 'BAU', name: 'Bautista', meterSerial: 'MM-5520', previousReading: 12520 }
 type Target = { id: string; name: string; meterSerial: string; previousReading: number }
 
@@ -75,7 +76,13 @@ export default function ScanMeter() {
     setPhase('saving')
     setErr(undefined)
     try {
-      await api.confirmReading({ householdId: h.id, value, source, capturedAt: scan?.capturedAt ?? new Date().toISOString() })
+      await api.confirmReading({
+        householdId: h.id,
+        value,
+        source,
+        capturedAt: scan?.capturedAt ?? new Date().toISOString(),
+        ...(source === 'photo' && scan ? { confidence: scan.confidence, serialRead: scan.serial || null } : {}),
+      })
       notifyChange()
       if (own) {
         // Bautista's own meter: back to the forecast it just updated.
@@ -132,10 +139,12 @@ export default function ScanMeter() {
               <span className="hero-num">{meterDigits(scan.value)}</span>
               <span className="body" style={{ fontWeight: 500 }}>{since(scan.kwhSinceLast)}</span>
               <span className="meta" style={{ fontSize: 14 }}>
-                {scan.serialMatches ? <CircleCheck size={15} strokeWidth={1.75} /> : <CircleAlert size={15} strokeWidth={1.75} />}
-                {t(scan.serialMatches ? 'scan.serialMatch' : 'scan.serialNo', { s: scan.serial, name: h.name })}
+                {scan.serialRead && scan.serialMatches ? <CircleCheck size={15} strokeWidth={1.75} /> : <CircleAlert size={15} strokeWidth={1.75} />}
+                {!scan.serialRead
+                  ? t('scan.serialNotRead')
+                  : t(scan.serialMatches ? 'scan.serialMatch' : 'scan.serialNo', { s: scan.serial, name: h.name })}
               </span>
-              {scan.needsSecondLook && (
+              {(scan.needsSecondLook || !scan.serialRead) && (
                 <span className="meta" style={{ alignItems: 'flex-start' }}>
                   <CircleAlert size={15} strokeWidth={1.75} style={{ flex: 'none', marginTop: 1 }} />
                   <span>
@@ -154,7 +163,7 @@ export default function ScanMeter() {
                 </button>
               )}
             </div>
-            <button className="btn" disabled={phase === 'saving' || !scan.serialMatches} onClick={() => save(scan.value, 'photo')}>
+            <button className="btn" disabled={phase === 'saving' || (scan.serialRead && !scan.serialMatches)} onClick={() => save(scan.value, 'photo')}>
               <Check {...ICON} /> {t('scan.confirm')}
             </button>
             <div className="scan-foot">

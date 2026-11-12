@@ -20,16 +20,18 @@ Types: `src/types/index.ts` (import them directly from the frontend if you share
 |---|---|---|---|
 | GET | `/api/health` | Liveness, version, reader mode | live |
 | GET | `/api/sample?which=compound\|bautista` | Seed `CompoundState` | live |
-| POST | `/api/scan/bill` | Bill photo → `BillScan` (user confirms before use) | mock |
-| POST | `/api/scan/meter` | Meter photo → `MeterScan` + serial match | mock |
+| POST | `/api/scan/bill` | Bill photo → `BillScan` (user confirms before use) | live |
+| POST | `/api/scan/meter` | Meter photo → `MeterScan` + serial match | live |
 | POST | `/api/split` | `CompoundState` → `SplitResult` (shares + per-line breakdown) | live |
 | POST | `/api/rate-check` | `CompoundState` + householdId → `RateCheck` | live |
 | POST | `/api/forecast` | Readings + bill → `Forecast` (stages 1 to 3, 50 kWh line) | live |
 | POST | `/api/check` | `CompoundState` → `CheckResult` (add-up, typed chips, gap rule, digit suggestion) | live |
 | POST | `/api/tenant-link` | `CompoundState` + householdId → `{ token, url, expiresAt, view }` | live |
 | GET | `/api/tenant/{token}` | → `TenantView` | live |
-| GET | `/api/ask/presets?language=en\|fil` | Preset questions for the chat buttons | planned |
-| POST | `/api/ask` | Ask Kahati: grounded answer about one household's numbers | planned |
+| GET | `/api/ask/presets?language=en\|fil` | Preset questions for the chat buttons | live |
+| POST | `/api/ask` | Ask Kahati: grounded answer about one household's numbers | live |
+
+Rates: `RATES` has a September 2026 row (derived, ₱14.7424) beside October (₱15.0615), so a forecast for a month with no row uses the latest row, labelled, with a peso range (`rangeFactor` > 0, `lifeline.pesoLow` and `pesoHigh`).
 
 ## Endpoints
 
@@ -211,7 +213,7 @@ A household with no linked meter gets the flag "Reading needs a second look: no 
 
 `sanity` now also carries `linesAddUp: boolean`, `linesAdjustedBy: number` and `linesNote: string | null`. When the scanned lines differ from the total by ₱5 or less, the difference is moved into `lines.other` (so every state endpoint accepts the bill) and `linesNote` says so, for the UI to show before Confirm. A larger difference is left as read, with `linesAddUp: false` and a note asking the user to check each line; confirming it as is would fail with 400 `bad_state` ("Bill lines do not add up to the bill amount.").
 
-## Ask Kahati (chat) — contract published 12 Nov, about 11:50 AM
+## Ask Kahati (chat): contract published 12 Nov, about 11:50 AM
 
 A narrow explainer, not an open chatbot. It only explains numbers Kahati already computed for ONE household. Types: `AskRequest`, `AskAnswer`, `AskPreset` in `src/types/index.ts`.
 

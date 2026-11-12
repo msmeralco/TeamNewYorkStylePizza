@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Banknote, Calendar, Check, Hash, Keyboard, Lock, Zap } from 'lucide-react'
+import { Banknote, CircleAlert, Calendar, Check, Hash, Keyboard, Lock, Zap } from 'lucide-react'
 import { api, showDevTools, type BillScan } from '../api'
 import { useErrText, useT } from '../i18n/copy'
 import { SAMPLE_BILL } from '../api/mock'
@@ -10,6 +10,7 @@ import { useReveal } from '../components/motion'
 import { ICON } from '../components/ui'
 import { day, php } from '../lib/format'
 import { notifyChange } from '../lib/useAsync'
+
 
 const CONSENT_KEY = 'kahati-bill-consent'
 
@@ -130,8 +131,14 @@ export default function ScanBill() {
             ))}
           </div>
         )}
+        {scan && (scan.sanityNote || scan.linesAddUp === false) && (
+          <div className="status-line" role="alert">
+            <CircleAlert {...ICON} />
+            {scan.sanityNote ?? t('scan.linesNoAdd')}
+          </div>
+        )}
         {scan && (
-          <button className="btn" disabled={phase === 'saving'} onClick={() => confirm(scan)}>
+          <button className="btn" disabled={phase === 'saving' || scan.linesAddUp === false} onClick={() => confirm(scan)}>
             <Check {...ICON} /> {t('scan.confirmBill')}
           </button>
         )}

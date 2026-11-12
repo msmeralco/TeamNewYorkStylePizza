@@ -475,7 +475,7 @@ a { color: inherit; text-decoration: none; }
   background: linear-gradient(90deg, #2a2627, #3a3536, #2a2627); background-size: 200% 100%; animation: shimmer 1.2s infinite;
 }
 /* While the stream is live, the placeholder drawing / digits step aside; brackets and beam stay. */
-.viewfinder.is-live > :not(.brackets):not(.scan-beam):not(.lc-video):not(.lc-skeleton):not(.lc-shutter):not(.lc-torch) { display: none; }
+.viewfinder.is-live > :not(.brackets):not(.scan-beam):not(.lc-video):not(.lc-skeleton):not(.lc-shutter):not(.lc-torch):not(.lc-upload) { display: none; }
 .viewfinder .lc-frozen { opacity: 0.55; }
 .viewfinder .brackets, .viewfinder .scan-beam { z-index: 1; }
 .lc-shutter {
@@ -484,11 +484,12 @@ a { color: inherit; text-decoration: none; }
 }
 .lc-shutter:active { transform: scale(0.92); }
 .lc-shutter:disabled { opacity: 0.4; }
-.lc-torch, .lc-retake {
+.lc-torch, .lc-retake, .lc-upload {
   position: absolute; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 8px;
   background: rgba(20, 18, 19, 0.6); color: var(--white); font-size: 14px; font-weight: 600;
 }
 .lc-torch { right: 12px; bottom: 22px; width: 44px; height: 44px; border-radius: 50%; }
+.lc-upload { left: 12px; bottom: 22px; min-height: 44px; padding: 0 14px; border-radius: 999px; white-space: nowrap; }
 .lc-torch[aria-pressed='true'] { background: var(--lime); color: var(--ink); }
 .lc-retake { left: 50%; bottom: 14px; transform: translateX(-50%); min-height: 44px; padding: 0 20px; border-radius: 999px; white-space: nowrap; }
 .lc-hint {

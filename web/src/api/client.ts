@@ -27,11 +27,16 @@ export interface KahatiApi {
     value: number
     source: ReadingSource
     capturedAt: string
+    /** Photo reads: the model's confidence and the serial it read. Typed readings omit both. */
+    confidence?: number
+    serialRead?: string | null
   }): Promise<Reading>
   getShare(householdId: string): Promise<Share & { name: string }>
   getUsage(householdId: string): Promise<UsageView>
   requestNewPhoto(householdIds: string[]): Promise<void>
   getTenantView(token: string): Promise<TenantView>
+  /** Organizer: a signed tenant link for one household. */
+  createTenantLink(householdId: string): Promise<{ url: string; expiresAt: string }>
   /** Ask Kahati: preset buttons for the chat. */
   getAskPresets(language?: 'en' | 'fil'): Promise<AskPreset[]>
   /** Ask Kahati: a grounded answer about one household's numbers. */
