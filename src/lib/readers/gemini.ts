@@ -36,10 +36,14 @@ const ATTEMPT_TIMEOUT_MS = 20_000;
 /** The models to try, in order. GEMINI_MODEL pins a single model. */
 function modelsToTry(now = Date.now()): string[] {
   if (process.env.GEMINI_MODEL) return [process.env.GEMINI_MODEL];
-  const base = rankedModels && rankedModels.length ? rankedModels : [DEFAULT_MODEL];
+  const preferred = process.env.GEMINI_MODEL_FIRST;
+  const known = rankedModels && rankedModels.length ? rankedModels : [DEFAULT_MODEL];
+  const base = preferred && !known.includes(preferred) ? [preferred, ...known] : known;
   const resting = (m: string) => (setAsideUntil.get(m) ?? 0) > now;
   const ordered = [...base].sort((a, b) => {
-    const score = (m: string) => (m === lastGoodModel ? -2 : 0) + (resting(m) ? 2 : 0);
+    // GEMINI_MODEL_FIRST (optional) is a preferred model that keeps failover to the others.
+    const first = lastGoodModel ?? process.env.GEMINI_MODEL_FIRST ?? null;
+    const score = (m: string) => (m === first ? -2 : 0) + (resting(m) ? 2 : 0);
     return score(a) - score(b);
   });
   return ordered.slice(0, 3);
