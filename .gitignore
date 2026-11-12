@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+build/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+.env*
+!.env.example
+.DS_Store
+npm-debug.log*
+# never commit meter photos or real bills
+data-private/
+*.jpg
+*.jpeg
+*.heic
