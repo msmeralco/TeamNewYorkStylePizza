@@ -187,8 +187,8 @@ function whatLines(ctx: AskContext): Answer {
   const totalEn = f.share != null ? ` of your ${peso(f.share)}` : "";
   const g = grossNote(ctx);
   const answer = fil
-    ? `${g ? g.lead.fil + "ang" : "Ang"} pinakamalaking bahagi${total} ay ${LINE_NAME.fil[top]} (${peso(lines[top])}), ${LINE_GLOSS.fil[top]}. Ang iba ay ${list(rest, lang)}. Kapag pinagsama ang lahat ng linya, makukuha ang bahagi mo.`
-    : `${g ? g.lead.en + "the" : "The"} largest part${totalEn} is ${LINE_NAME.en[top]} (${peso(lines[top])}), ${LINE_GLOSS.en[top]}. The rest is ${list(rest, lang)}. Together the lines add up to your share.`;
+    ? `${g ? g.lead.fil + "ang" : "Ang"} pinakamalaking bahagi${total} ay ${LINE_NAME.fil[top]} (${peso(lines[top])}), ${LINE_GLOSS.fil[top]}. Ang iba ay ${list(rest, lang)}. Kapag pinagsama ang lahat ng linya, makukuha ang ${ctx.mode === "single" ? "bill mo" : "bahagi mo"}.`
+    : `${g ? g.lead.en + "the" : "The"} largest part${totalEn} is ${LINE_NAME.en[top]} (${peso(lines[top])}), ${LINE_GLOSS.en[top]}. The rest is ${list(rest, lang)}. Together the lines add up to your ${ctx.mode === "single" ? "bill" : "share"}.`;
   return { answer, sources };
 }
 
