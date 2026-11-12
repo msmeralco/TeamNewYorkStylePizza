@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { Check, CircleAlert, CircleCheck, Pencil } from 'lucide-react'
 import { api, showDevTools, type MeterScan } from '../api'
 import { Brackets, CameraPanel, ScanBeam, ScanHeader } from '../components/Scan'
@@ -12,12 +12,17 @@ import { useErrText, useT, type TKey } from '../i18n/copy'
 import { meterDigits } from '../lib/format'
 import { notifyChange, useAsync } from '../lib/useAsync'
 
+/** Scan tab sequence: the bill, the four sub-meters, then Bautista's own meter. */
+export const SCAN_STEPS = 6
+
 /** Bautista's own meter (printed prop MM-5520); the bill's read-day reading was 12520. */
 const OWN = { id: 'BAU', name: 'Bautista', meterSerial: 'MM-5520', previousReading: 12520 }
 type Target = { id: string; name: string; meterSerial: string; previousReading: number }
 
 export default function ScanMeter() {
   const { householdId = 'A' } = useParams()
+  // ?flow=1: Bautista reached as step 6 of the Scan tab sequence (not from his Usage screen).
+  const inFlow = new URLSearchParams(useLocation().search).get('flow') === '1'
   const nav = useNavigate()
   const { t, hasKey } = useT()
   const errText = useErrText()
@@ -78,7 +83,8 @@ export default function ScanMeter() {
         return
       }
       const next = hs.slice(idx + 1).find((x) => !x.reading)
-      nav(next ? `/scan/meter/${next.id}` : '/')
+      // After the last sub-meter, step 6 is Bautista's own meter.
+      nav(next ? `/scan/meter/${next.id}` : `/scan/meter/${OWN.id}?flow=1`)
     } catch (e) {
       setErr(errText(e, 'scan.errSaveReading'))
       setPhase(source === 'typed' ? 'editing' : 'read')
@@ -91,7 +97,7 @@ export default function ScanMeter() {
 
   return (
     <div className="screen no-nav" ref={ref}>
-      <ScanHeader step={own ? 1 : idx + 1} total={own ? 1 : hs.length} title={h.name} />
+      <ScanHeader step={own ? (inFlow ? SCAN_STEPS : 1) : idx + 2} total={own && !inFlow ? 1 : SCAN_STEPS} title={h.name} />
       <CameraPanel key={householdId} onPhoto={(f) => { setPreview(URL.createObjectURL(f)); read(f) }} disabled={phase === 'reading'} preview={preview}>
         <div style={{ position: 'relative' }}>
           <div className="digits">

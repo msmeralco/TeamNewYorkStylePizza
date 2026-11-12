@@ -4,6 +4,7 @@ import { Banknote, Calendar, Check, Hash, Keyboard, Lock, Zap } from 'lucide-rea
 import { api, showDevTools, type BillScan } from '../api'
 import { useErrText, useT } from '../i18n/copy'
 import { SAMPLE_BILL } from '../api/mock'
+import { SCAN_STEPS } from './ScanMeter'
 import { Brackets, CameraPanel, ScanBeam, ScanHeader } from '../components/Scan'
 import { useReveal } from '../components/motion'
 import { ICON } from '../components/ui'
@@ -74,7 +75,7 @@ export default function ScanBill() {
   if (!consented) {
     return (
       <div className="screen no-nav" ref={ref}>
-        <ScanHeader step={0} total={5} title={t('scan.before')} />
+        <ScanHeader step={0} total={SCAN_STEPS} title={t('scan.before')} />
         <div className="spacer" />
         <div className="scan-sheet">
           <div className="note">
@@ -109,7 +110,7 @@ export default function ScanBill() {
 
   return (
     <div className="screen no-nav" ref={ref}>
-      <ScanHeader step={1} total={5} title={t('scan.billTitle')} />
+      <ScanHeader step={1} total={SCAN_STEPS} title={t('scan.billTitle')} />
       <CameraPanel onPhoto={(f) => { setPreview(URL.createObjectURL(f)); read(f) }} disabled={phase === 'reading'} preview={preview}>
         {!preview && <BillDrawing />}
         {phase === 'reading' && <ScanBeam />}
@@ -170,7 +171,7 @@ function TypeBill({ onCancel, onDone }: { onCancel: () => void; onDone: (s: Bill
 
   return (
     <div className="screen no-nav" style={{ gap: 20 }}>
-      <ScanHeader step={1} total={5} title={t('scan.typeTitle')} />
+      <ScanHeader step={1} total={SCAN_STEPS} title={t('scan.typeTitle')} />
       <div className="scan-sheet" style={{ borderRadius: 28 }}>
         <div className="field"><label>{t('scan.periodStart')}</label><input type="date" value={f.periodStart} onChange={set('periodStart')} /></div>
         <div className="field"><label>{t('scan.periodEnd')}</label><input type="date" value={f.periodEnd} onChange={set('periodEnd')} /></div>
