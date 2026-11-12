@@ -11,6 +11,7 @@ Kahati shows any household, including the ones behind someone else's meter, what
 | Tenant view example | https://kahati-app.vercel.app/t/demo-santos |
 | Test lab (make your own test month) | https://kahati-lab.vercel.app |
 | Start the app empty | https://kahati-app.vercel.app/#fresh |
+| Pitch deck (PowerPoint, with the launch video on slide 16) | [docs/Kahati-pitch-deck.pptx](docs/Kahati-pitch-deck.pptx) |
 
 > **All data in this repo is sample data.** Invented households and a sample bill, drawn as printable props. Computed by Kahati. Not a Meralco statement.
 
