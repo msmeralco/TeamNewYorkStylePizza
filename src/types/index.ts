@@ -238,6 +238,8 @@ export interface MeterScan {
   /** Second independent read, to flag disagreement. */
   secondRead: number | null;
   provider: "mock" | "gemini";
+  /** Which Gemini model answered, when provider is "gemini". */
+  model?: string;
 }
 
 export interface BillScan {
@@ -257,6 +259,8 @@ export interface BillScan {
   /** Fields the reader could not find (e.g. "lines.taxes", "fixedCharges"); present only when something is missing. */
   missing?: string[];
   provider: "mock" | "gemini";
+  /** Which Gemini model answered, when provider is "gemini". */
+  model?: string;
 }
 
 /**

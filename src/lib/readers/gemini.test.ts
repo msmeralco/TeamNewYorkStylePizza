@@ -32,7 +32,7 @@ describe("GeminiMeterReader", () => {
     vi.stubGlobal("fetch", fetchMock);
     const s = await new GeminiMeterReader().readMeter(img, { expectedDigits: 5 });
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(s).toEqual({ value: 4572, digitsText: "04572", serial: "SM-0214", confidence: 0.9, secondRead: 4572, provider: "gemini" });
+    expect(s).toEqual({ value: 4572, digitsText: "04572", serial: "SM-0214", confidence: 0.9, secondRead: 4572, provider: "gemini", model: "gemini-test-flash" });
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-test-flash:generateContent");
     expect((init.headers as Record<string, string>)["x-goog-api-key"]).toBe("test-key");
@@ -165,5 +165,23 @@ describe("mock bill reader and getReaders", () => {
     expect(getReaders().bill).toBeInstanceOf(GeminiBillReader);
     vi.stubEnv("GEMINI_API_KEY", "");
     expect(getReaders().bill).toBeInstanceOf(MockBillReader);
+  });
+});
+
+describe("GeminiBillReader itemised sums", () => {
+  it("adds printed supply, metering and other items in code", async () => {
+    const raw = {
+      periodStart: "2026-09-30", periodEnd: "2026-10-31", readDate: "2026-10-31", nextReadDate: "2026-11-30",
+      kwh: 180, amount: 2711.07,
+      lines: { generation: 1690, transmission: 230, systemLoss: 150, distribution: 330, supplyMetering: 69.98, taxes: 190, other: 51.09 },
+      fixedCharges: 21.4,
+      items: { fixedSupply: 16.38, supplyPerKwh: 29.07, fixedMetering: 5, meteringPerKwh: 19.55, universalCharges: 26.89, fitAll: 23.47, lifeline: 0.7, seniorCitizen: 0.01 },
+      accountLast4: "4821", confidence: 0.95,
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(raw) }] } }] }), { status: 200 })));
+    const scan = await new GeminiBillReader().readBill({ base64: "aGk=", mimeType: "image/jpeg" });
+    expect(scan.lines.supplyMetering).toBe(70);
+    expect(scan.lines.other).toBe(51.07);
+    expect(scan.fixedCharges).toBe(21.38);
   });
 });

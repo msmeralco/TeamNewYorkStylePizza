@@ -244,6 +244,7 @@ export class GeminiMeterReader implements MeterReader {
       confidence: Math.min(first.confidence, second.confidence),
       secondRead: second.value,
       provider: "gemini",
+      model: lastGoodModel ?? undefined,
     };
   }
 }
@@ -265,6 +266,13 @@ const BILL_SCHEMA = {
       required: [...LINE_KEYS],
     },
     fixedCharges: { type: "NUMBER", description: "Fixed supply charge plus fixed metering charge" },
+    items: {
+      type: "OBJECT",
+      description: "Individual printed charges in pesos, exactly as printed; 0 if not printed",
+      properties: Object.fromEntries(
+        ["fixedSupply", "supplyPerKwh", "fixedMetering", "meteringPerKwh", "universalCharges", "fitAll", "lifeline", "seniorCitizen"].map((k) => [k, { type: "NUMBER" }]),
+      ),
+    },
     previousReading: { type: "NUMBER", nullable: true },
     presentReading: { type: "NUMBER", nullable: true },
     history: {
@@ -287,6 +295,9 @@ const BILL_PROMPT =
   "distribution (the distribution charge only), supplyMetering (all supply charges plus all metering charges), " +
   "taxes, and other (universal charges, FIT-All, lifeline and senior citizen subsidies). " +
   "fixedCharges is the fixed supply charge plus the fixed metering charge. " +
+  "Also copy the individual printed amounts into items, exactly as printed and without adding them up: " +
+  "fixedSupply, supplyPerKwh (the per-kWh supply charge amount), fixedMetering, meteringPerKwh, " +
+  "universalCharges, fitAll, lifeline, seniorCitizen. " +
   "history is the monthly kWh usage chart if printed, month as YYYY-MM. " +
   "Return ONLY the last 4 digits of the account number as accountLast4. Do not return the name or address. " +
   "Give a confidence from 0 to 1.";
@@ -305,7 +316,30 @@ function parseBill(raw: unknown): BillScan {
   }
   const fixedCharges =
     raw.fixedCharges === undefined || raw.fixedCharges === null || raw.fixedCharges === "" ? null : num(raw.fixedCharges, "fixed charges");
-  if (fixedCharges === null) missing.push("fixedCharges");
+  if (fixedCharges === null && !isObj(raw.items)) missing.push("fixedCharges");
+  let fixed = fixedCharges;
+  // Add printed items up in code: models are better at copying numbers than at summing them.
+  const items: Record<string, unknown> = isObj(raw.items) ? raw.items : {};
+  const item = (k: string) => numOrNull(items[k]);
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const sm = ["fixedSupply", "supplyPerKwh", "fixedMetering", "meteringPerKwh"].map(item);
+  if (sm.every((v) => v !== null) && (sm as number[]).some((v) => v > 0)) {
+    const [fs, sp, fm, mp] = sm as number[];
+    lines.supplyMetering = r2(fs + sp + fm + mp);
+    fixed = r2(fs + fm);
+    const i = missing.indexOf("lines.supplyMetering");
+    if (i >= 0) missing.splice(i, 1);
+  }
+  const ot = ["universalCharges", "fitAll", "lifeline", "seniorCitizen"].map(item);
+  if (ot.every((v) => v !== null) && (ot as number[]).some((v) => v > 0)) {
+    const fromItems = r2((ot as number[]).reduce((a, b) => a + b, 0));
+    const amt = numOrNull(raw.amount);
+    if (amt !== null) {
+      const sumWith = (other: number) => LINE_KEYS.reduce((t, k) => t + (k === "other" ? other : lines[k]), 0);
+      // Use the itemised total only when it makes the bill add up at least as well.
+      if (Math.abs(amt - sumWith(fromItems)) <= Math.abs(amt - sumWith(lines.other))) lines.other = fromItems;
+    }
+  }
   const history: { month: string; kwh: number }[] = [];
   if (Array.isArray(raw.history)) {
     for (const h of raw.history) {
@@ -324,7 +358,7 @@ function parseBill(raw: unknown): BillScan {
     kwh: num(raw.kwh, "kWh"),
     amount: num(raw.amount, "amount"),
     lines,
-    fixedCharges: fixedCharges ?? 0,
+    fixedCharges: fixed ?? 0,
     previousReading: numOrNull(raw.previousReading),
     presentReading: numOrNull(raw.presentReading),
     history,
@@ -337,7 +371,8 @@ function parseBill(raw: unknown): BillScan {
 
 export class GeminiBillReader implements BillReader {
   async readBill(img: ReaderImage): Promise<BillScan> {
-    return parseBill(await callGemini(BILL_PROMPT, img, BILL_SCHEMA));
+    const scan = parseBill(await callGemini(BILL_PROMPT, img, BILL_SCHEMA));
+    return { ...scan, model: lastGoodModel ?? undefined };
   }
 }
 
