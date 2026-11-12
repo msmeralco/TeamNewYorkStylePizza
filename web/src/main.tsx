@@ -1,3 +1,4 @@
+import { startedFresh } from './lib/fresh' // must stay first: wipes the saved month before the API loads it
 import { StrictMode, useCallback, useEffect, useRef, useState } from 'react'
 import { Splash } from './components/Splash'
 import { ScanOverlay, isScanPath } from './components/ScanOverlay'
@@ -31,7 +32,7 @@ async function inflateScenarioHash() {
 await inflateScenarioHash()
 // A scenario link pasted into an already-open tab only changes the hash; reload so it is imported.
 window.addEventListener('hashchange', () => {
-  if (/(?:^#|&)(?:scenarioz?|s2)=/.test(window.location.hash)) window.location.reload()
+  if (/(?:^#|&)(?:scenarioz?|s2)=/.test(window.location.hash) || window.location.hash === '#fresh') window.location.reload()
 })
 
 // A lab link (#scenario=...) is imported once, before the first screen reads any state.
@@ -49,7 +50,13 @@ function ScenarioToast({ ready }: { ready: boolean }) {
   const { t } = useT()
   const shown = useRef(false)
   useEffect(() => {
-    if (!ready || shown.current || !scenarioImport) return
+    if (!ready || shown.current) return
+    if (startedFresh && !scenarioImport) {
+      shown.current = true
+      toast(t('scenario.fresh'))
+      return
+    }
+    if (!scenarioImport) return
     shown.current = true
     toast(scenarioImport.ok ? t('scenario.loaded', { name: scenarioImport.name }) : t('scenario.invalid', { why: scenarioImport.reason }))
   }, [ready, t])
