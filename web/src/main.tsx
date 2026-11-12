@@ -110,9 +110,10 @@ function ScanRedirect() {
   if (!data.bill) return <Navigate to="/scan/bill" replace />
   const next = data.households.find((h) => !h.reading)
   if (next) return <Navigate to={`/scan/meter/${next.id}`} replace />
-  // A to D are done: Bautista's own meter is the last step, then everything is done and /scan goes Home.
-  if (own.error || !own.data) return own.error ? <Navigate to="/" replace /> : <ScanSkeleton />
-  return <Navigate to={own.data.kwh == null ? '/scan/meter/BAU?flow=1' : '/'} replace />
+  // A to D are done: Bautista's own meter is the last step. When everything is done, the Scan tab
+  // opens the bill step for review (saved values, "Keep and go next", or rescan); it never bounces Home.
+  if (own.error || !own.data) return own.error ? <Navigate to="/scan/bill" replace /> : <ScanSkeleton />
+  return <Navigate to={own.data.kwh == null ? '/scan/meter/BAU?flow=1' : '/scan/bill'} replace />
 }
 
 /** Tabs and tenant pages render normally; scan routes render in a sheet over the last tab. */
