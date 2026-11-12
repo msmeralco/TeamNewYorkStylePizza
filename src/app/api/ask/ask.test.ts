@@ -172,13 +172,13 @@ describe("POST /api/ask free text", () => {
     expect(res.status).toBe(200);
   });
 
-  it("maps a Gemini HTTP 500 to 502 ask_failed", async () => {
+  it("answers a Gemini HTTP 500 with a template fallback", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("boom", { status: 500 })));
     const res = await POST(post({ state, householdId: "hB", question: "Why?" }));
-    expect(res.status).toBe(502);
+    expect(res.status).toBe(200);
     const j = await res.json();
-    expect(j.error.code).toBe("ask_failed");
-    expect(j.error.next).toBe("Try a question button.");
+    expect(j).toMatchObject({ provider: "template", fallback: true, refused: false });
+    expect(j.footer).toBe("Computed by Kahati. Not a Meralco statement.");
   });
 });
 
@@ -221,17 +221,16 @@ describe("POST /api/ask bad input", () => {
     expect(text).not.toMatch(/Reyes|thief|owes/);
   });
 
-  it("returns 502 ask_failed when Gemini never answers", async () => {
+  it("answers with a template fallback when Gemini never answers", async () => {
     vi.useFakeTimers();
     try {
       vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
       const p = POST(post({ state, householdId: "hB", question: "Why this amount?" }));
       await vi.advanceTimersByTimeAsync(26_000);
       const res = await p;
-      expect(res.status).toBe(502);
+      expect(res.status).toBe(200);
       const j = await res.json();
-      expect(j.error.code).toBe("ask_failed");
-      expect(j.error.next).toBe("Try a question button.");
+      expect(j).toMatchObject({ provider: "template", fallback: true, refused: false });
     } finally {
       vi.useRealTimers();
     }

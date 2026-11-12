@@ -1,4 +1,4 @@
-import { freeTextAnswer, presetAnswer } from "@/lib/ask/answer";
+import { freeTextAnswer, presetAnswer, templateFallback } from "@/lib/ask/answer";
 import { buildContextFromState, buildContextFromTenant, type AskContext } from "@/lib/ask/context";
 import { AskError } from "@/lib/ask/errors";
 import { checkQuestion } from "@/lib/ask/guard";
@@ -87,8 +87,9 @@ export async function POST(req: Request) {
       return ok(await freeTextAnswer(ctx, question, history));
     } catch (e) {
       if (e instanceof ReaderError) {
-        console.error(`ask: gemini failed (${e.code}), question length ${question.length}`);
-        return fail(502, "ask_failed", "Kahati could not answer that right now.", TRY_BUTTON);
+        // Gemini busy, slow or down: answer with the closest template instead of an error.
+        console.error(`ask: gemini failed (${e.code}: ${e.message.slice(0, 160)}), question length ${question.length}`);
+        return ok(templateFallback(ctx, question));
       }
       throw e;
     }

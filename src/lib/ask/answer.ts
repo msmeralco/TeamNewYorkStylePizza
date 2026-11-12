@@ -32,7 +32,14 @@ export function presetAnswer(ctx: AskContext, id: AskPresetId): AskAnswer {
   return build(ctx, { answer: r.answer, provider: "template", fallback: false, refused: false, sources: r.sources }, id);
 }
 
-/** Free text. Throws whatever askGemini throws (the route maps ReaderError to 502). */
+/** The closest preset, marked fallback: used when an AI answer fails the guard or Gemini is unavailable. */
+export function templateFallback(ctx: AskContext, question: string): AskAnswer {
+  const id = closestPreset(question);
+  const p = answerPreset(id, ctx);
+  return build(ctx, { answer: p.answer, provider: "template", fallback: true, refused: false, sources: p.sources }, id);
+}
+
+/** Free text. Throws whatever askGemini throws (the route answers a ReaderError with templateFallback). */
 export async function freeTextAnswer(ctx: AskContext, question: string, history: AskTurn[]): Promise<AskAnswer> {
   const turns = cleanHistory(history);
   const r = await askGemini({ ctx, question, history: turns });
@@ -40,11 +47,7 @@ export async function freeTextAnswer(ctx: AskContext, question: string, history:
     return build(ctx, { answer: refusalText(ctx), provider: "template", fallback: false, refused: true, sources: [] }, null);
   }
   const check = checkAnswer(r.answer, ctx, { question, history: turns });
-  if (!check.ok) {
-    const id = closestPreset(question);
-    const p = answerPreset(id, ctx);
-    return build(ctx, { answer: p.answer, provider: "template", fallback: true, refused: false, sources: p.sources }, id);
-  }
+  if (!check.ok) return templateFallback(ctx, question);
   return build(
     ctx,
     { answer: r.answer, provider: "gemini", fallback: false, refused: false, sources: ctx.sources, ...(r.model ? { model: r.model } : {}) },

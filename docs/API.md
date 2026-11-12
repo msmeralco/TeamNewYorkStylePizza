@@ -247,7 +247,7 @@ Guardrails (enforced in code, not only in the prompt):
 - Wording: never "overcharged", "owed" or legal claims; never names another household; never speaks for Meralco; no em dashes.
 - Privacy: the 4Ps flag and other households' names and kWh are never sent to Gemini.
 - Render `answer` as plain text (never as HTML or markdown).
-- Errors: 400 `bad_request` (no question/preset, too long, `history` not an array of at most 20 items), 400 `bad_state`, 404 `unknown_household`, 422 `missing_reading` (also the other split error codes `negative_kwh`, `no_usage`, `bad_bill`), 400 `malformed` / 401 `bad_signature` / 410 `expired` for tenant tokens, 429 `slow_down` (too many questions; next "Try a question button."), 502 `ask_failed` (next "Try a question button."). Free text needs Gemini; presets never do.
+- Errors: 400 `bad_request` (no question/preset, too long, `history` not an array of at most 20 items), 400 `bad_state`, 404 `unknown_household`, 422 `missing_reading` (also the other split error codes `negative_kwh`, `no_usage`, `bad_bill`), 400 `malformed` / 401 `bad_signature` / 410 `expired` for tenant tokens, 429 `slow_down` (too many questions; next "Try a question button."), no 502 for Gemini trouble any more: when Gemini is busy, slow or down, the answer is the closest template with `fallback: true`. Free text needs Gemini; presets never do.
 
 ## Golden sample values (the frontend can test against these)
 
