@@ -5,6 +5,8 @@ import { getReaders, ReaderError } from "@/lib/readers";
 import { reconcileLines } from "@/lib/engine/billLines";
 
 export const dynamic = "force-dynamic";
+// Two reads plus a possible model lookup can take longer than the default limit.
+export const maxDuration = 60;
 
 const MAX_BASE64_CHARS = 4 * 1024 * 1024;
 const BAND = 0.35;

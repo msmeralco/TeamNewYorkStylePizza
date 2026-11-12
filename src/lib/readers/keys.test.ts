@@ -54,3 +54,31 @@ describe("pickFlashModel", () => {
     expect(pickFlashModel(["models/gemini-3.1-pro"])).toBeNull();
   });
 });
+
+import { rankFlashModels } from "./gemini";
+
+describe("rankFlashModels and model failover", () => {
+  it("ranks newest plain Flash first, then its variants", () => {
+    expect(rankFlashModels(["gemini-3.8-flash-lite", "models/gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.8-flash-image", "gemini-3.1-pro"])).toEqual(["gemini-3.8-flash", "gemini-3.8-flash-lite", "gemini-3.5-flash"]);
+  });
+
+  it("learns the key's models after a 404 and moves to the next model on 503", async () => {
+    process.env.GEMINI_API_KEY = "k1";
+    delete process.env.GEMINI_API_KEY_2;
+    delete process.env.GEMINI_MODEL;
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      calls.push(url.replace(/^.*\/models/, ""));
+      if (url.includes("?pageSize")) {
+        return new Response(JSON.stringify({ models: ["gemini-3.8-flash", "gemini-3.8-flash-lite"].map((n) => ({ name: `models/${n}`, supportedGenerationMethods: ["generateContent"] })) }), { status: 200 });
+      }
+      if (url.includes("gemini-2.5-flash:")) return new Response(JSON.stringify({ error: { status: "NOT_FOUND", message: "retired" } }), { status: 404 });
+      if (url.includes("gemini-3.8-flash:")) return new Response(JSON.stringify({ error: { status: "UNAVAILABLE", message: "busy" } }), { status: 503 });
+      return okReply({ digits: "04572", serial: "SM-0214", confidence: 0.9 });
+    }));
+    const { GeminiMeterReader: R } = await import("./gemini");
+    const scan = await new R().readMeter({ base64: "aGk=", mimeType: "image/jpeg" }, { expectedDigits: 5 });
+    expect(scan.value).toBe(4572);
+    expect(calls.some((c) => c.includes("gemini-3.8-flash-lite:"))).toBe(true);
+  });
+});

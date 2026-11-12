@@ -5,47 +5,6 @@ import { ReaderError, type BillReader, type MeterReader, type ReaderImage } from
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
-/** Model last found to work. GEMINI_MODEL pins one; otherwise it is discovered from the key's model list. */
-let discoveredModel: string | null = null;
-
-function model(): string {
-  return process.env.GEMINI_MODEL || discoveredModel || "gemini-2.5-flash";
-}
-
-/** Rank model ids like "gemini-3.8-flash" by version; plain "-flash" (no lite/preview suffix) wins ties. */
-export function pickFlashModel(names: string[]): string | null {
-  const parsed = names
-    .map((n) => n.replace(/^models\//, ""))
-    .map((id) => ({ id, m: /^gemini-(\d+(?:\.\d+)*)-flash(-[a-z0-9-]+)?$/.exec(id) }))
-    .filter((x): x is { id: string; m: RegExpExecArray } => !!x.m && !/image|tts|audio|live|thinking/.test(x.id));
-  if (parsed.length === 0) return null;
-  const ver = (s: string) => s.split(".").map(Number);
-  parsed.sort((a, b) => {
-    const va = ver(a.m[1]), vb = ver(b.m[1]);
-    for (let i = 0; i < Math.max(va.length, vb.length); i++) {
-      const d = (vb[i] ?? 0) - (va[i] ?? 0);
-      if (d) return d;
-    }
-    return (a.m[2] ? 1 : 0) - (b.m[2] ? 1 : 0);
-  });
-  return parsed[0].id;
-}
-
-/** Ask the API which models this key can call with generateContent, and pick the newest Flash. */
-async function discoverModel(key: string): Promise<string | null> {
-  try {
-    const res = await fetch(`${BASE}?pageSize=200`, { headers: { "x-goog-api-key": key } });
-    if (!res.ok) return null;
-    const j: any = await res.json();
-    const names: string[] = (j?.models ?? [])
-      .filter((m: any) => (m?.supportedGenerationMethods ?? []).includes("generateContent"))
-      .map((m: any) => String(m.name));
-    return pickFlashModel(names);
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Every configured key, in order: GEMINI_API_KEY first, then the backups GEMINI_API_KEY_2 .. _5
  * and any comma-separated GEMINI_API_KEYS. Duplicates and blanks are dropped.
@@ -62,8 +21,73 @@ export function geminiKeys(env: Record<string, string | undefined> = process.env
   return [...new Set(list.map((k) => (k ?? "").trim()).filter(Boolean))];
 }
 
+/** Default first choice; replaced by the key's own model list after a 404. */
+const DEFAULT_MODEL = "gemini-2.5-flash";
+/** Ranked Flash models this deployment's key can call, discovered once per server instance. */
+let rankedModels: string[] | null = null;
+
+/** The models to try, in order. GEMINI_MODEL pins a single model. */
+function modelsToTry(): string[] {
+  if (process.env.GEMINI_MODEL) return [process.env.GEMINI_MODEL];
+  return rankedModels && rankedModels.length ? rankedModels.slice(0, 3) : [DEFAULT_MODEL];
+}
+
+/**
+ * Rank model ids like "gemini-3.8-flash" newest first. Within a version, plain "-flash" comes before
+ * suffixed variants such as "-flash-lite". Image, audio, live and TTS variants are left out.
+ */
+export function rankFlashModels(names: string[]): string[] {
+  const parsed = names
+    .map((n) => n.replace(/^models\//, ""))
+    .map((id) => ({ id, m: /^gemini-(\d+(?:\.\d+)*)-flash(-[a-z0-9-]+)?$/.exec(id) }))
+    .filter((x): x is { id: string; m: RegExpExecArray } => !!x.m && !/image|tts|audio|live|thinking|exp/.test(x.id));
+  const ver = (v: string) => v.split(".").map(Number);
+  parsed.sort((a, b) => {
+    const va = ver(a.m[1]), vb = ver(b.m[1]);
+    for (let i = 0; i < Math.max(va.length, vb.length); i++) {
+      const d = (vb[i] ?? 0) - (va[i] ?? 0);
+      if (d) return d;
+    }
+    return (a.m[2] ? 1 : 0) - (b.m[2] ? 1 : 0);
+  });
+  return [...new Set(parsed.map((p) => p.id))];
+}
+
+export function pickFlashModel(names: string[]): string | null {
+  return rankFlashModels(names)[0] ?? null;
+}
+
+/** All model names this key can call with generateContent (follows pagination). */
+export async function listModels(key: string): Promise<string[]> {
+  const names: string[] = [];
+  let token = "";
+  for (let page = 0; page < 5; page++) {
+    const res = await fetch(`${BASE}?pageSize=1000${token ? `&pageToken=${encodeURIComponent(token)}` : ""}`, {
+      headers: { "x-goog-api-key": key },
+    });
+    if (!res.ok) break;
+    const j: any = await res.json();
+    for (const m of j?.models ?? []) {
+      if ((m?.supportedGenerationMethods ?? []).includes("generateContent")) names.push(String(m.name).replace(/^models\//, ""));
+    }
+    token = j?.nextPageToken ?? "";
+    if (!token) break;
+  }
+  return names;
+}
+
 /** Statuses where another key may succeed: rate limit, bad or blocked key, server trouble. */
 const TRY_NEXT_KEY = new Set([401, 403, 429, 500, 502, 503, 504]);
+/** Statuses where another model may succeed with the same key. */
+const TRY_NEXT_MODEL = new Set([404, 429, 500, 503, 504]);
+
+async function errorText(res: Response): Promise<string> {
+  // Google's error text (e.g. "API key not valid", "model not found") never contains the key.
+  return res
+    .json()
+    .then((j: any) => [j?.error?.status, j?.error?.message].filter(Boolean).join(" ").slice(0, 160))
+    .catch(() => "");
+}
 
 async function callGemini(prompt: string, img: ReaderImage, schema: object): Promise<unknown> {
   const keys = geminiKeys();
@@ -72,44 +96,46 @@ async function callGemini(prompt: string, img: ReaderImage, schema: object): Pro
     contents: [{ role: "user", parts: [{ text: prompt }, { inline_data: { mime_type: img.mimeType, data: img.base64 } }] }],
     generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0 },
   });
-  let res: Response | null = null;
   let lastError: ReaderError | null = null;
-  const send = (key: string) =>
-    fetch(`${BASE}/${model()}:generateContent`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-goog-api-key": key },
-      body,
-    });
-  for (const key of keys) {
-    try {
-      res = await send(key);
-      // The model was retired or renamed: find the newest Flash this key can use, once, and retry.
-      if (res.status === 404 && !process.env.GEMINI_MODEL) {
-        const found = await discoverModel(key);
-        if (found && found !== model()) {
-          discoveredModel = found;
-          res = await send(key);
+  let good: Response | null = null;
+
+  keyLoop: for (const key of keys) {
+    let models = modelsToTry();
+    for (let i = 0; i < models.length; i++) {
+      let res: Response;
+      try {
+        res = await fetch(`${BASE}/${models[i]}:generateContent`, {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-goog-api-key": key },
+          body,
+        });
+      } catch {
+        lastError = new ReaderError("network", "Could not reach the reading service.");
+        continue keyLoop;
+      }
+      if (res.ok) {
+        good = res;
+        break keyLoop;
+      }
+      lastError = new ReaderError("http_error", `The reading service returned HTTP ${res.status} (${models[i]}). ${await errorText(res)}`.trim());
+      // Retired or unknown model: learn this key's models once and start over with the best ones.
+      if (res.status === 404 && !process.env.GEMINI_MODEL && !rankedModels) {
+        rankedModels = rankFlashModels(await listModels(key).catch(() => []));
+        if (rankedModels.length) {
+          models = modelsToTry();
+          i = -1;
+          continue;
         }
       }
-    } catch {
-      lastError = new ReaderError("network", "Could not reach the reading service.");
-      res = null;
-      continue;
+      if (TRY_NEXT_MODEL.has(res.status) && i < models.length - 1) continue;
+      if (TRY_NEXT_KEY.has(res.status)) continue keyLoop;
+      break keyLoop;
     }
-    if (res.ok) break;
-    // Google's error text (e.g. "API key not valid", "model not found") never contains the key.
-    const why = await res
-      .json()
-      .then((j: any) => [j?.error?.status, j?.error?.message].filter(Boolean).join(" ").slice(0, 160))
-      .catch(() => "");
-    lastError = new ReaderError("http_error", `The reading service returned HTTP ${res.status}.${why ? ` ${why}` : ""}`);
-    if (!TRY_NEXT_KEY.has(res.status)) break;
-    res = null;
   }
-  if (!res || !res.ok) throw lastError ?? new ReaderError("http_error", "The reading service failed.");
+  if (!good) throw lastError ?? new ReaderError("http_error", "The reading service failed.");
   let reply: any;
   try {
-    reply = await res.json();
+    reply = await good.json();
   } catch {
     throw new ReaderError("bad_output", "The reading service sent an unreadable reply.");
   }
@@ -120,6 +146,11 @@ async function callGemini(prompt: string, img: ReaderImage, schema: object): Pro
   } catch {
     throw new ReaderError("bad_output", "The reading service sent malformed JSON.");
   }
+}
+
+/** For /api/health: the ranked models in use (names only, no keys). */
+export function readerModels(): string[] {
+  return modelsToTry();
 }
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === "object" && x !== null && !Array.isArray(x);

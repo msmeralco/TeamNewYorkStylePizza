@@ -5,6 +5,8 @@ import { getReaders, ReaderError } from "@/lib/readers";
 import type { Meter, Reading } from "@/types";
 
 export const dynamic = "force-dynamic";
+// Two reads plus a possible model lookup can take longer than the default limit.
+export const maxDuration = 60;
 
 const MAX_BASE64_CHARS = 4 * 1024 * 1024;
 

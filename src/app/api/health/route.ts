@@ -1,4 +1,4 @@
-import { geminiKeys } from "@/lib/readers/gemini";
+import { geminiKeys, readerModels } from "@/lib/readers/gemini";
 export const dynamic = "force-dynamic";
 
 export function GET() {
@@ -9,7 +9,7 @@ export function GET() {
     reader: process.env.READER === "gemini" && geminiKeys().length > 0 ? "gemini" : "mock",
     // How many Gemini keys are configured (the keys themselves are never shown).
     geminiKeys: geminiKeys().length,
-    model: process.env.GEMINI_MODEL || "auto (newest Flash the key can use)",
+    models: readerModels(),
     time: new Date().toISOString(),
   });
 }
