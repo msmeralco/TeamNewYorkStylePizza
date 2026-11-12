@@ -517,7 +517,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
           reading: toReading(s, h.id, ck?.kwh),
           share: sh ? toShare(sh) : undefined,
           flags: ck?.flags,
-          suggestion: ck?.suggestion ? { value: Number(ck.suggestion.to), message: ck.suggestion.message } : null,
+          suggestion: ck?.suggestion ? { value: Number(ck.suggestion.to), message: ck.suggestion.message, from: ck.suggestion.from, to: ck.suggestion.to } : null,
         }
       })
       const summary: CheckSummary | null = check && bill ? {

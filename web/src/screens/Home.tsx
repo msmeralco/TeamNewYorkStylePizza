@@ -82,7 +82,7 @@ export default function Home() {
         <div className="card state empty own-choice">
           <h2 className="empty-title">{t('home.ownTitle')}</h2>
           <p className="body">{t('home.ownBody')}</p>
-          <button className="btn compact dark" onClick={() => nav('/usage/BAU')}>
+          <button className="btn compact dark" onClick={() => nav('/scan/meter/BAU')}>
             <span className="btn-label"><Gauge {...ICON} /> {t('home.ownCta')}</span>
           </button>
         </div>
@@ -127,7 +127,7 @@ export default function Home() {
             {check.addsUp ? <CircleCheck {...ICON} /> : <CircleAlert {...ICON} />}
             {check.addsUp
               ? t('home.addsUp', { a: Math.round(check.readingsKwh), b: check.masterKwh })
-              : t('home.missing', { n: Math.round(check.missingKwh), a: Math.round(check.readingsKwh), b: check.masterKwh })}
+              : t(check.missingKwh < 0 ? 'home.extra' : 'home.missing', { n: Math.abs(Math.round(check.missingKwh)), a: Math.round(check.readingsKwh), b: check.masterKwh })}
           </Link>
         )
       )}

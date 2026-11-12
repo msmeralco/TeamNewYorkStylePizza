@@ -140,7 +140,7 @@ export interface HouseholdMonth extends Household {
   /** Backend check flags for this reading (never shown by name to others). */
   flags?: string[]
   /** Digit-correction suggestion: the value the meter most likely shows. */
-  suggestion?: { value: number; message: string } | null
+  suggestion?: { value: number; message: string; from?: string; to?: string } | null
 }
 
 export interface MonthView {

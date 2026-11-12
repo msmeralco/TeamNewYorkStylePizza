@@ -180,7 +180,7 @@ export default function Usage() {
             <div className="stack" style={{ gap: 4 }}>
               <span className="body">
                 {/* ₱0 under the line is said as the rule ("100% off"), never "about ₱0". */}
-                {t(u.lifeline.pesoUnderLimit < 0.005 ? 'usage.stayUnderFree' : 'usage.stayUnder', { limit: u.lifeline.limitKwh, a: phpWhole(u.lifeline.pesoUnderLimit), b: phpWhole(u.lifeline.pesoAtForecast) })}
+                {t(u.lifeline.pesoAtForecast < 0.005 ? 'usage.onTrack' : u.lifeline.pesoUnderLimit < 0.005 ? 'usage.stayUnderFree' : 'usage.stayUnder', { limit: u.lifeline.limitKwh, a: phpWhole(u.lifeline.pesoUnderLimit), b: phpWhole(u.lifeline.pesoAtForecast) })}
               </span>
               {u.rate.isFallback && (
                 <span className="support">

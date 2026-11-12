@@ -221,8 +221,8 @@ function saveKwh(ctx: AskContext): Answer {
   // The 50 kWh line is only for a household's own meter, so a shared meter never mentions it here.
   if (own && f.lifelineForecastPeso != null && f.lifelineUnderPeso != null && (f.forecastKwh ?? 0) > 50) {
     answer += fil
-      ? ` Para sa iyo, ${underLine(f.lifelineUnderPeso, true)} sa halip na mga ${pesoWhole(f.lifelineForecastPeso)} kapag 50 kWh o mas mababa.`
-      : ` For you, that is ${underLine(f.lifelineUnderPeso, false)} instead of about ${pesoWhole(f.lifelineForecastPeso)} at 50 kWh or less.`;
+      ? ` Para sa iyo: kapag 50 kWh o mas mababa, ${underLine(f.lifelineUnderPeso, true)}, sa halip na mga ${pesoWhole(f.lifelineForecastPeso)} sa tantiya ngayong buwan.`
+      : ` For you: at 50 kWh or less it is ${underLine(f.lifelineUnderPeso, false)}, instead of about ${pesoWhole(f.lifelineForecastPeso)} at this month's forecast.`;
     sources.push("lifeline");
   }
   return { answer, sources };

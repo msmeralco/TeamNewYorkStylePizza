@@ -115,7 +115,8 @@ export default function Check() {
                     onClick={(e) => { e.stopPropagation(); applySuggestion(h) }}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); e.preventDefault(); applySuggestion(h) } }}
                   >
-                    {h.suggestion.message}
+                    {/* Shown in the app's language; the API's English message is the fallback. */}
+                    {h.suggestion.from && h.suggestion.to ? t('scan.didYouMean', { a: h.suggestion.to, b: h.suggestion.from }) : h.suggestion.message}
                   </span>
                 )}
               </span>
