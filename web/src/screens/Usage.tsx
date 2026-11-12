@@ -4,11 +4,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Bell, ChevronDown, ScanLine, CircleCheck, Sparkles, Clock, Gauge, Leaf, Plug, Snowflake, Tag, TrendingUp } from 'lucide-react'
 import { api } from '../api'
 import { UsageChart } from '../components/UsageChart'
+import { SharedUsageChart } from '../components/SharedUsageChart'
 import { LifelineBar } from '../components/LifelineBar'
 import { CountUp, reduceMotion, useReveal } from '../components/motion'
 import { UsageSkeleton } from '../components/Skeletons'
 import { EmptyState, ErrorState, Footnote, ICON, Sheet } from '../components/ui'
 import { useT } from '../i18n/copy'
+import { LIFELINE_TIERS_2026, lifelineDiscount } from '../lib/lifeline'
 import { day, localMonth, monthName, phpWhole } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
 
@@ -69,6 +71,7 @@ export default function Usage() {
   const { data: month } = useAsync(() => api.getMonth(), [])
   const { data: own } = useAsync(() => api.getOwnMeter(), [])
   const [picking, setPicking] = useState(false)
+  const [claiming, setClaiming] = useState(false)
   // Until a name is known the row shows its household letter (Bautista: the own-meter label), never a stale sample name.
   const PEOPLE = PEOPLE_IDS.map((p) => ({
     ...p,
@@ -130,7 +133,7 @@ export default function Usage() {
   const f = u.forecast
 
   return (
-    <div className={`screen${u.mode === 'own' ? ' own' : ''}`} ref={ref}>
+    <div className={`screen ${u.mode === 'own' ? 'own' : 'shared scrolls'}`} ref={ref}>
       <div className="stack" style={{ gap: 'calc(var(--gap) * 0.6)' }}>
         <div className="header-row">
           <button className="title title-btn" onClick={() => setPicking(true)} aria-label={t('usage.choose')}>
@@ -160,7 +163,7 @@ export default function Usage() {
         </div>
       </div>
 
-      {u.stage >= 2 && <UsageChart u={u} label={t('usage.line')} />}
+      {u.stage >= 2 ? <UsageChart u={u} label={t('usage.line')} /> : u.mode === 'shared' && <SharedUsageChart u={u} label={t('usage.line')} />}
 
       {u.spikePct != null && (
         <div className="card note">
@@ -192,6 +195,39 @@ export default function Usage() {
           {/* The tiers as a to-scale bar, replacing the "100% off up to 50 kWh..." line. */}
           <LifelineBar forecastKwh={f.kwh} tiers={u.lifeline.tiers} />
         </div>
+      ) : u.mode === 'shared' ? (
+        <>
+          {/* A what-if only: the lifeline sits on one Meralco account and its meter, so a shared meter can't claim it. */}
+          <div className="card stack" style={{ gap: 'calc(var(--gap) * 0.6)' }}>
+            <div className="note whatif">
+              <span className="icon-chip lime"><Tag {...ICON} /></span>
+              <div className="stack" style={{ gap: 4 }}>
+                <span className="body" style={{ fontWeight: 600 }}>{t('usage.whatIfTitle')}</span>
+                <span className="support">
+                  {(() => {
+                    const kwh = Math.round(f.kwh)
+                    const pct = Math.round(lifelineDiscount(kwh, u.lifeline?.tiers ?? LIFELINE_TIERS_2026) * 100)
+                    return pct > 0 ? t('usage.whatIf', { kwh, pct }) : t('usage.whatIfNone', { kwh })
+                  })()}
+                </span>
+              </div>
+            </div>
+            <LifelineBar forecastKwh={f.kwh} tiers={u.lifeline?.tiers} />
+          </div>
+          {u.perKwhValue != null && (
+            <div className="card note">
+              <span className="icon-chip lime"><Leaf {...ICON} /></span>
+              <div className="stack" style={{ gap: 4 }}>
+                <span className="body">{t('usage.perkwh', { n: Math.round(u.perKwhValue) })}</span>
+                {u.rate.isFallback && (
+                  <span className="support">
+                    {t('rate.fallback', { month: localMonth(u.rate.month), next: monthName(u.nextReadDate) })}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </>
       ) : (
         u.perKwhValue != null && (
           <div className="card note">
@@ -221,14 +257,18 @@ export default function Usage() {
       </div>
 
       <div className="btn-row">
+        {u.mode === 'shared' && (
+          <button className="btn compact" onClick={() => setClaiming(true)}>
+            <span className="btn-label"><Tag {...ICON} size={16} /> {t('usage.claim')}</span>
+          </button>
+        )}
         {u.mode === 'own' && (
           <button className="btn compact" onClick={() => nav('/scan/meter/BAU')}>
             <span className="btn-label"><ScanLine {...ICON} size={16} /> {t('usage.scan')}</span>
           </button>
         )}
         <button
-          className={`btn compact${reminded ? ' done' : u.mode === 'own' ? ' dark' : ''}`}
-          style={u.mode === 'own' ? undefined : { gridColumn: '1 / -1' }}
+          className={`btn compact${reminded ? ' done' : ' dark'}`}
           onClick={() => { if (reminded) return; downloadReminder(u.readDate); setRemindedFor(householdId) }}
           aria-disabled={reminded}
           aria-live="polite"
@@ -242,6 +282,12 @@ export default function Usage() {
       </div>
       <div style={{ marginTop: 'calc(var(--gap) * -0.5)' }}><Footnote>{t('footer.source')}</Footnote></div>
       {picker}
+      <Sheet open={claiming} onClose={() => setClaiming(false)}>
+        <ol className="claim">
+          {[1, 2, 3].map((n) => <li key={n} className="body">{t(`claim.${n}` as 'claim.1')}</li>)}
+        </ol>
+        <p className="support claim-foot">{t('claim.foot')}</p>
+      </Sheet>
     </div>
   )
 }

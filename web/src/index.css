@@ -360,6 +360,7 @@ a { color: inherit; text-decoration: none; }
 
 /* ---------- usage chart ---------- */
 /* The chart fills the card's width; --chart-h keeps the height it had (110px, less on short phones). */
+.screen.shared .card.usage-chart { --chart-h: 80px; }
 .usage-chart { position: relative; padding: 8px 20px 16px; --chart-h: min(16dvh, 110px); } /* same sides as other cards */
 .chart-tip-anchor { position: absolute; z-index: 5; pointer-events: none; margin-top: -14px; }
 .chart-tip-anchor.below { margin-top: 14px; }
@@ -390,12 +391,14 @@ a { color: inherit; text-decoration: none; }
 
 /* Own-meter Usage is the tallest screen. On short phones the bubble (17px above the bar) would
    cover the buttons and footnote, so the chart is shorter and only the first tip shows. */
+@media (max-height: 860px) { .screen.shared .card.usage-chart { --chart-h: 60px; } }
 @media (max-height: 860px) { .screen.own .card.usage-chart { --chart-h: min(12dvh, 100px); } }
 /* Up to 860px tall (an 844px iPhone, or Safari with its toolbars: about 700 to 800px of page) the tips and rate range fold away; taller screens fit the full layout. */
 @media (max-height: 860px) {
-  .screen.own .card.usage-chart { --chart-h: 86px; } /* the SVG scales its text with height; below about 85px labels get too small */
+  .screen.own .card.usage-chart { --chart-h: 86px; }
+  .screen.shared .whatif .icon-chip { display: none; } /* the SVG scales its text with height; below about 85px labels get too small */
   .screen.own .rate-range { display: none; }
-  .screen.own .card.list .list-row:nth-child(n+2) { display: none; }
+  .screen.own .card.list .list-row:nth-child(n+2), .screen.shared .card.list .list-row:nth-child(n+2) { display: none; }
 }
 /* Safety net: if a phone is shorter still, own-meter Usage scrolls instead of hiding the footnote. */
 .screen.own, .screen.scrolls { overflow-y: auto; }
@@ -434,7 +437,7 @@ a { color: inherit; text-decoration: none; }
   .screen.scrolls .icon-chip { width: 30px; height: 30px; }
   .screen.scrolls .btn { min-height: 46px; }
   /* Own-meter Usage: a little less air so the buttons and footnote clear the bubble at 667px. */
-  .screen.own { --top: 12px; --gap: 8px; }
+  .screen.own, .screen.shared { --top: 12px; --gap: 8px; }
 }
 
 /* Buttons: icon stays beside the text and the pair stays centred, even if a long translation wraps. */
@@ -556,3 +559,11 @@ a { color: inherit; text-decoration: none; }
   .lc-skeleton { animation: none; }
   .lc-video, .lc-shutter { transition: none; }
 }
+
+/* Usage: "How to claim it" sheet (shared households) */
+.claim { margin: 0; padding: 12px 0 0 20px; display: flex; flex-direction: column; gap: 12px; }
+.claim li::marker { font-weight: 700; }
+.claim-foot { margin: 0; padding: 12px 0; }
+
+/* Shared Usage has a chart, a tier card and a note on top of the usual rows: on phones up to 800px tall the tip folds away too. */
+@media (max-height: 800px) { .screen.shared .card.list { display: none; } }
