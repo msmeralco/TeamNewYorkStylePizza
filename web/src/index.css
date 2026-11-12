@@ -619,3 +619,5 @@ a { color: inherit; text-decoration: none; }
 .bill-lifeline.banner .icon-chip { background: var(--ink); color: var(--lime); }
 .bill-lifeline.banner .support { color: var(--ink); opacity: 0.75; }
 .bill-lifeline.banner { margin-top: 0 !important; }
+/* Short phones: the line list carries the same information as the thin stacked bar, so drop the bar. */
+@media (max-height: 800px) { .bill-lines .stacked { display: none; } }

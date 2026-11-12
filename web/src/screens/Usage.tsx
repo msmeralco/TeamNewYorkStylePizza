@@ -120,8 +120,9 @@ export default function Usage() {
           title={t(waiting ? 'usage.waitTitle' : 'usage.emptyTitle')}
           body={t(waiting ? 'usage.waitBody' : 'usage.emptyBody')}
           // Same rule as Home, Check and Bill: "Scan the bill" until the month has a bill, then "Scan the meter".
-          label={t(month?.bill ? 'check.scanMeter' : 'home.scanBill')}
-          onScan={() => nav(!month?.bill ? '/scan' : own ? '/scan/meter/BAU' : waiting && nextMissing ? `/scan/meter/${nextMissing.id}` : '/scan')}
+          // An own-meter household has no shared bill to scan first: it always goes to its own meter.
+          label={t(own || month?.bill ? 'check.scanMeter' : 'home.scanBill')}
+          onScan={() => nav(own ? '/scan/meter/BAU' : !month?.bill ? '/scan' : waiting && nextMissing ? `/scan/meter/${nextMissing.id}` : '/scan')}
         />
         {picker}
       </div>
@@ -272,7 +273,7 @@ export default function Usage() {
       {picker}
       <Sheet open={claiming} onClose={() => setClaiming(false)}>
         <ol className="claim">
-          {[1, 2, 3].map((n) => <li key={n} className="body">{t(`claim.${n}` as 'claim.1')}</li>)}
+          {[1, 2].map((n) => <li key={n} className="body">{t(`claim.${n}` as 'claim.1')}</li>)}
         </ol>
         <p className="support claim-foot">{t('claim.foot')}</p>
       </Sheet>

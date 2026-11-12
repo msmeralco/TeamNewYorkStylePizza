@@ -121,12 +121,12 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
       setSharing(false)
     }
   }
-  // Lifeline is per Meralco account: a 4Ps household at or under 50 kWh still gets none when the compound's one account is above it.
-  const fourPs = tenant ? s.fourPs : month?.households.find((h) => h.id === s.householdId)?.fourPs
+  // Lifeline is per Meralco account, so a household behind a shared meter gets none however little it uses.
+  // Shown by kWh with "if eligible" wording, never by the 4Ps flag: the banner must not reveal who is 4Ps.
   const accountKwh = tenant ? s.billKwh : month?.bill?.kwh
   // What lifeline would take off this share on the household's own Meralco meter. It covers most charges but not
   // universal charges (in "other"), so the estimate leaves the "other" line out and is said as "about".
-  const ownPct = fourPs ? lifelineDiscount(s.kwh) : 0
+  const ownPct = lifelineDiscount(s.kwh)
   const showLifeline = ownPct > 0 && accountKwh !== undefined && lifelineDiscount(accountKwh) < ownPct
   const otherLine = s.lines.find((l) => l.key === 'other')?.amount ?? 0
   const lifelineSave = showLifeline ? Math.round(ownPct * (s.amount - otherLine)) : 0

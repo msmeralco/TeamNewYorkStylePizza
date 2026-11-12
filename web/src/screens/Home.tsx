@@ -80,7 +80,7 @@ export default function Home() {
   const missing = m.households.filter((h) => !h.reading)
   const check = m.check
   // 4Ps households at or under 50 kWh who still get no lifeline: it is per Meralco account, and this compound has one.
-  const lifelineN = missing.length === 0 ? m.households.filter((h) => h.fourPs && h.reading && h.reading.kwh <= 50).length : 0
+  const lifelineN = missing.length === 0 ? m.households.filter((h) => h.reading && h.reading.kwh <= 50).length : 0
 
   return (
     <div className="screen scrolls" ref={ref}>
