@@ -98,6 +98,19 @@ const BACKEND_CODES: Record<string, string> = {
   no_usage: 'shares_pending',
   unknown_household: 'unknown_household',
   below_previous: 'reading_below',
+  reading_below_base: 'reading_below',
+  // Request-shape errors all read the same to a user.
+  bad_json: 'bad_request',
+  bad_body: 'bad_request',
+  bad_household: 'bad_request',
+  bad_as_of: 'bad_request',
+  bad_own_meter: 'bad_request',
+  bad_history: 'bad_request',
+  bad_cdd: 'bad_request',
+  bad_use_weather: 'bad_request',
+  bad_which: 'bad_request',
+  // reader_failed, internal, bad_state, negative_kwh, no_meter, no_base_reading
+  // and no_last_period pass through and have their own err.* text.
 }
 
 /**
@@ -303,7 +316,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
       const previous = prevOf(s, m.id)
       const r = await post<{
         scan: { value: number; serial: string | null; confidence: number }
-        validation: { ok: boolean; kwhSinceLast: number | null; serialMatches: boolean | null }
+        validation: { ok: boolean; kwhSinceLast: number | null; serialMatches: boolean | null; issues?: { code: string }[] }
       }>('/api/scan/meter', { ...(await toDataUrl(image)), meter: m, previous, hint: m.serial })
       return {
         householdId,
@@ -314,6 +327,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
         confidence: r.scan.confidence,
         capturedAt: new Date().toISOString(),
         needsSecondLook: !r.validation.ok,
+        issues: r.validation.issues?.map((i) => i.code),
       }
     },
 

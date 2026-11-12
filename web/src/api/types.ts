@@ -85,6 +85,8 @@ export interface MeterScan {
   capturedAt: string
   /** Set when the model's two reads disagree or the value is out of pattern. */
   needsSecondLook: boolean
+  /** Why it needs a second look (backend issue codes, e.g. "reads_disagree"). Never names a household. */
+  issues?: string[]
   /** Constraint digit correction, e.g. "04572" when "04512" was read. */
   suggestedValue?: number
 }

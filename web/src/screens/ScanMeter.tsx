@@ -8,14 +8,14 @@ import { Brackets, CameraPanel, ScanBeam, ScanHeader } from '../components/Scan'
 import { reduceMotion, useReveal } from '../components/motion'
 import { ScanSkeleton } from '../components/Skeletons'
 import { ErrorState, ICON } from '../components/ui'
-import { useErrText, useT } from '../i18n/copy'
+import { useErrText, useT, type TKey } from '../i18n/copy'
 import { meterDigits } from '../lib/format'
 import { notifyChange, useAsync } from '../lib/useAsync'
 
 export default function ScanMeter() {
   const { householdId = 'A' } = useParams()
   const nav = useNavigate()
-  const { t } = useT()
+  const { t, hasKey } = useT()
   const errText = useErrText()
   const month = useAsync(() => api.getMonth(), [])
   const [phase, setPhase] = useState<'idle' | 'reading' | 'read' | 'editing' | 'saving'>('idle')
@@ -117,7 +117,19 @@ export default function ScanMeter() {
                 {scan.serialMatches ? <CircleCheck size={15} strokeWidth={1.75} /> : <CircleAlert size={15} strokeWidth={1.75} />}
                 {t(scan.serialMatches ? 'scan.serialMatch' : 'scan.serialNo', { s: scan.serial, name: h.name })}
               </span>
-              {scan.needsSecondLook && <span className="meta"><CircleAlert size={15} strokeWidth={1.75} />{t('check.second')}</span>}
+              {scan.needsSecondLook && (
+                <span className="meta" style={{ alignItems: 'flex-start' }}>
+                  <CircleAlert size={15} strokeWidth={1.75} style={{ flex: 'none', marginTop: 1 }} />
+                  <span>
+                    {t('check.second')}
+                    {/* The specific reasons; the serial line above already covers a serial mismatch. */}
+                    {(scan.issues ?? [])
+                      .filter((c) => c !== 'serial_mismatch' && hasKey(`issue.${c}`))
+                      .map((c) => ` ${t(`issue.${c}` as TKey)}`)
+                      .join('')}
+                  </span>
+                </span>
+              )}
               {scan.suggestedValue != null && (
                 <button className="chip" onClick={() => setScan({ ...scan, value: scan.suggestedValue!, kwhSinceLast: scan.suggestedValue! - h.previousReading, suggestedValue: undefined })}>
                   {t('scan.didYouMean', { a: meterDigits(scan.suggestedValue), b: meterDigits(scan.value) })}
