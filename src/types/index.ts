@@ -180,11 +180,14 @@ export interface Forecast {
   label: string | null;
   /** Points for the chart: day offset from the last bill read date and kWh used. */
   points: { date: string; day: number; kwhUsed: number; kind: "bill" | "photo" | "projection" }[];
-  rate: { perKwh: number; month: string; isFallback: boolean; note: string | null };
+  rate: { perKwh: number; month: string; isFallback: boolean; note: string | null; /** Largest month-to-month rate change as a fraction; 0 when the month has its own row. */ rangeFactor?: number };
   /** Own enrolled meter only. */
   lifeline: null | {
     lineKwh: 50;
     forecastPeso: number;
+    /** Peso range when the rate is a labelled fallback (rate moves by rangeFactor); display values. */
+    pesoLow?: number;
+    pesoHigh?: number;
     underLinePeso: number;
     message: string;
     tierLine: string;

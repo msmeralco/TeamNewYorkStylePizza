@@ -1,0 +1,61 @@
+// POST /api/scan/bill: read a (masked) bill photo. The image is never stored.
+import { RATES } from "@/data/tables";
+import { fail, ok, readJson } from "@/lib/http";
+import { getReaders, ReaderError } from "@/lib/readers";
+
+export const dynamic = "force-dynamic";
+
+const MAX_BASE64_CHARS = 4 * 1024 * 1024;
+const BAND = 0.35;
+
+interface Body {
+  imageBase64?: unknown;
+  mimeType?: unknown;
+}
+
+export async function POST(req: Request): Promise<Response> {
+  const declared = Number(req.headers.get("content-length") ?? 0);
+  if (declared > MAX_BASE64_CHARS + 4096) return tooBig();
+
+  const body = await readJson<Body>(req);
+  if (body instanceof Response) return body;
+  if (!body || typeof body !== "object") return missing();
+
+  const raw = typeof body.imageBase64 === "string" ? body.imageBase64 : "";
+  const imageBase64 = raw.replace(/^data:[^,]*,/, "").trim();
+  if (!imageBase64) return missing();
+  if (imageBase64.length > MAX_BASE64_CHARS) return tooBig();
+  const mimeType = typeof body.mimeType === "string" && body.mimeType ? body.mimeType : "image/jpeg";
+  if (!mimeType.startsWith("image/")) {
+    return fail(400, "bad_mime", "That file is not a photo.", "Type it instead");
+  }
+
+  try {
+    const scan = await getReaders().bill.readBill({ base64: imageBase64, mimeType });
+    return ok({ scan, sanity: sanity(scan.amount, scan.kwh) });
+  } catch (e) {
+    const msg = e instanceof ReaderError ? "The bill could not be read." : "The bill could not be read right now.";
+    return fail(502, "reader_failed", msg, "Try again, or type it instead");
+  }
+}
+
+function sanity(amount: number, kwh: number) {
+  const latest = [...RATES].sort((a, b) => a.month.localeCompare(b.month)).at(-1);
+  if (!(kwh > 0) || !latest) {
+    return { effectiveRate: 0, withinBand: false, note: "Could not check the rate. Please confirm the numbers." };
+  }
+  const effectiveRate = amount / kwh;
+  const diff = (effectiveRate - latest.perKwh) / latest.perKwh;
+  const withinBand = Math.abs(diff) <= BAND;
+  const note = withinBand
+    ? `About ₱${effectiveRate.toFixed(2)} per kWh, close to Meralco's ${latest.month} rate of ₱${latest.perKwh.toFixed(4)}.`
+    : `About ₱${effectiveRate.toFixed(2)} per kWh, far from Meralco's ${latest.month} rate of ₱${latest.perKwh.toFixed(4)}. Please check the kWh and the total.`;
+  return { effectiveRate, withinBand, note };
+}
+
+function missing(): Response {
+  return fail(400, "missing_image", "No photo was sent.", "Type it instead");
+}
+function tooBig(): Response {
+  return fail(413, "image_too_large", "The photo is too large.", "Retake the photo closer, or type it instead");
+}

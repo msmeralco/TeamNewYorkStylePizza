@@ -15,3 +15,5 @@ data-private/
 *.jpg
 *.jpeg
 *.heic
+
+.vercel
