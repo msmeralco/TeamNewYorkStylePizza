@@ -8,7 +8,7 @@ export const RATES: RateRow[] = [
     month: "2026-09",
     perKwh: 14.7424,
     source: "Derived: October's ₱15.0615 minus the ₱0.3191 increase reported by PhilStar (14 Oct 2026)",
-    publishedOn: "2026-09-14",
+    publishedOn: "2026-10-14",
   },
   {
     month: "2026-10",

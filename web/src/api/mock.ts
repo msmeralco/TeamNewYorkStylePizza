@@ -90,6 +90,14 @@ function save() {
   }
 }
 
+const needsOwnScan = () => new ApiError('Scan your meter first.', 409, 'needs_own_scan')
+const needsScan = () => new ApiError('Scan the bill and the meters first.', 409, 'needs_scan')
+const sampleReadings = (): Reading[] =>
+  HOUSEHOLDS.map((x) => ({
+    householdId: x.id, value: METER_FACES[x.id], kwh: METER_FACES[x.id] - x.previousReading,
+    source: 'photo', capturedAt: nowIso(), confirmed: true,
+  }))
+
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const nowIso = () => new Date().toISOString()
 
@@ -280,12 +288,18 @@ export const mockApi: KahatiApi = {
     return r
   },
 
-  async getShare(householdId) {
+  async getShare(householdId, opts) {
     await wait(200)
     const m = month()
     const h = m.households.find((x) => x.id === householdId)
     if (!h) throw new ApiError('Unknown household', 404, 'unknown_household')
-    if (!h.share) throw new ApiError('Shares appear once the bill and all readings are in.', 409, 'shares_pending')
+    if (!h.share) {
+      // Tenant screens fall back to the sample split; the organizer has nothing until the scans are in.
+      if (!opts?.tenant) throw needsScan()
+      const bill = m.bill ?? { ...SAMPLE_BILL, id: 'sample' }
+      const sample = computeShares(bill, sampleReadings()).find((x) => x.householdId === householdId)!
+      return { ...sample, name: h.name }
+    }
     return { ...h.share, name: h.name }
   },
 
@@ -298,6 +312,8 @@ export const mockApi: KahatiApi = {
       fallbackNote: "Using October's rate. November's is announced mid-month.",
     }
     if (householdId === BAUTISTA.id) {
+      // Empty until his meter has been scanned and confirmed.
+      if (state.bau === undefined) throw needsOwnScan()
       const rate = SAMPLE_BILL.amount / SAMPLE_BILL.kwh // 15.0615
       const totalDays = 30
       const photo = { day: BAUTISTA_PHOTO_DAY, kwhUsed: (state.bau ?? BAUTISTA_FACE) - BAUTISTA.previousReading }
@@ -305,6 +321,11 @@ export const mockApi: KahatiApi = {
       const toCome = daily * (totalDays - photo.day)
       const kwh = photo.kwhUsed + toCome
       const shown = Math.round(kwh)
+      const low = kwh - 0.1 * toCome
+      const high = kwh + 0.1 * toCome
+      // Range line: the kWh band times the rate band (Sep to Oct rates), after the lifeline discount.
+      const rateLo = 14.7424
+      const peso = (k: number, r: number) => Math.round(k) * r * (1 - lifelineDiscount(Math.round(k)))
       return {
         householdId,
         name: BAUTISTA.name,
@@ -317,11 +338,13 @@ export const mockApi: KahatiApi = {
           { date: '2026-10-31', day: 0, kwhUsed: 0, kind: 'bill' },
           { date: '2026-11-18', day: photo.day, kwhUsed: photo.kwhUsed, kind: 'photo' },
         ],
-        forecast: { kwh, low: kwh - 0.1 * toCome, high: kwh + 0.1 * toCome },
+        forecast: { kwh, low, high },
         lifeline: {
           limitKwh: 50,
           pesoAtForecast: shown * rate * (1 - lifelineDiscount(shown)),
           pesoUnderLimit: 50 * rate * (1 - lifelineDiscount(50)),
+          pesoLow: peso(low, rateLo),
+          pesoHigh: peso(high, rate),
           tiers: LIFELINE_TIERS_2026,
         },
         rate: { perKwh: rate, ...rateMeta },
@@ -331,8 +354,9 @@ export const mockApi: KahatiApi = {
     const m = month()
     const h = m.households.find((x) => x.id === householdId)
     if (!h) throw new ApiError('Unknown household', 404, 'unknown_household')
+    if (!m.bill || !h.share) throw needsScan()
     const last = h.reading?.kwh ?? 45
-    const bill = m.bill ?? { ...SAMPLE_BILL, id: 'sample' }
+    const bill = m.bill
     return {
       householdId,
       name: h.name,
@@ -361,15 +385,7 @@ export const mockApi: KahatiApi = {
     const h = m.households.find((x) => x.id === id)!
     // A tenant link only exists once the split is done; show the sample split if not.
     const bill = m.bill ?? { ...SAMPLE_BILL, id: 'sample' }
-    const share =
-      h.share ??
-      computeShares(
-        bill,
-        HOUSEHOLDS.map((x) => ({
-          householdId: x.id, value: METER_FACES[x.id], kwh: METER_FACES[x.id] - x.previousReading,
-          source: 'photo', capturedAt: nowIso(), confirmed: true,
-        })),
-      ).find((s) => s.householdId === id)!
+    const share = h.share ?? computeShares(bill, sampleReadings()).find((s) => s.householdId === id)!
     const asked = share.kwh * CHARGED_RATE
     return {
       householdId: id,
@@ -388,7 +404,8 @@ export const mockApi: KahatiApi = {
   // Mock limitation: every household gets the same demo link (the mock only knows "demo-santos").
   async createTenantLink() {
     await wait(300)
-    const next = (state.bill ?? SAMPLE_BILL).nextReadDate
+    if (!state.bill || Object.keys(state.readings).length < HOUSEHOLDS.length) throw needsScan()
+    const next = state.bill.nextReadDate
     const d = new Date(`${next}T00:00:00Z`)
     d.setUTCDate(d.getUTCDate() + 7)
     return { url: `${window.location.origin}/t/demo-santos`, expiresAt: d.toISOString().slice(0, 10) }
@@ -399,8 +416,15 @@ export const mockApi: KahatiApi = {
     return ASK_PRESETS[language]
   },
 
-  async ask({ presetId, question, language = 'en' }): Promise<AskAnswer> {
+  async ask({ householdId, tenantToken, presetId, question, language = 'en' }): Promise<AskAnswer> {
     await wait(600)
+    if (!tenantToken) {
+      if (householdId === BAUTISTA.id) {
+        if (state.bau === undefined) throw needsOwnScan()
+      } else if (!state.bill || Object.keys(state.readings).length < HOUSEHOLDS.length) {
+        throw needsScan()
+      }
+    }
     const lang = language
     const p = ASK_PRESETS[lang]
     const answers: Record<string, string> = {

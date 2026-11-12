@@ -7,7 +7,7 @@ import { UsageChart } from '../components/UsageChart'
 import { LifelineBar } from '../components/LifelineBar'
 import { CountUp, reduceMotion, useReveal } from '../components/motion'
 import { UsageSkeleton } from '../components/Skeletons'
-import { ErrorState, Footnote, ICON, Sheet } from '../components/ui'
+import { EmptyState, ErrorState, Footnote, ICON, Sheet } from '../components/ui'
 import { useT } from '../i18n/copy'
 import { day, localMonth, monthName, phpWhole } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
@@ -22,7 +22,7 @@ const PEOPLE = [
 const ACTION_ICON = { plug: Plug, clock: Clock, snowflake: Snowflake }
 const whole = (n: number) => `${Math.round(n)} kWh`
 
-/** An .ics with one event on the 15th at 9:00 Asia/Manila. Unknown or past period: the next 15th. */
+/** An .ics with one event on the 15th at 9:00 Manila time (written in UTC). Unknown or past period: the next 15th. */
 function downloadReminder(periodDate?: string) {
   const now = new Date()
   let y = now.getFullYear()
@@ -42,8 +42,9 @@ function downloadReminder(periodDate?: string) {
     'BEGIN:VEVENT',
     `UID:kahati-${ymd}@kahati`,
     `DTSTAMP:${stamp}`,
-    `DTSTART;TZID=Asia/Manila:${ymd}T090000`,
-    `DTEND;TZID=Asia/Manila:${ymd}T093000`,
+    // 9:00 to 9:30 Manila (UTC+8) is 01:00Z to 01:30Z the same day.
+    `DTSTART:${ymd}T010000Z`,
+    `DTEND:${ymd}T013000Z`,
     'SUMMARY:Kahati: take a meter photo',
     `DESCRIPTION:Open Kahati to scan your meter: ${window.location.origin}`,
     'END:VEVENT', 'END:VCALENDAR',
@@ -90,13 +91,33 @@ export default function Usage() {
     </Sheet>
   )
 
+  if ((error as { code?: string } | undefined)?.code?.startsWith('needs_')) {
+    const own = householdId === 'BAU'
+    const name = PEOPLE.find((p) => p.id === householdId)?.name ?? householdId
+    return (
+      <div className="screen">
+        <div className="header-row">
+          <button className="title title-btn" onClick={() => setPicking(true)} aria-label={t('usage.choose')}>
+            {t('usage.title', { household: name })}
+            <ChevronDown size={20} strokeWidth={2} />
+          </button>
+        </div>
+        <EmptyState
+          title={t(own ? 'usage.bauEmptyTitle' : 'usage.emptyTitle')}
+          body={t(own ? 'usage.bauEmptyBody' : 'usage.emptyBody')}
+          onScan={() => nav(own ? '/scan/meter/BAU' : '/scan')}
+        />
+        {picker}
+      </div>
+    )
+  }
   if (error) return <div className="screen"><h1 className="title">{t('nav.usage')}</h1><ErrorState error={error} onRetry={reload} /></div>
   if (loading && !data) return <UsageSkeleton />
   const u = data!
   const f = u.forecast
 
   return (
-    <div className="screen" ref={ref}>
+    <div className={`screen${u.mode === 'own' ? ' own' : ''}`} ref={ref}>
       <div className="stack" style={{ gap: 'calc(var(--gap) * 0.6)' }}>
         <div className="header-row">
           <button className="title title-btn" onClick={() => setPicking(true)} aria-label={t('usage.choose')}>
@@ -146,20 +167,17 @@ export default function Usage() {
               </span>
               {u.rate.isFallback && (
                 <span className="support">
-                  {u.lifeline.pesoLow != null && u.lifeline.pesoHigh != null
-                    ? t('usage.usingRateRange', { month: localMonth(u.rate.month), low: phpWhole(u.lifeline.pesoLow), high: phpWhole(u.lifeline.pesoHigh) })
-                    : t('usage.usingRate', { month: localMonth(u.rate.month) })}
+                  {t('usage.usingRate', { month: localMonth(u.rate.month) })}
+                  {/* The range is dropped on short phones (index.css) so the chart can stay readable. */}
+                  {u.lifeline.pesoLow != null && u.lifeline.pesoHigh != null && (
+                    <span className="rate-range"> {t('usage.rateRange', { low: phpWhole(u.lifeline.pesoLow), high: phpWhole(u.lifeline.pesoHigh) })}</span>
+                  )}
                 </span>
               )}
             </div>
           </div>
           {/* The tiers as a to-scale bar, replacing the "100% off up to 50 kWh..." line. */}
           <LifelineBar forecastKwh={f.kwh} tiers={u.lifeline.tiers} />
-          {!u.rate.isFallback && u.lifeline.pesoLow != null && u.lifeline.pesoHigh != null && (
-            <span className="support">
-              {t('usage.lifelineRange', { month: monthName(u.nextReadDate), low: phpWhole(u.lifeline.pesoLow), high: phpWhole(u.lifeline.pesoHigh) })}
-            </span>
-          )}
         </div>
       ) : (
         u.perKwhValue != null && (
@@ -189,24 +207,26 @@ export default function Usage() {
         })}
       </div>
 
-      {u.mode === 'own' && (
-        <button className="btn compact dark" onClick={() => nav('/scan/meter/BAU')}>
-          <span className="btn-label"><Camera {...ICON} /> {t('usage.scan')}</span>
-        </button>
-      )}
-
-      <button
-        className={`btn compact${reminded ? ' done' : ''}`}
-        onClick={() => { downloadReminder(u.readDate); setRemindedFor(householdId) }}
-        aria-disabled={reminded}
-        aria-live="polite"
-      >
-        {reminded ? (
-          <span className="btn-label" key="done" ref={remindLabel}><CircleCheck {...ICON} /> {t('usage.reminded')}</span>
-        ) : (
-          <span className="btn-label" key="ask"><Bell {...ICON} /> {t('usage.remind')}</span>
+      <div className="btn-row">
+        {u.mode === 'own' && (
+          <button className="btn compact" onClick={() => nav('/scan/meter/BAU')}>
+            <span className="btn-label"><Camera {...ICON} size={16} /> {t('usage.scan')}</span>
+          </button>
         )}
-      </button>
+        <button
+          className={`btn compact${reminded ? ' done' : u.mode === 'own' ? ' dark' : ''}`}
+          style={u.mode === 'own' ? undefined : { gridColumn: '1 / -1' }}
+          onClick={() => { if (reminded) return; downloadReminder(u.readDate); setRemindedFor(householdId) }}
+          aria-disabled={reminded}
+          aria-live="polite"
+        >
+          {reminded ? (
+            <span className="btn-label" key="done" ref={remindLabel}><CircleCheck {...ICON} size={16} /> {t('usage.reminded')}</span>
+          ) : (
+            <span className="btn-label" key="ask"><Bell {...ICON} size={16} /> {t('usage.remind')}</span>
+          )}
+        </button>
+      </div>
       <div style={{ marginTop: 'calc(var(--gap) * -0.5)' }}><Footnote>{t('footer.source')}</Footnote></div>
       {picker}
     </div>

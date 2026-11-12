@@ -200,7 +200,13 @@ export function createHttpApi(baseUrl: string): KahatiApi {
   async function bauState(): Promise<BState> {
     if (!local.bau) {
       if (!bauCache) bauCache = await call<BState>('/api/sample?which=bautista')
-      local.bau = structuredClone(bauCache)
+      // The bill's read-day reading stays (it is in previousReadings); the seeded day-18 photo
+      // reading is dropped, so the forecast only appears after a real scan and confirmReading.
+      local.bau = { ...structuredClone(bauCache), currentReadings: [] }
+      save()
+    } else if (local.bau.currentReadings.some((r) => !r.id.startsWith('r-'))) {
+      // State saved before this rule: drop the seeded reading (real ones are ids "r-<meter>-<time>").
+      local.bau.currentReadings = local.bau.currentReadings.filter((r) => r.id.startsWith('r-'))
       save()
     }
     return local.bau
@@ -209,6 +215,18 @@ export function createHttpApi(baseUrl: string): KahatiApi {
   const prevOf = (s: BState, meterId: string) => s.previousReadings.find((r) => r.meterId === meterId)
   const currOf = (s: BState, meterId: string) => s.currentReadings.find((r) => r.meterId === meterId)
   const allIn = (s: BState) => s.households.every((h) => { const m = meterOf(s, h.id); return !!m && !!currOf(s, m.id) })
+  /** The organizer's compound is ready once the bill is confirmed and all four readings are in. */
+  const ready = (s: BState) => local.billConfirmed && allIn(s)
+  const needsScan = () => new ApiError('Scan the bill and the meters first.', 409, 'needs_scan')
+  /** The working compound if ready, else the sample (tenant paths only), else needs_scan. */
+  async function usable(s: BState, fallbackToSample: boolean): Promise<BState> {
+    if (ready(s)) return s
+    if (fallbackToSample) return sample()
+    throw needsScan()
+  }
+  /** Bautista has a usable forecast once his own meter has a reading beyond the bill's. */
+  const needsOwnScan = () => new ApiError('Scan your meter first.', 409, 'needs_own_scan')
+  const bauScanned = (s: BState) => s.currentReadings.length > 0
 
   // ---------- mappers ----------
   const billLines = (b: { lines: Lines; fixedCharges: number }): BillLine[] =>
@@ -265,8 +283,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
     const demoHid = DEMO_TOKENS[token]
     if (!demoHid) return call<BTenant>(`/api/tenant/${encodeURIComponent(token)}`)
     // Demo link: use this month's split if complete, else the sample compound.
-    const s = await state()
-    const src = local.billConfirmed && allIn(s) ? s : await sample()
+    const src = await usable(await state(), true)
     const link = await post<{ token: string }>('/api/tenant-link', { state: src, householdId: demoHid })
     return call<BTenant>(`/api/tenant/${encodeURIComponent(link.token)}`)
   }
@@ -383,11 +400,11 @@ export function createHttpApi(baseUrl: string): KahatiApi {
       return toReading(s, hid)!
     },
 
-    async getShare(householdId) {
+    async getShare(householdId, opts) {
       const s = await state()
       const hid = toB(householdId)
-      // Tenant view before this month's split exists: show the sample split, like the demo link does.
-      const src = local.billConfirmed && allIn(s) ? s : await sample()
+      // Organizer: needs_scan until this month's split exists. Tenant view: the sample split, like the demo link.
+      const src = await usable(s, !!opts?.tenant)
       const split = await post<BSplit>('/api/split', { state: src })
       const sh = split.shares.find((x) => x.householdId === hid)
       if (!sh) throw new ApiError('Unknown household', 404, 'unknown_household')
@@ -397,9 +414,8 @@ export function createHttpApi(baseUrl: string): KahatiApi {
 
     async getUsage(householdId): Promise<UsageView> {
       const own = householdId === 'BAU'
-      const s = own
-        ? await bauState()
-        : await (async () => { const w = await state(); return local.billConfirmed && allIn(w) ? w : sample() })()
+      const s = own ? await bauState() : await usable(await state(), false)
+      if (own && !bauScanned(s)) throw needsOwnScan()
       const hid = toB(householdId)
       const f = await post<BForecast>('/api/forecast', { state: s, householdId: hid })
       const h = s.households.find((x) => x.id === hid)
@@ -447,8 +463,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
     },
 
     async createTenantLink(householdId): Promise<{ url: string; expiresAt: string }> {
-      const s = await state()
-      const src = local.billConfirmed && allIn(s) ? s : await sample()
+      const src = await usable(await state(), false)
       const r = await post<{ url: string; expiresAt: string }>('/api/tenant-link', {
         state: src, householdId: toB(householdId), baseUrl: window.location.origin,
       })
@@ -467,17 +482,15 @@ export function createHttpApi(baseUrl: string): KahatiApi {
         const demoHid = DEMO_TOKENS[tenantToken]
         let token = tenantToken
         if (demoHid) {
-          const s = await state()
-          const src = local.billConfirmed && allIn(s) ? s : await sample()
+          const src = await usable(await state(), true)
           token = (await post<{ token: string }>('/api/tenant-link', { state: src, householdId: demoHid })).token
         }
         return post<AskAnswer>('/api/ask', { ...base, tenantToken: token })
       }
       if (!householdId) throw new ApiError('Pick a household first.', 400, 'bad_request')
       const own = householdId === 'BAU'
-      const s = own
-        ? await bauState()
-        : await (async () => { const w = await state(); return local.billConfirmed && allIn(w) ? w : sample() })()
+      const s = own ? await bauState() : await usable(await state(), false)
+      if (own && !bauScanned(s)) throw needsOwnScan()
       return post<AskAnswer>('/api/ask', { ...base, state: s, householdId: toB(householdId) })
     },
 

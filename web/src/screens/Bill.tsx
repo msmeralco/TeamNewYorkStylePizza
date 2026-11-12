@@ -6,7 +6,7 @@ import { ArrowLeft, ChevronDown, Gauge, Share2, Sparkles, Landmark, Layers, Netw
 import { api, type LineKey } from '../api'
 import { CountUp, reduceMotion, useReveal } from '../components/motion'
 import { BillSkeleton } from '../components/Skeletons'
-import { ErrorState, Footnote, ICON, Sheet, toast } from '../components/ui'
+import { EmptyState, ErrorState, Footnote, ICON, Sheet, toast } from '../components/ui'
 import { lineKey, useT } from '../i18n/copy'
 import { kwh as kwhText, php } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
@@ -26,7 +26,7 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
   const { t } = useT()
   const { data, error, loading, reload } = useAsync(async () => {
     const id = tenant ? (await api.getTenantView(params.token!)).householdId : params.householdId!
-    return api.getShare(id)
+    return api.getShare(id, { tenant })
   }, [params.householdId, params.token])
   const nav = useNavigate()
   const [picking, setPicking] = useState(false)
@@ -71,6 +71,13 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
   )
   const cls = `screen${tenant ? ' no-nav' : ''}`
 
+  if (error && (error as { code?: string }).code === 'needs_scan' && !tenant)
+    return (
+      <div className={cls}>
+        <h1 className="title">{t('nav.bill')}</h1>
+        <EmptyState title={t('bill.emptyTitle')} body={t('bill.emptyBody')} onScan={() => nav('/scan')} />
+      </div>
+    )
   if (error)
     return (
       <div className={cls}>
@@ -166,7 +173,7 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
         </div>
       </div>
 
-      <Footnote>{t('bill.footer')}</Footnote>
+      <Footnote>{t(tenant ? 'bill.footer' : 'bill.footerOwn')}</Footnote>
       {picker}
     </div>
   )

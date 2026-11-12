@@ -31,7 +31,9 @@ export interface KahatiApi {
     confidence?: number
     serialRead?: string | null
   }): Promise<Reading>
-  getShare(householdId: string): Promise<Share & { name: string }>
+  /** Organizer: throws ApiError code 'needs_scan' until the bill and all four readings are in. `tenant: true` (tenant screens) falls back to the sample split. */
+  getShare(householdId: string, opts?: { tenant?: boolean }): Promise<Share & { name: string }>
+  /** Throws ApiError code 'needs_scan' until this household's readings exist (Bautista: until his meter is scanned). */
   getUsage(householdId: string): Promise<UsageView>
   requestNewPhoto(householdIds: string[]): Promise<void>
   getTenantView(token: string): Promise<TenantView>
@@ -48,7 +50,7 @@ export interface KahatiApi {
 
 export class ApiError extends Error {
   status: number
-  /** Stable code the UI translates (err.<code> in i18n/copy.tsx). */
+  /** Stable code the UI translates (err.<code> in i18n/copy.tsx). Includes 'needs_scan' (409): nothing to show until a scan. */
   code?: string
   constructor(message: string, status = 0, code?: string) {
     super(message)

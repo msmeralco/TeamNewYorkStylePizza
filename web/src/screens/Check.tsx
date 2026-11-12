@@ -115,7 +115,7 @@ export default function Check() {
                   </span>
                 )}
               </span>
-              {h.reading && (
+              {h.reading && !h.suggestion && (
                 <span className="chip sm row-badge">
                   {h.reading.source === 'typed' ? <Keyboard size={12} strokeWidth={1.75} /> : <CircleCheck size={12} strokeWidth={1.75} />}
                   {h.reading.source === 'typed' ? t('check.typed') : t('check.verified')}

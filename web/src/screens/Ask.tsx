@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowUp, CircleAlert, ShieldCheck, Sparkles } from 'lucide-react'
 import gsap from 'gsap'
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin'
@@ -17,6 +17,8 @@ interface Msg {
   refused?: boolean
   /** Our own error line, never sent back as history. */
   error?: boolean
+  /** needs_* errors: where the Scan link goes. */
+  scanTo?: string
   suggestions?: AskPreset[]
 }
 
@@ -161,7 +163,9 @@ export default function Ask({ tenant = false }: { tenant?: boolean }) {
         { id: nextId.current++, role: 'assistant', text: a.answer, refused: a.refused, suggestions: a.suggestions },
       ])
     } catch (e) {
-      setMsgs((cur) => [...cur, { id: nextId.current++, role: 'assistant', text: errText(e, 'ask.err'), error: true }])
+      const needs = ((e as { code?: string } | null)?.code ?? '').startsWith('needs_')
+      const scanTo = needs && !tenant ? (householdId === 'BAU' ? '/scan/meter/BAU' : '/scan') : undefined
+      setMsgs((cur) => [...cur, { id: nextId.current++, role: 'assistant', text: errText(e, 'ask.err'), error: true, scanTo }])
     } finally {
       setPending(false)
     }
@@ -220,6 +224,7 @@ export default function Ask({ tenant = false }: { tenant?: boolean }) {
                   m.text.split(/(\s+)/).map((part, i) => (/^\s+$/.test(part) ? part : <span className="w" key={i}>{part}</span>))
                 : m.text}
             </p>
+            {m.scanTo && <Link className="chip sm" to={m.scanTo}>{t('ask.scan')}</Link>}
           </div>
         ))}
 

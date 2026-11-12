@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { CircleAlert, CircleCheck, ShieldCheck } from 'lucide-react'
+import { Camera, CircleAlert, CircleCheck, ShieldCheck } from 'lucide-react'
 import gsap from 'gsap'
 import { reduceMotion } from './motion'
 import { useErrText, useT } from '../i18n/copy'
@@ -28,6 +28,20 @@ export function ErrorState({ error, onRetry }: { error: Error; onRetry?: () => v
           {t('common.tryAgain')}
         </button>
       )}
+    </div>
+  )
+}
+
+/** Calm empty state (not an error): a short title, one line, and the primary Scan button. */
+export function EmptyState({ title, body, onScan }: { title: string; body: string; onScan: () => void }) {
+  const { t } = useT()
+  return (
+    <div className="card state empty">
+      <h2 className="empty-title">{title}</h2>
+      <p className="body">{body}</p>
+      <button className="btn" onClick={onScan}>
+        <span className="btn-label"><Camera {...ICON} /> {t('empty.scan')}</span>
+      </button>
     </div>
   )
 }
