@@ -128,11 +128,11 @@ Bautista: 32 kWh by day 18, so 1.78 kWh a day, 12 days left, 53 kWh by 30 Nov (5
 ```mermaid
 flowchart TD
     Q["Question"] --> P{"Preset button?"}
-    P -- "yes" --> TPL["Template answer from the computed numbers<br/>(instant, same every time)"]
-    P -- "no" --> G["Gemini with ONLY this household's facts<br/>+ what each bill line means + typical wattages"]
+    P -- "yes" --> TPL["Template answer from the computed numbers"]
+    P -- "no" --> G["Gemini, given only this household's facts,<br/>bill line meanings and typical wattages"]
     G --> S{"In scope?"}
     S -- "no" --> REF["Polite refusal"]
-    S -- "yes" --> GUARD{"Guard: numbers only from the facts,<br/>no other household, no blame or legal claims,<br/>no Meralco claims, no links, Latin script only"}
+    S -- "yes" --> GUARD{"Guard passes?"}
     GUARD -- "pass" --> ANS["Answer"]
     GUARD -- "fail" --> TPL
     G -- "busy or slow" --> TPL
@@ -140,6 +140,8 @@ flowchart TD
     ANS --> FOOT
     REF --> FOOT
 ```
+
+The guard lets an answer through only if every number comes from the household's facts, it names no other household, makes no blame, legal or Meralco claims, has no links, and uses Latin script only. Preset answers are instant and the same every time.
 
 What the organizer charged, refunds, rules and authorities are never discussed in free text; they stay on the reviewed rate-check template. The 4Ps flag and other households' names and kWh are never sent to Gemini.
 
