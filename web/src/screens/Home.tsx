@@ -4,7 +4,7 @@ import { CircleAlert, CircleCheck, Ellipsis, Languages, RotateCcw, ScanLine, Tre
 import { api } from '../api'
 import { CountUp, useReveal } from '../components/motion'
 import { HomeSkeleton } from '../components/Skeletons'
-import { ErrorState, ICON, Sheet } from '../components/ui'
+import { EmptyState, ErrorState, ICON, Sheet } from '../components/ui'
 import { useT } from '../i18n/copy'
 import { day, kwh, monthName, php } from '../lib/format'
 import { notifyChange, useAsync } from '../lib/useAsync'
@@ -49,13 +49,7 @@ export default function Home() {
     return (
       <div className="screen" ref={ref}>
         {header(t('home.thisMonth'))}
-        <div className="hero">
-          <p className="hero-num" style={{ fontSize: 30 }}>{t('home.noBill')}</p>
-          <p className="support" style={{ margin: '8px 0 0' }}>{t('home.noBillHint')}</p>
-        </div>
-        <button className="btn" onClick={() => nav('/scan/bill')}>
-          <ScanLine {...ICON} /> {t('home.scanBill')}
-        </button>
+        <EmptyState title={t('home.noBill')} body={t('home.noBillHint')} label={t('home.scanBill')} onScan={() => nav('/scan/bill')} />
         {sheet}
       </div>
     )

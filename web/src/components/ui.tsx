@@ -33,14 +33,15 @@ export function ErrorState({ error, onRetry }: { error: Error; onRetry?: () => v
 }
 
 /** Calm empty state (not an error): a short title, one line, and the primary Scan button. */
-export function EmptyState({ title, body, onScan }: { title: string; body: string; onScan: () => void }) {
+export function EmptyState({ title, body, onScan, label }: { title: string; body: string; onScan: () => void; label?: string }) {
   const { t } = useT()
   return (
     <div className="card state empty">
       <h2 className="empty-title">{title}</h2>
       <p className="body">{body}</p>
-      <button className="btn" onClick={onScan}>
-        <span className="btn-label"><ScanLine {...ICON} /> {t('empty.scan')}</span>
+      {/* Same height as the Usage action buttons (.btn.compact). */}
+      <button className="btn compact" onClick={onScan}>
+        <span className="btn-label"><ScanLine {...ICON} /> {label ?? t('empty.scan')}</span>
       </button>
     </div>
   )

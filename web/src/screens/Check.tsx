@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Calendar, Camera, Check as CheckIcon, CircleCheck, CircleHelp, Keyboard, Ruler, ScanLine, Search, Split, Zap } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Calendar, Camera, Check as CheckIcon, CircleCheck, CircleHelp, Keyboard, Ruler, Search, Split, Zap } from 'lucide-react'
 import { api, type HouseholdMonth } from '../api'
 import { CountUp, GrowBar, useReveal } from '../components/motion'
 import { CheckSkeleton } from '../components/Skeletons'
-import { ErrorState, Footnote, ICON, toast } from '../components/ui'
+import { EmptyState, ErrorState, Footnote, ICON, toast } from '../components/ui'
 import { useErrText } from '../i18n/copy'
 import { useT } from '../i18n/copy'
 import { day } from '../lib/format'
@@ -15,6 +15,7 @@ import { notifyChange, useAsync } from '../lib/useAsync'
 const noSerial = (r: { source: string; serialRead?: string | null }) => r.source === 'photo' && !r.serialRead
 
 export default function Check() {
+  const nav = useNavigate()
   const { t } = useT()
   const errText = useErrText()
   const { data, error, loading, reload } = useAsync(() => api.getMonth())
@@ -31,12 +32,12 @@ export default function Check() {
     return (
       <div className="screen">
         <div className="header-row"><h1 className="title">{t('check.title')}</h1></div>
-        <div className="card state">
-          <span className="body">{t('check.empty')}</span>
-          <Link className="btn" to={m.bill ? `/scan/meter/${m.households.find((h) => !h.reading)?.id ?? 'A'}` : '/scan/bill'}>
-            <ScanLine {...ICON} /> {m.bill ? t('check.scanMeter') : t('home.scanBill')}
-          </Link>
-        </div>
+        <EmptyState
+          title={t('check.emptyTitle')}
+          body={t('check.empty')}
+          label={m.bill ? t('check.scanMeter') : t('home.scanBill')}
+          onScan={() => nav(m.bill ? `/scan/meter/${m.households.find((h) => !h.reading)?.id ?? 'A'}` : '/scan/bill')}
+        />
       </div>
     )
   }

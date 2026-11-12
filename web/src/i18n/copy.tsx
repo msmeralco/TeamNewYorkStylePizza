@@ -190,6 +190,7 @@ const en = {
 
   // check
   'check.title': 'Check',
+  'check.emptyTitle': 'Nothing to check yet',
   'check.empty': 'The check runs once the bill and the readings are in.',
   'check.scanMeter': 'Scan a meter',
   'check.addsUp': 'Readings add up',
@@ -419,6 +420,7 @@ const fil: Record<Key, string> = {
   'chart.aria': 'Tantiya: {n} kWh sa {d}',
 
   'check.title': 'Suri',
+  'check.emptyTitle': 'Wala pang susuriin',
   'check.empty': 'Tatakbo ang pagsusuri kapag kumpleto na ang bill at mga reading.',
   'check.scanMeter': 'Mag-scan ng metro',
   'check.addsUp': 'Tugma ang mga reading',

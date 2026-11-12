@@ -78,7 +78,7 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
   if (error && (error as { code?: string }).code === 'needs_scan' && !tenant)
     return (
       <div className={cls}>
-        <h1 className="title">{t('nav.bill')}</h1>
+        <div className="header-row"><h1 className="title">{t('nav.bill')}</h1></div>
         <EmptyState title={t('bill.emptyTitle')} body={t('bill.emptyBody')} onScan={() => nav('/scan')} />
       </div>
     )
