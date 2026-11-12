@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Leaf, MessageCircle, ReceiptText, ShieldCheck, TrendingUp } from 'lucide-react'
+import { Leaf, MessageCircle, ReceiptText, ShieldCheck, Sparkles, TrendingUp } from 'lucide-react'
 import { api } from '../api'
 import { CountUp, useReveal } from '../components/motion'
 import { TenantSkeleton } from '../components/Skeletons'
@@ -68,6 +68,9 @@ export default function Tenant() {
       <div className="stack">
         <Link className="btn" to={`/t/${token}/bill`}>
           <ReceiptText {...ICON} /> {t('tenant.seePay')}
+        </Link>
+        <Link className="link-btn" to={`/t/${token}/ask`}>
+          <Sparkles {...ICON} /> {t('ask.open')}
         </Link>
         <button className="link-btn" onClick={askForComputation}>
           <MessageCircle {...ICON} /> {t('tenant.askComp')}

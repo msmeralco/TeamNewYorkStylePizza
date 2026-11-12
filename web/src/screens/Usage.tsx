@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Bell, ChevronDown, Clock, Gauge, Leaf, Plug, Snowflake, Tag, TrendingUp } from 'lucide-react'
+import { Bell, ChevronDown, Sparkles, Clock, Gauge, Leaf, Plug, Snowflake, Tag, TrendingUp } from 'lucide-react'
 import { api } from '../api'
 import { UsageChart } from '../components/UsageChart'
 import { LifelineBar } from '../components/LifelineBar'
@@ -52,10 +52,15 @@ export default function Usage() {
   return (
     <div className="screen" ref={ref}>
       <div className="stack" style={{ gap: 'calc(var(--gap) * 0.6)' }}>
-        <button className="title title-btn" onClick={() => setPicking(true)} aria-label={t('usage.choose')}>
-          {t('usage.title', { household: u.name })}
-          <ChevronDown size={20} strokeWidth={2} />
-        </button>
+        <div className="row-between" style={{ alignItems: 'center' }}>
+          <button className="title title-btn" onClick={() => setPicking(true)} aria-label={t('usage.choose')}>
+            {t('usage.title', { household: u.name })}
+            <ChevronDown size={20} strokeWidth={2} />
+          </button>
+          <button className="icon-btn" onClick={() => nav(`/ask/${householdId}`)} aria-label={t('ask.open')}>
+            <Sparkles {...ICON} />
+          </button>
+        </div>
         {/* Badge top lines up with the top of the number's glyphs (0.1259 x font size below its line box). */}
         <div className="row-between" style={{ alignItems: 'flex-start' }}>
           <p className="hero-num"><CountUp value={f.kwh} format={whole} /></p>

@@ -14,6 +14,7 @@ import BillScreen from './screens/Bill'
 import Usage from './screens/Usage'
 import Check from './screens/Check'
 import Tenant from './screens/Tenant'
+import Ask from './screens/Ask'
 
 function Root() {
   const [booting, setBooting] = useState(true)
@@ -63,6 +64,8 @@ function AppRoutes() {
           <Route element={<BareShell />}>
             <Route path="t/:token" element={<Tenant />} />
             <Route path="t/:token/bill" element={<BillScreen tenant />} />
+            <Route path="t/:token/ask" element={<Ask tenant />} />
+            <Route path="ask/:householdId" element={<Ask />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

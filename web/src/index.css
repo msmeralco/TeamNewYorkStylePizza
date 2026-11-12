@@ -383,3 +383,46 @@ a { color: inherit; text-decoration: none; }
 .tier-axis span { position: absolute; top: 0; translate: -50% 0; line-height: 14px; }
 .tier-axis span.first { translate: 0 0; }
 .tier-axis span.last { translate: -100% 0; }
+
+/* ---------- Ask Kahati (chat) ----------
+   The page stays one fixed screen; only the message list scrolls, as a chat must. */
+.screen.ask { padding-left: 0; padding-right: 0; gap: 0; }
+.ask-head { display: flex; align-items: center; gap: 12px; padding: 0 var(--pad) 12px; }
+.ask-title { font-size: 24px; }
+.ask-sub { font-size: 14px; }
+.ask-list {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 10px; padding: 8px var(--pad) 12px;
+  scrollbar-width: none;
+}
+.ask-list::-webkit-scrollbar { display: none; }
+.msg { max-width: 86%; border-radius: 18px; padding: 10px 14px; display: flex; gap: 8px; align-items: flex-start; }
+.msg p { margin: 0; font-size: 15px; font-weight: 500; line-height: 1.4; }
+.msg.bot { align-self: flex-start; background: var(--white); color: var(--ink); border-bottom-left-radius: 6px; }
+.msg.user { align-self: flex-end; background: var(--ink); color: var(--white); border-bottom-right-radius: 6px; }
+.msg.refused p, .msg.error p { color: var(--soft-on-white); }
+.msg-mark { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--lime); display: grid; place-items: center; margin-top: -1px; }
+.msg-icon { flex: none; margin-top: 2px; color: var(--soft-on-white); }
+.msg.typing { padding: 14px 16px; }
+.dots { display: flex; gap: 5px; }
+.dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--soft-on-white); }
+.ask-chips { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 2px; }
+.ask-chip {
+  background: var(--white); color: var(--ink); border-radius: 999px; padding: 9px 14px;
+  font-size: 14px; font-weight: 600; text-align: left; box-shadow: inset 0 0 0 1px rgba(35, 31, 32, 0.08);
+}
+.ask-chip:active { transform: scale(0.97); }
+.ask-foot { padding: 6px var(--pad) 0; display: flex; flex-direction: column; gap: 8px; }
+.ask-note { font-size: 13px; justify-content: center; }
+.ask-compose { display: flex; gap: 8px; align-items: center; }
+.ask-compose input {
+  flex: 1; min-width: 0; height: 48px; border: 0; border-radius: 999px; background: var(--white);
+  padding: 0 18px; font-size: 16px; font-weight: 500; outline: none;
+}
+.ask-compose input:focus { box-shadow: inset 0 0 0 2px var(--ink); }
+.ask-send {
+  flex: none; width: 48px; height: 48px; border-radius: 50%; background: var(--lime); color: var(--ink);
+  display: grid; place-items: center;
+}
+.ask-send:disabled { opacity: 0.4; }
+.ask-link { min-height: 40px; margin-top: -8px; }

@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
-import { ArrowLeft, Gauge, Landmark, Layers, Network, TrendingDown, UtilityPole, Zap, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, Gauge, Sparkles, Landmark, Layers, Network, TrendingDown, UtilityPole, Zap, type LucideIcon } from 'lucide-react'
 import { api, type LineKey } from '../api'
 import { CountUp, reduceMotion, useReveal } from '../components/motion'
 import { BillSkeleton } from '../components/Skeletons'
@@ -57,13 +57,31 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
     )
   if (loading && !data) return <BillSkeleton noNav={tenant} />
   const s = data!
+  // Ask Kahati about this bill: next to the title (organizer) or the back button (tenant).
+  const askBtn = (
+    <Link className="icon-btn" to={tenant ? `/t/${params.token}/ask` : `/ask/${s.householdId}`} aria-label={t('ask.open')}>
+      <Sparkles {...ICON} />
+    </Link>
+  )
   const total = s.lines.reduce((a, l) => a + l.amount, 0)
 
   return (
     <div className={cls} ref={ref}>
-      {back}
+      {tenant && (
+        <div className="row-between">
+          {back}
+          {askBtn}
+        </div>
+      )}
       <div className="stack-lg">
-        <h1 className="title">{t('bill.title', { household: s.name })}</h1>
+        {tenant ? (
+          <h1 className="title">{t('bill.title', { household: s.name })}</h1>
+        ) : (
+          <div className="row-between" style={{ alignItems: 'flex-start' }}>
+            <h1 className="title">{t('bill.title', { household: s.name })}</h1>
+            {askBtn}
+          </div>
+        )}
         <p className="hero-num"><CountUp value={s.amount} format={php} /></p>
       </div>
 

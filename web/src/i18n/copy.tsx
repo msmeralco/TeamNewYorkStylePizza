@@ -181,6 +181,19 @@ const en = {
   'check.errSave': 'Could not save.',
   'check.missing': '{n} kWh missing',
 
+  // ask (chat)
+  'ask.title': 'Ask Kahati',
+  'ask.open': 'Ask Kahati',
+  'ask.about': "About {name}'s bill",
+  'ask.intro': "Hi! I explain the numbers Kahati worked out for {name}. Tap a question, or type your own.",
+  'ask.introNoName': 'Hi! I explain the numbers Kahati worked out for this household. Tap a question, or type your own.',
+  'ask.placeholder': 'Ask about this bill',
+  'ask.send': 'Send',
+  'ask.thinking': 'Kahati is working it out',
+  'ask.err': 'Kahati could not answer that. Try a question button.',
+  'err.slow_down': 'Too many questions at once. Try a question button.',
+  'err.ask_failed': 'Kahati could not answer that right now. Try a question button.',
+
   // tenant
   'tenant.hi': 'Hi, {name}',
   'share.label': 'Your share',
@@ -361,6 +374,18 @@ const fil: Record<Key, string> = {
   'check.kwhThisMonth': '{name}: kWh ngayong buwan',
   'check.errSave': 'Hindi na-save.',
   'check.missing': '{n} kWh ang kulang',
+
+  'ask.title': 'Magtanong sa Kahati',
+  'ask.open': 'Magtanong sa Kahati',
+  'ask.about': 'Tungkol sa bill ni {name}',
+  'ask.intro': 'Kumusta! Ipinapaliwanag ko ang mga numerong kinuwenta ng Kahati para kay {name}. Pumili ng tanong, o mag-type ng sarili mo.',
+  'ask.introNoName': 'Kumusta! Ipinapaliwanag ko ang mga numerong kinuwenta ng Kahati para sa sambahayang ito. Pumili ng tanong, o mag-type ng sarili mo.',
+  'ask.placeholder': 'Magtanong tungkol sa bill na ito',
+  'ask.send': 'Ipadala',
+  'ask.thinking': 'Kinukuwenta ng Kahati',
+  'ask.err': 'Hindi ito nasagot ng Kahati. Subukan ang isang button na tanong.',
+  'err.slow_down': 'Masyadong maraming tanong nang sabay. Subukan ang isang button na tanong.',
+  'err.ask_failed': 'Hindi ito masagot ng Kahati ngayon. Subukan ang isang button na tanong.',
 
   'tenant.hi': 'Kumusta, {name}',
   'share.label': 'Iyong bahagi',
