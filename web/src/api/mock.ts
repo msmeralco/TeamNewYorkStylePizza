@@ -48,10 +48,10 @@ export const SAMPLE_BILL: BillScan = {
 }
 
 const HOUSEHOLDS: Household[] = [
-  { id: 'A', label: 'A', name: 'Reyes', meterKind: 'sub', meterSerial: 'SM-0213', previousReading: 3110 },
-  { id: 'B', label: 'B', name: 'Santos', meterKind: 'sub', meterSerial: 'SM-0214', previousReading: 4527 },
-  { id: 'C', label: 'C', name: 'Dela Cruz', meterKind: 'sub', meterSerial: 'SM-0215', previousReading: 2200 },
-  { id: 'D', label: 'D', name: 'Garcia', meterKind: 'sub', meterSerial: 'SM-0216', previousReading: 5010 },
+  { id: 'A', label: 'A', name: 'Reyes', meterKind: 'sub', meterSerial: 'SM-0213', previousReading: 3110, fourPs: false },
+  { id: 'B', label: 'B', name: 'Santos', meterKind: 'sub', meterSerial: 'SM-0214', previousReading: 4527, fourPs: true },
+  { id: 'C', label: 'C', name: 'Dela Cruz', meterKind: 'sub', meterSerial: 'SM-0215', previousReading: 2200, fourPs: true },
+  { id: 'D', label: 'D', name: 'Garcia', meterKind: 'sub', meterSerial: 'SM-0216', previousReading: 5010, fourPs: true },
 ]
 const BAUTISTA: Household = {
   id: 'BAU', label: 'B', name: 'Bautista', meterKind: 'own', meterSerial: 'MM-5520', previousReading: 12520,

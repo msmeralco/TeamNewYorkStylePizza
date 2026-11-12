@@ -66,6 +66,8 @@ export interface Household {
   meterKind: MeterKind
   meterSerial: string
   previousReading: number
+  /** 4Ps household (lifeline eligible on its own enrolled meter). */
+  fourPs?: boolean
 }
 
 export interface Reading {

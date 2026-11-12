@@ -47,7 +47,7 @@ export default function Home() {
   // Empty: no bill yet this month.
   if (!m.bill) {
     return (
-      <div className="screen" ref={ref}>
+      <div className="screen scrolls" ref={ref}>
         {header(t('home.thisMonth'))}
         <EmptyState title={t('home.noBill')} body={t('home.noBillHint')} label={t('home.scanBill')} onScan={() => nav('/scan/bill')} />
         {sheet}
@@ -58,9 +58,11 @@ export default function Home() {
   const bill = m.bill
   const missing = m.households.filter((h) => !h.reading)
   const check = m.check
+  // 4Ps households at or under 50 kWh who still get no lifeline: it is per Meralco account, and this compound has one.
+  const lifelineN = missing.length === 0 ? m.households.filter((h) => h.fourPs && h.reading && h.reading.kwh <= 50).length : 0
 
   return (
-    <div className="screen" ref={ref}>
+    <div className="screen scrolls" ref={ref}>
       {header(t('home.billTitle', { month: monthName(bill.periodEnd) }))}
 
       <div className="hero" style={{ ['--text-gap' as string]: 'calc(var(--hero) * 0.1259)' }}>
@@ -109,6 +111,10 @@ export default function Home() {
           </Link>
         ))}
       </div>
+
+      {lifelineN > 0 && (
+        <p className="support">{t(lifelineN === 1 ? 'home.lifelineNote1' : 'home.lifelineNote', { n: lifelineN, kwh: bill.kwh })}</p>
+      )}
 
       {missing.length === 0 && m.rateNote && (
         <div className="card note">

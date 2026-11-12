@@ -19,6 +19,7 @@ interface Msg {
   error?: boolean
   /** needs_* errors: where the Scan link goes. */
   scanTo?: string
+  scanLabel?: 'check.scanMeter' | 'home.scanBill'
   suggestions?: AskPreset[]
 }
 
@@ -165,7 +166,10 @@ export default function Ask({ tenant = false }: { tenant?: boolean }) {
     } catch (e) {
       const needs = ((e as { code?: string } | null)?.code ?? '').startsWith('needs_')
       const scanTo = needs && !tenant ? (householdId === 'BAU' ? '/scan/meter/BAU' : '/scan') : undefined
-      setMsgs((cur) => [...cur, { id: nextId.current++, role: 'assistant', text: errText(e, 'ask.err'), error: true, scanTo }])
+      // The chip names what gets scanned next: the bill first, then the meters.
+      const hasBill = scanTo === '/scan' ? !!(await api.getMonth().catch(() => null))?.bill : true
+      const scanLabel = scanTo ? (hasBill ? 'check.scanMeter' : 'home.scanBill') : undefined
+      setMsgs((cur) => [...cur, { id: nextId.current++, role: 'assistant', text: errText(e, 'ask.err'), error: true, scanTo, scanLabel }])
     } finally {
       setPending(false)
     }
@@ -224,7 +228,7 @@ export default function Ask({ tenant = false }: { tenant?: boolean }) {
                   m.text.split(/(\s+)/).map((part, i) => (/^\s+$/.test(part) ? part : <span className="w" key={i}>{part}</span>))
                 : m.text}
             </p>
-            {m.scanTo && <Link className="chip sm" to={m.scanTo}>{t('ask.scan')}</Link>}
+            {m.scanTo && m.scanLabel && <Link className="chip sm" to={m.scanTo}>{t(m.scanLabel)}</Link>}
           </div>
         ))}
 

@@ -37,13 +37,19 @@ export async function POST(req: Request): Promise<Response> {
     const raw = await getReaders().bill.readBill({ base64: imageBase64, mimeType });
     const lines = reconcileLines(raw.lines, raw.amount);
     const scan = { ...raw, lines: lines.lines };
+    const fixedNote = raw.fixedChargesNote ?? null;
+    // The web shows linesNote on the confirm card, so the fixed-charge warning rides along with it.
+    const linesNote = [fixedNote, lines.note].filter(Boolean).join(" ") || null;
     return ok({
       scan,
       sanity: {
         ...sanity(scan.amount, scan.kwh, scan.periodEnd),
         linesAddUp: lines.addsUp,
         linesAdjustedBy: lines.adjusted ? lines.difference : 0,
-        linesNote: lines.note,
+        linesNote,
+        fixedChargesOk: fixedNote === null,
+        fixedChargesNote: fixedNote,
+        sanityNote: linesNote ?? (withinBandNote(scan.amount, scan.kwh, scan.periodEnd)),
       },
     });
   } catch (e) {
@@ -51,6 +57,11 @@ export async function POST(req: Request): Promise<Response> {
     console.error("reader_failed", e instanceof ReaderError ? `${e.code}: ${e.message}` : String(e));
     return failWithDetail(502, "reader_failed", msg, "Try again, or type it instead", e instanceof ReaderError ? `${e.code}: ${e.message}` : undefined);
   }
+}
+
+function withinBandNote(amount: number, kwh: number, periodEnd: string): string | null {
+  const s = sanity(amount, kwh, periodEnd);
+  return s.withinBand ? null : s.note;
 }
 
 function sanity(amount: number, kwh: number, periodEnd: string) {

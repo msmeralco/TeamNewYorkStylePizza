@@ -28,9 +28,9 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
     if (tenant) {
       // The link is the source of truth: the share and its lines come from the token, like the tenant view's header.
       const v = await api.getTenantView(params.token!)
-      return { householdId: v.householdId, name: v.name, kwh: v.kwh, amount: v.share, lines: v.lines, sample: v.sample }
+      return { householdId: v.householdId, name: v.name, kwh: v.kwh, amount: v.share, lines: v.lines, sample: v.sample, fourPs: undefined /* tenant links never carry the 4Ps flag */, billKwh: v.billKwh }
     }
-    return api.getShare(params.householdId!, {})
+    return { ...(await api.getShare(params.householdId!, {})), fourPs: undefined as boolean | undefined, billKwh: undefined as number | undefined }
   }, [params.householdId, params.token])
   const nav = useNavigate()
   const [picking, setPicking] = useState(false)
@@ -73,13 +73,13 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
       ))}
     </Sheet>
   )
-  const cls = `screen${tenant ? ' no-nav' : ''}`
+  const cls = `screen scrolls${tenant ? ' no-nav' : ''}`
 
   if (error && (error as { code?: string }).code === 'needs_scan' && !tenant)
     return (
       <div className={cls}>
         <div className="header-row"><h1 className="title">{t('nav.bill')}</h1></div>
-        <EmptyState title={t('bill.emptyTitle')} body={t('bill.emptyBody')} onScan={() => nav('/scan')} />
+        <EmptyState title={t('bill.emptyTitle')} body={t('bill.emptyBody')} label={t(month?.bill ? 'check.scanMeter' : 'home.scanBill')} onScan={() => nav('/scan')} />
       </div>
     )
   if (error)
@@ -120,6 +120,10 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
       setSharing(false)
     }
   }
+  // Lifeline is per Meralco account: a 4Ps household at or under 50 kWh still gets none when the compound's one account is above it.
+  const fourPs = tenant ? s.fourPs : month?.households.find((h) => h.id === s.householdId)?.fourPs
+  const accountKwh = tenant ? s.billKwh : month?.bill?.kwh
+  const lifelineKwh = fourPs && s.kwh <= 50 && accountKwh !== undefined && accountKwh > 50 ? accountKwh : undefined
   const total = s.lines.reduce((a, l) => a + l.amount, 0)
   // Shown lines are rounded to centavos so they add up exactly to the rounded share (largest remainder).
   const shownLines = (() => {
@@ -186,6 +190,7 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
         </div>
       </div>
 
+      {lifelineKwh !== undefined && <p className="support">{t('bill.lifelineNote', { kwh: lifelineKwh })}</p>}
       <Footnote>{t(tenant && (data as { sample?: boolean } | undefined)?.sample ? 'bill.footer' : 'bill.footerOwn')}</Footnote>
       {picker}
     </div>

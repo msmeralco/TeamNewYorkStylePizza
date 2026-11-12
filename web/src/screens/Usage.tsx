@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Bell, Camera, ChevronDown, CircleCheck, Sparkles, Clock, Gauge, Leaf, Plug, Snowflake, Tag, TrendingUp } from 'lucide-react'
+import { Bell, ChevronDown, ScanLine, CircleCheck, Sparkles, Clock, Gauge, Leaf, Plug, Snowflake, Tag, TrendingUp } from 'lucide-react'
 import { api } from '../api'
 import { UsageChart } from '../components/UsageChart'
 import { LifelineBar } from '../components/LifelineBar'
@@ -64,6 +64,8 @@ export default function Usage() {
   const nav = useNavigate()
   const { t } = useT()
   const { data, error, loading, reload } = useAsync(() => api.getUsage(householdId), [householdId])
+  // For the empty state's button label: the bill comes first, then the meters.
+  const { data: month } = useAsync(() => api.getMonth(), [])
   const [picking, setPicking] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useReveal(ref, !!data, data?.householdId)
@@ -105,6 +107,7 @@ export default function Usage() {
         <EmptyState
           title={t('usage.emptyTitle')}
           body={t('usage.emptyBody')}
+          label={t(own || month?.bill ? 'check.scanMeter' : 'home.scanBill')}
           onScan={() => nav(own ? '/scan/meter/BAU' : '/scan')}
         />
         {picker}
@@ -210,7 +213,7 @@ export default function Usage() {
       <div className="btn-row">
         {u.mode === 'own' && (
           <button className="btn compact" onClick={() => nav('/scan/meter/BAU')}>
-            <span className="btn-label"><Camera {...ICON} size={16} /> {t('usage.scan')}</span>
+            <span className="btn-label"><ScanLine {...ICON} size={16} /> {t('usage.scan')}</span>
           </button>
         )}
         <button

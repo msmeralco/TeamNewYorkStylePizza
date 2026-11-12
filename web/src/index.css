@@ -398,7 +398,7 @@ a { color: inherit; text-decoration: none; }
   .screen.own .card.list .list-row:nth-child(n+2) { display: none; }
 }
 /* Safety net: if a phone is shorter still, own-meter Usage scrolls instead of hiding the footnote. */
-.screen.own { overflow-y: auto; }
+.screen.own, .screen.scrolls { overflow-y: auto; }
 
 /* Buttons: icon stays beside the text and the pair stays centred, even if a long translation wraps. */
 .btn, .link-btn { padding: 0 20px; text-align: center; line-height: 1.2; }

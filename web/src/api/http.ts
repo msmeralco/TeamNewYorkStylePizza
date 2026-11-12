@@ -318,7 +318,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
         const ck = check?.households.find((x) => x.householdId === h.id)
         const sh = split?.shares.find((x) => x.householdId === h.id)
         return {
-          id: toF(h.id), label: h.label, name: h.displayName, meterKind: 'sub',
+          id: toF(h.id), label: h.label, name: h.displayName, meterKind: 'sub', fourPs: h.fourPs,
           meterSerial: m?.serial ?? '', previousReading: (m && prevOf(s, m.id)?.value) ?? 0,
           reading: toReading(s, h.id, ck?.kwh),
           share: sh ? toShare(sh) : undefined,

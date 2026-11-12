@@ -65,6 +65,29 @@ describe("POST /api/scan/bill", () => {
     expect(j.sanity.rateMonth).toBe("2026-10");
     expect(j.sanity.note).toContain("the latest before this bill");
   });
+  it("returns a sanityNote when the fixed charges look wrong", async () => {
+    vi.stubEnv("READER", "gemini");
+    vi.stubEnv("GEMINI_API_KEY", "k");
+    const bill = {
+      periodStart: "2026-09-30", periodEnd: "2026-10-31", readDate: "2026-10-31", nextReadDate: "2026-11-30",
+      kwh: 180, amount: 2711.07, fixedCharges: 107.8, accountLast4: "5678", confidence: 0.9,
+      lines: { generation: 1690, transmission: 230, systemLoss: 150, distribution: 330, supplyMetering: 70, taxes: 190, other: 51.07 },
+    };
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(bill) }] } }] }), { status: 200 })));
+    const j = await (await postBill(req({ imageBase64: "AAAA", mimeType: "image/jpeg" }))).json();
+    vi.unstubAllGlobals();
+    expect(j.scan.fixedCharges).toBe(21.38);
+    expect(j.sanity.fixedChargesOk).toBe(false);
+    expect(j.sanity.sanityNote).toContain("The fixed charges look wrong (₱107.80). Check them against the bill before confirming.");
+    expect(j.sanity.linesNote).toBe(j.sanity.sanityNote);
+  });
+  it("sanityNote is null on a clean scan", async () => {
+    vi.stubEnv("READER", "");
+    const j = await (await postBill(req({ imageBase64: "AAAA", mimeType: "image/jpeg" }))).json();
+    expect(j.sanity.fixedChargesOk).toBe(true);
+    expect(j.sanity.sanityNote).toBeNull();
+  });
   it("502 when the reader fails", async () => {
     vi.stubEnv("READER", "gemini");
     vi.stubEnv("GEMINI_API_KEY", "k");

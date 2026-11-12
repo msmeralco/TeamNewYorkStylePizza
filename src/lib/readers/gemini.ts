@@ -348,7 +348,11 @@ const BILL_SCHEMA = {
       properties: Object.fromEntries(LINE_KEYS.map((k) => [k, { type: "NUMBER" }])),
       required: [...LINE_KEYS],
     },
-    fixedCharges: { type: "NUMBER", description: "Fixed supply charge plus fixed metering charge" },
+    fixedCharges: {
+      type: "NUMBER",
+      description:
+        "Fixed Supply Charge (per customer, 1 month) plus Fixed Metering Charge (per customer, 1 month) only. Small, usually under 50 pesos. Never include the per-kWh charges.",
+    },
     items: {
       type: "OBJECT",
       description: "Individual printed charges in pesos, exactly as printed; 0 if not printed",
@@ -377,13 +381,27 @@ const BILL_PROMPT =
   "Map the charges into exactly seven lines in pesos: generation, transmission, systemLoss, " +
   "distribution (the distribution charge only), supplyMetering (all supply charges plus all metering charges), " +
   "taxes, and other (universal charges, FIT-All, lifeline and senior citizen subsidies). " +
-  "fixedCharges is the fixed supply charge plus the fixed metering charge. " +
+  "fixedCharges is ONLY the line 'Fixed Supply Charge (per customer)' plus the line 'Fixed Metering Charge (per customer)', " +
+  "the two rows whose basis is '1 month'. They are small amounts, tens of pesos at most. " +
+  "Never use a per-kWh row (basis in kWh), a subtotal such as the Distribution total, or a tax or subsidy row for them. " +
   "Also copy the individual printed amounts into items, exactly as printed and without adding them up: " +
   "fixedSupply, supplyPerKwh (the per-kWh supply charge amount), fixedMetering, meteringPerKwh, " +
   "universalCharges, fitAll, lifeline, seniorCitizen. " +
   "history is the monthly kWh usage chart if printed, month as YYYY-MM. " +
   "Return ONLY the last 4 digits of the account number as accountLast4. Do not return the name or address. " +
   "Give a confidence from 0 to 1.";
+
+/** Meralco's per-customer fixed charges (supply + metering) are tens of pesos. Above this is a misread. */
+export const FIXED_CHARGES_MAX = 60;
+/** Meralco's October 2026 residential figure: 16.38 supply + 5.00 metering. Used only when the read is implausible. */
+export const FIXED_CHARGES_FALLBACK = 21.38;
+
+function fixedPlausible(f: number, amount: number | null, supplyMetering: number): boolean {
+  if (!(f >= 0) || f > FIXED_CHARGES_MAX) return false;
+  if (amount !== null && amount > 0 && f > amount * 0.05) return false;
+  if (supplyMetering > 0 && f > supplyMetering + 0.005) return false;
+  return true;
+}
 
 function parseBill(raw: unknown): BillScan {
   if (!isObj(raw)) throw new ReaderError("bad_output", "The bill reading was not an object.");
@@ -401,6 +419,7 @@ function parseBill(raw: unknown): BillScan {
     raw.fixedCharges === undefined || raw.fixedCharges === null || raw.fixedCharges === "" ? null : num(raw.fixedCharges, "fixed charges");
   if (fixedCharges === null && !isObj(raw.items)) missing.push("fixedCharges");
   let fixed = fixedCharges;
+  let fixedRead: number | null = null; // the implausible value we threw away, if any
   // Add printed items up in code: models are better at copying numbers than at summing them.
   const items: Record<string, unknown> = isObj(raw.items) ? raw.items : {};
   const item = (k: string) => numOrNull(items[k]);
@@ -408,11 +427,31 @@ function parseBill(raw: unknown): BillScan {
   const sm = ["fixedSupply", "supplyPerKwh", "fixedMetering", "meteringPerKwh"].map(item);
   if (sm.every((v) => v !== null) && (sm as number[]).some((v) => v > 0)) {
     const [fs, sp, fm, mp] = sm as number[];
-    lines.supplyMetering = r2(fs + sp + fm + mp);
-    fixed = r2(fs + fm);
-    const i = missing.indexOf("lines.supplyMetering");
-    if (i >= 0) missing.splice(i, 1);
+    const fromItems = r2(fs + fm);
+    const smItems = r2(fs + sp + fm + mp);
+    if (fixedPlausible(fromItems, numOrNull(raw.amount), smItems)) {
+      lines.supplyMetering = smItems;
+      fixed = fromItems;
+      const i = missing.indexOf("lines.supplyMetering");
+      if (i >= 0) missing.splice(i, 1);
+    } else {
+      // The items are not trustworthy (a per-kWh or subtotal row was read as a fixed one): keep the model's own lines.
+      fixedRead = fromItems;
+      fixed = fixedCharges;
+    }
   }
+  const amountForCheck = numOrNull(raw.amount);
+  if (fixed !== null && !fixedPlausible(fixed, amountForCheck, lines.supplyMetering)) {
+    fixedRead ??= fixed;
+    fixed = fixedPlausible(FIXED_CHARGES_FALLBACK, amountForCheck, lines.supplyMetering) ? FIXED_CHARGES_FALLBACK : 0;
+  } else if (fixedRead !== null && fixed === null) {
+    fixed = fixedPlausible(FIXED_CHARGES_FALLBACK, amountForCheck, lines.supplyMetering) ? FIXED_CHARGES_FALLBACK : 0;
+  }
+  const fixedNote =
+    fixedRead !== null
+      ? `The fixed charges look wrong (₱${fixedRead.toFixed(2)}). Check them against the bill before confirming. Using ₱${(fixed ?? 0).toFixed(2)} for now.`
+      : null;
+  if (fixedNote) missing.push("fixedCharges");
   const ot = ["universalCharges", "fitAll", "lifeline", "seniorCitizen"].map(item);
   if (ot.every((v) => v !== null) && (ot as number[]).some((v) => v > 0)) {
     const fromItems = r2((ot as number[]).reduce((a, b) => a + b, 0));
@@ -448,6 +487,7 @@ function parseBill(raw: unknown): BillScan {
     accountLast4: digits.slice(-4),
     confidence: missing.length ? Math.min(clamp01(raw.confidence), 0.5) : clamp01(raw.confidence),
     ...(missing.length ? { missing } : {}),
+    ...(fixedNote ? { fixedChargesNote: fixedNote, fixedChargesRead: fixedRead as number } : {}),
     provider: "gemini",
   };
 }

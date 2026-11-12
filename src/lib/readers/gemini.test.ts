@@ -185,3 +185,58 @@ describe("GeminiBillReader itemised sums", () => {
     expect(scan.fixedCharges).toBe(21.38);
   });
 });
+
+describe("GeminiBillReader implausible fixed charges (phone-photo misread)", () => {
+  const base = {
+    periodStart: "2026-09-30", periodEnd: "2026-10-31", readDate: "2026-10-31", nextReadDate: "2026-11-30",
+    kwh: 180, amount: 2711.07,
+    lines: { generation: 1690, transmission: 230, systemLoss: 150, distribution: 330, supplyMetering: 70, taxes: 190, other: 51.07 },
+    accountLast4: "4821", confidence: 0.95,
+  };
+  const read = async (raw: object) => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(raw) }] } }] }), { status: 200 })));
+    return new GeminiBillReader().readBill({ base64: "aGk=", mimeType: "image/jpeg" });
+  };
+
+  it("flags a ~107.80 fixed total from items and keeps the model's lines and a safe value", async () => {
+    const scan = await read({
+      ...base,
+      fixedCharges: 107.8,
+      // a per-kWh row read as the fixed supply charge
+      items: { fixedSupply: 102.8, supplyPerKwh: 29.07, fixedMetering: 5, meteringPerKwh: 19.55, universalCharges: 26.89, fitAll: 23.47, lifeline: 0.7, seniorCitizen: 0.01 },
+    });
+    expect(scan.fixedCharges).toBe(21.38);
+    expect(scan.lines.supplyMetering).toBe(70);
+    expect(scan.fixedChargesRead).toBe(107.8);
+    expect(scan.fixedChargesNote).toContain("The fixed charges look wrong (₱107.80)");
+    expect(scan.missing).toContain("fixedCharges");
+    expect(scan.confidence).toBeLessThanOrEqual(0.5);
+  });
+
+  it("uses a plausible top-level fixedCharges when only the items are wrong", async () => {
+    const scan = await read({
+      ...base,
+      fixedCharges: 21.38,
+      items: { fixedSupply: 102.8, supplyPerKwh: 29.07, fixedMetering: 5, meteringPerKwh: 19.55, universalCharges: 26.89, fitAll: 23.47, lifeline: 0.7, seniorCitizen: 0.01 },
+    });
+    expect(scan.fixedCharges).toBe(21.38);
+    expect(scan.fixedChargesNote).toBeDefined();
+  });
+
+  it("replaces an implausible top-level fixedCharges when there are no items", async () => {
+    const scan = await read({ ...base, fixedCharges: 107.8 });
+    expect(scan.fixedCharges).toBe(21.38);
+    expect(scan.fixedChargesRead).toBe(107.8);
+  });
+
+  it("does not flag the correct printed items (golden 21.38)", async () => {
+    const scan = await read({
+      ...base,
+      fixedCharges: 21.38,
+      items: { fixedSupply: 16.38, supplyPerKwh: 29.07, fixedMetering: 5, meteringPerKwh: 19.55, universalCharges: 26.89, fitAll: 23.47, lifeline: 0.7, seniorCitizen: 0.01 },
+    });
+    expect(scan.fixedCharges).toBe(21.38);
+    expect(scan.fixedChargesNote).toBeUndefined();
+    expect(scan.missing).toBeUndefined();
+  });
+});

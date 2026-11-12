@@ -260,3 +260,7 @@ Guardrails (enforced in code, not only in the prompt):
 - Per kWh saved on the shared meter: ₱14.94 ("about ₱15").
 - Bautista forecast: 53 kWh by 30 Nov (51 to 55); staying under 50 kWh: 100% off instead of about ₱519.
 - Check with Dela Cruz typed 20: "18 kWh missing", 162 of 180 kWh, chip "typed".
+
+## Bill scan: fixed-charge check
+
+The Gemini bill reader checks the fixed per-customer charges (fixed supply + fixed metering). A total above PHP 60, above 5% of the amount, or above the supply and metering line is treated as a misread: it is replaced by the top-level `fixedCharges` if plausible, else PHP 21.38, and the scan gets `fixedChargesNote` and `fixedChargesRead` (the rejected value) and `"fixedCharges"` in `missing` (confidence capped at 0.5). `POST /api/scan/bill` `sanity` then carries `fixedChargesOk: boolean`, `fixedChargesNote: string | null` and `sanityNote: string | null` (the fixed-charge warning plus any lines note, e.g. "The fixed charges look wrong (₱107.80). Check them against the bill before confirming."). `linesNote` includes the same text, so the confirm card shows it.

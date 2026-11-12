@@ -260,6 +260,10 @@ export interface BillScan {
   confidence: number;
   /** Fields the reader could not find (e.g. "lines.taxes", "fixedCharges"); present only when something is missing. */
   missing?: string[];
+  /** Set when the fixed charges read from the photo looked implausible and were replaced by a safe value. */
+  fixedChargesNote?: string;
+  /** The implausible fixed-charge total that was read (pesos), when fixedChargesNote is set. */
+  fixedChargesRead?: number;
   provider: "mock" | "gemini";
   /** Which Gemini model answered, when provider is "gemini". */
   model?: string;
