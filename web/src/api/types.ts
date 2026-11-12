@@ -77,6 +77,8 @@ export interface Reading {
   capturedAt: string
   confidence?: number
   confirmed: boolean
+  /** Photo readings: the serial read off the meter (null or empty when none was read). */
+  serialRead?: string | null
 }
 
 export interface MeterScan {
@@ -195,6 +197,10 @@ export interface TenantView {
   /** The whole bill, for the "your share of what" line. */
   billKwh: number
   billAmount: number
+  /** This household's share by bill line, from the same signed link as `share`. */
+  lines: ShareLine[]
+  /** True when the view is the sample compound (demo link before this month adds up). */
+  sample?: boolean
 }
 
 // ---------- Ask Kahati (chat). Mirrors AskRequest/AskAnswer in ../../src/types/index.ts ----------

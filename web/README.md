@@ -16,7 +16,7 @@ To use the real backend, set `VITE_API_URL=https://kahati.vercel.app` in `.env.l
 
 With the real backend, `src/api/http.ts` keeps the compound's state in the browser (localStorage) and sends it to the stateless endpoints in `../docs/API.md`. "Reset demo" in the Home menu (the "⋯" button) clears it. A demo clock stamps confirmed readings on the sample bill's read date (31 Oct) so the read-date alignment does not pro-rate them; set `VITE_DEMO_CLOCK=off` for real, current bills.
 
-Note for the demo: after the step 7 cheat (Dela Cruz typed at 20 kWh), the gap rule splits the missing 18 kWh by kWh, so Lorna's share reads ₱752.48 until the reading is fixed. Re-scan or retype Dela Cruz (02238) before step 8 to show ₱677.77.
+Note for the demo: after the step 7 cheat (Dela Cruz typed at 20 kWh), the gap rule splits the missing 18 kWh by kWh. The organizer's Bill for Santos, and any Share link made during the gap, read ₱752.48 until the reading is fixed. The demo link `/t/demo-santos` falls back to the sample while the readings do not add up, so step 8 still shows ₱677.77. Mint the Share link before the cheat, or retype Dela Cruz (02238) first.
 
 Dev-only shortcuts ("Use the sample bill (mock)", "Use the sample meter (mock)") show only on the local dev server with the mock (`showDevTools` in `src/api/index.ts`), never in a deployed build. "Load the rest" on Home stays in mock mode for demo step 3.
 

@@ -1,19 +1,24 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useCloseScan } from './ScanOverlay'
-import { ImageUp, RotateCcw, X } from 'lucide-react'
+import { ChevronLeft, ImageUp, RotateCcw, X } from 'lucide-react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { ICON } from './ui'
 import { useT } from '../i18n/copy'
 import { LiveCamera } from './LiveCamera'
 
-export function ScanHeader({ step, total, title }: { step: number; total: number; title: string }) {
+export function ScanHeader({ step, total, title, onBack }: { step: number; total: number; title: string; onBack?: () => void }) {
   const close = useCloseScan()
   const { t } = useT()
   return (
     // 8px between the step dashes / close row and the title (was 16px).
     <div className="stack-lg" style={{ gap: 8 }}>
       <div className="row-between">
+        {onBack && (
+          <button className="icon-btn" aria-label={t('scan.back')} onClick={onBack}>
+            <ChevronLeft {...ICON} />
+          </button>
+        )}
         <div className="dashes" aria-label={t('scan.step', { n: step, total })}>
           {Array.from({ length: total }, (_, i) => (
             <span key={i} className={i < step ? 'on' : ''} />

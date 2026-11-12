@@ -111,8 +111,9 @@ export const BAUTISTA_METER: Meter = {
 };
 
 /**
- * Bautista's own small October bill: 48 kWh, 30 Sep to 31 Oct 2026. The compound bill's per-kWh lines
- * scaled by 48/180 (the 21.38 fixed charge stays inside supplyMetering), each rounded to centavos;
+ * Bautista's own October bill: 56 kWh, 30 Sep to 31 Oct 2026. He went over the 50 kWh line, so no
+ * lifeline discount this month (this month Kahati helps him stay under). The compound bill's per-kWh
+ * lines scaled by 56/180 (the 21.38 fixed charge stays inside supplyMetering), each rounded to centavos;
  * "other" takes the rounding remainder so the lines add up exactly to the amount.
  */
 export const BAUTISTA_BILL: Bill = {
@@ -122,19 +123,19 @@ export const BAUTISTA_BILL: Bill = {
   periodEnd: "2026-10-31",
   readDate: "2026-10-31",
   nextReadDate: "2026-11-30",
-  kwh: 48,
-  amount: 738.63,
+  kwh: 56,
+  amount: 858.17,
   lines: {
-    generation: 450.67,
-    transmission: 61.33,
-    systemLoss: 40.0,
-    distribution: 88.0,
-    supplyMetering: 34.35, // 12.97 variable + 21.38 fixed
-    taxes: 50.67,
-    other: 13.61, // scaled 13.62, less 0.01 rounding remainder
+    generation: 525.78,
+    transmission: 71.56,
+    systemLoss: 46.67,
+    distribution: 102.67,
+    supplyMetering: 36.51, // 15.13 variable + 21.38 fixed
+    taxes: 59.11,
+    other: 15.87, // scaled 15.89, less 0.02 rounding remainder
   },
   fixedCharges: 21.38,
-  previousReading: 12472,
+  previousReading: 12464,
   presentReading: 12520,
   history: [
     { month: "2025-11", kwh: 52 },
@@ -147,8 +148,8 @@ export const BAUTISTA_BILL: Bill = {
     { month: "2026-06", kwh: 56 },
     { month: "2026-07", kwh: 51 },
     { month: "2026-08", kwh: 49 },
-    { month: "2026-09", kwh: 46 },
-    { month: "2026-10", kwh: 48 },
+    { month: "2026-09", kwh: 52 },
+    { month: "2026-10", kwh: 56 },
   ],
   accountLast4: "7731",
   source: "seed",

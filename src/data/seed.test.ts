@@ -21,12 +21,12 @@ describe("seed data", () => {
 });
 
 describe("Bautista's own bill", () => {
-  it("has lines that add up to the amount and a 48 kWh history", async () => {
+  it("has lines that add up to the amount and a 56 kWh history", async () => {
     const { BAUTISTA_BILL } = await import("./seed");
     const sum = Object.values(BAUTISTA_BILL.lines).reduce((a, b) => a + b, 0);
     expect(Math.round(sum * 100)).toBe(Math.round(BAUTISTA_BILL.amount * 100));
     expect(BAUTISTA_BILL.kwh).toBe((BAUTISTA_BILL.presentReading ?? 0) - (BAUTISTA_BILL.previousReading ?? 0));
     expect(BAUTISTA_BILL.history).toHaveLength(12);
-    expect(BAUTISTA_BILL.history.at(-1)?.kwh).toBe(48);
+    expect(BAUTISTA_BILL.history.at(-1)?.kwh).toBe(56);
   });
 });

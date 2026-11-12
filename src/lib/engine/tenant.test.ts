@@ -34,6 +34,18 @@ describe("buildTenantView", () => {
 });
 
 describe("tenant link routes", () => {
+  it("the signed link carries the breakdown lines, which add up to Lorna's share", async () => {
+    const res = await post({ state: sampleCompoundState(), householdId: "hB" });
+    const { token } = await res.json();
+    const j = await (await get(token)).json();
+    const lines = Object.values(j.share.breakdown) as number[];
+    expect(Object.keys(j.share.breakdown).sort()).toEqual(
+      ["distribution", "generation", "other", "supplyMetering", "systemLoss", "taxes", "transmission"],
+    );
+    expect(lines.reduce((x, y) => x + y, 0)).toBeCloseTo(j.share.amountExact, 6);
+    expect(Math.round(j.share.amountExact * 100) / 100).toBeCloseTo(j.share.amount, 2);
+    expect(j.share.amount).toBe(677.77);
+  });
   it("creates a link and the token resolves to the view", async () => {
     const res = await post({ state: sampleCompoundState(), householdId: "hB", baseUrl: "https://kahati.app/" });
     expect(res.status).toBe(200);

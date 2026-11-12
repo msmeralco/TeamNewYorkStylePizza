@@ -25,8 +25,12 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
   const params = useParams()
   const { t } = useT()
   const { data, error, loading, reload } = useAsync(async () => {
-    const id = tenant ? (await api.getTenantView(params.token!)).householdId : params.householdId!
-    return api.getShare(id, { tenant })
+    if (tenant) {
+      // The link is the source of truth: the share and its lines come from the token, like the tenant view's header.
+      const v = await api.getTenantView(params.token!)
+      return { householdId: v.householdId, name: v.name, kwh: v.kwh, amount: v.share, lines: v.lines, sample: v.sample }
+    }
+    return api.getShare(params.householdId!, {})
   }, [params.householdId, params.token])
   const nav = useNavigate()
   const [picking, setPicking] = useState(false)
@@ -117,6 +121,15 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
     }
   }
   const total = s.lines.reduce((a, l) => a + l.amount, 0)
+  // Shown lines are rounded to centavos so they add up exactly to the rounded share (largest remainder).
+  const shownLines = (() => {
+    const cents = s.lines.map((l) => l.amount * 100)
+    const floor = cents.map(Math.floor)
+    let left = Math.round(s.amount * 100) - floor.reduce((a, c) => a + c, 0)
+    const order = cents.map((c, i) => [c - floor[i], i] as const).sort((a, b) => b[0] - a[0])
+    for (const [, i] of order) { if (left <= 0) break; floor[i] += 1; left -= 1 }
+    return s.lines.map((l, i) => ({ ...l, amount: floor[i] / 100 }))
+  })()
 
   return (
     <div className={cls} ref={ref}>
@@ -158,7 +171,7 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
           ))}
         </div>
         <div style={{ marginTop: 10 }}>
-          {s.lines.map((l) => {
+          {shownLines.map((l) => {
             const st = LINE_STYLE[l.key]
             return (
               <div className="list-row" key={l.key}>
@@ -173,7 +186,7 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
         </div>
       </div>
 
-      <Footnote>{t(tenant ? 'bill.footer' : 'bill.footerOwn')}</Footnote>
+      <Footnote>{t(tenant && (data as { sample?: boolean } | undefined)?.sample ? 'bill.footer' : 'bill.footerOwn')}</Footnote>
       {picker}
     </div>
   )

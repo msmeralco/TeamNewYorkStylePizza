@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Calendar, Camera, Check as CheckIcon, CircleCheck, Keyboard, Ruler, Search, Split, Zap } from 'lucide-react'
+import { Calendar, Camera, Check as CheckIcon, CircleCheck, CircleHelp, Keyboard, Ruler, ScanLine, Search, Split, Zap } from 'lucide-react'
 import { api, type HouseholdMonth } from '../api'
 import { CountUp, GrowBar, useReveal } from '../components/motion'
 import { CheckSkeleton } from '../components/Skeletons'
@@ -10,6 +10,9 @@ import { useT } from '../i18n/copy'
 import { day } from '../lib/format'
 import { notifyChange, useAsync } from '../lib/useAsync'
 
+
+/** A photo reading confirmed with no serial read is not "Verified": the meter was not matched. */
+const noSerial = (r: { source: string; serialRead?: string | null }) => r.source === 'photo' && !r.serialRead
 
 export default function Check() {
   const { t } = useT()
@@ -31,7 +34,7 @@ export default function Check() {
         <div className="card state">
           <span className="body">{t('check.empty')}</span>
           <Link className="btn" to={m.bill ? `/scan/meter/${m.households.find((h) => !h.reading)?.id ?? 'A'}` : '/scan/bill'}>
-            {m.bill ? t('check.scanMeter') : t('home.scanBill')}
+            <ScanLine {...ICON} /> {m.bill ? t('check.scanMeter') : t('home.scanBill')}
           </Link>
         </div>
       </div>
@@ -117,8 +120,8 @@ export default function Check() {
               </span>
               {h.reading && !h.suggestion && (
                 <span className="chip sm row-badge">
-                  {h.reading.source === 'typed' ? <Keyboard size={12} strokeWidth={1.75} /> : <CircleCheck size={12} strokeWidth={1.75} />}
-                  {h.reading.source === 'typed' ? t('check.typed') : t('check.verified')}
+                  {h.reading.source === 'typed' ? <Keyboard size={12} strokeWidth={1.75} /> : noSerial(h.reading) ? <CircleHelp size={12} strokeWidth={1.75} /> : <CircleCheck size={12} strokeWidth={1.75} />}
+                  {h.reading.source === 'typed' ? t('check.typed') : noSerial(h.reading) ? t('check.serialUnchecked') : t('check.verified')}
                 </span>
               )}
             </button>
@@ -155,7 +158,7 @@ export default function Check() {
             setSending(true)
             try {
               try { await api.requestNewPhoto(flagged.length ? flagged : m.households.map((h) => h.id)) } catch { /* harmless */ }
-              const text = t('check.askMessage', { url: window.location.origin })
+              const text = t('check.askMessage')
               if (typeof navigator.share === 'function') {
                 try {
                   await navigator.share({ text })

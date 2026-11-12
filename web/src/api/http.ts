@@ -250,6 +250,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
     return {
       householdId: toF(hid), value: c.value, kwh: kwh ?? (p ? c.value - p.value : 0), source: c.source,
       capturedAt: c.capturedAt, confidence: c.confidence ?? undefined, confirmed: c.confirmed,
+      serialRead: c.serialRead ?? null,
     }
   }
   const monthLabel = (ym: string) =>
@@ -279,13 +280,29 @@ export function createHttpApi(baseUrl: string): KahatiApi {
     }
   }
 
-  async function tenantFromToken(token: string): Promise<BTenant> {
+  /**
+   * Source for the demo tenant link: this month's state only when the bill is confirmed, all
+   * readings are in AND they add up (so the tenant sees a complete, consistent view with its
+   * rate tiles); otherwise the sample compound.
+   */
+  /** The demo link uses this month only when it is complete and adds up; otherwise (or if the check fails) the sample. */
+  async function demoSource(): Promise<{ src: BState; isSample: boolean }> {
+    const s = await state()
+    if (ready(s)) {
+      try {
+        const c = await post<BCheck>('/api/check', { state: s })
+        if (c.status === 'ok') return { src: s, isSample: false }
+      } catch { /* fall back to the sample */ }
+    }
+    return { src: await sample(), isSample: true }
+  }
+
+  async function tenantFromToken(token: string): Promise<{ v: BTenant; isSample: boolean }> {
     const demoHid = DEMO_TOKENS[token]
-    if (!demoHid) return call<BTenant>(`/api/tenant/${encodeURIComponent(token)}`)
-    // Demo link: use this month's split if complete, else the sample compound.
-    const src = await usable(await state(), true)
+    if (!demoHid) return { v: await call<BTenant>(`/api/tenant/${encodeURIComponent(token)}`), isSample: false }
+    const { src, isSample } = await demoSource()
     const link = await post<{ token: string }>('/api/tenant-link', { state: src, householdId: demoHid })
-    return call<BTenant>(`/api/tenant/${encodeURIComponent(link.token)}`)
+    return { v: await call<BTenant>(`/api/tenant/${encodeURIComponent(link.token)}`), isSample }
   }
 
   // ---------- KahatiApi ----------
@@ -446,7 +463,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
     async requestNewPhoto() {},
 
     async getTenantView(token): Promise<TenantView> {
-      const v = await tenantFromToken(token)
+      const { v, isSample } = await tenantFromToken(token)
       const fid = toF(v.household.id)
       return {
         householdId: fid,
@@ -459,6 +476,8 @@ export function createHttpApi(baseUrl: string): KahatiApi {
         expiresAt: v.expiresAt,
         billKwh: v.bill.kwh,
         billAmount: v.bill.amount,
+        lines: LINE_ORDER.map((key) => ({ key, amount: v.share.breakdown[key] })),
+        sample: isSample,
       }
     },
 
@@ -482,7 +501,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
         const demoHid = DEMO_TOKENS[tenantToken]
         let token = tenantToken
         if (demoHid) {
-          const src = await usable(await state(), true)
+          const { src } = await demoSource()
           token = (await post<{ token: string }>('/api/tenant-link', { state: src, householdId: demoHid })).token
         }
         return post<AskAnswer>('/api/ask', { ...base, tenantToken: token })
@@ -499,6 +518,16 @@ export function createHttpApi(baseUrl: string): KahatiApi {
       const full = await sample()
       for (const r of full.currentReadings) {
         if (!currOf(s, r.meterId)) s.currentReadings.push({ ...r, capturedAt: s.bill.readDate + 'T09:00:00+08:00' })
+      }
+      // Bautista too: his day-18 photo reading, stamped like a real scan on his story clock.
+      const b = await bauState()
+      const bm = meterOf(b, 'hBautista')
+      if (bm && !currOf(b, bm.id)) {
+        b.currentReadings.push({
+          id: `r-${bm.id}-${Date.now()}`, meterId: bm.id, value: 12552, source: 'photo',
+          capturedAt: DEMO_CLOCK ? BAU_DEMO_PHOTO_AT : new Date().toISOString(),
+          confidence: 0.97, confirmed: true, serialRead: 'MM-5520',
+        })
       }
       save()
     },

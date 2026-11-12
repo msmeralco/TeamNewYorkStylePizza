@@ -95,7 +95,7 @@ const needsScan = () => new ApiError('Scan the bill and the meters first.', 409,
 const sampleReadings = (): Reading[] =>
   HOUSEHOLDS.map((x) => ({
     householdId: x.id, value: METER_FACES[x.id], kwh: METER_FACES[x.id] - x.previousReading,
-    source: 'photo', capturedAt: nowIso(), confirmed: true,
+    source: 'photo', capturedAt: nowIso(), confirmed: true, serialRead: x.meterSerial,
   }))
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -253,7 +253,7 @@ export const mockApi: KahatiApi = {
     } satisfies MeterScan
   },
 
-  async confirmReading({ householdId, value, source, capturedAt }) {
+  async confirmReading({ householdId, value, source, capturedAt, serialRead }) {
     await wait(250)
     if (householdId === BAUTISTA.id) {
       if (value < BAUTISTA.previousReading) {
@@ -268,6 +268,7 @@ export const mockApi: KahatiApi = {
         source,
         capturedAt,
         confirmed: true,
+        serialRead: source === 'photo' ? (serialRead ?? null) : null,
       } satisfies Reading
     }
     const h = HOUSEHOLDS.find((x) => x.id === householdId)
@@ -282,6 +283,7 @@ export const mockApi: KahatiApi = {
       source,
       capturedAt,
       confirmed: true,
+      serialRead: source === 'photo' ? (serialRead ?? null) : null,
     }
     state.readings[householdId] = r
     save()
@@ -383,9 +385,11 @@ export const mockApi: KahatiApi = {
     if (!id) throw new ApiError('This link has expired. Ask the organizer for a new one.', 404, 'link_expired')
     const m = month()
     const h = m.households.find((x) => x.id === id)!
-    // A tenant link only exists once the split is done; show the sample split if not.
-    const bill = m.bill ?? { ...SAMPLE_BILL, id: 'sample' }
-    const share = h.share ?? computeShares(bill, sampleReadings()).find((s) => s.householdId === id)!
+    // This month's split only when the bill is confirmed, all readings are in and they add up;
+    // otherwise the sample compound, so the view is always complete and consistent.
+    const usable = !!m.bill && !!h.share && !!m.check?.addsUp
+    const bill = usable ? m.bill! : { ...SAMPLE_BILL, id: 'sample' }
+    const share = usable ? h.share! : computeShares(bill, sampleReadings()).find((s) => s.householdId === id)!
     const asked = share.kwh * CHARGED_RATE
     return {
       householdId: id,
@@ -396,8 +400,10 @@ export const mockApi: KahatiApi = {
       aboveBillRate: asked - share.amount,
       perKwhValue: (bill.amount - bill.fixedCharges) / bill.kwh,
       expiresAt: bill.nextReadDate,
-      billKwh: 180,
-      billAmount: 2711.07,
+      billKwh: bill.kwh,
+      billAmount: bill.amount,
+      lines: share.lines,
+      sample: !usable,
     }
   },
 
@@ -455,9 +461,11 @@ export const mockApi: KahatiApi = {
       const value = METER_FACES[h.id]
       state.readings[h.id] = {
         householdId: h.id, value, kwh: value - h.previousReading,
-        source: 'photo', capturedAt: nowIso(), confirmed: true,
+        source: 'photo', capturedAt: nowIso(), confirmed: true, serialRead: h.meterSerial,
       }
     }
+    // Bautista too: his day-18 photo reading.
+    if (state.bau === undefined) state.bau = BAUTISTA_FACE
     save()
   },
 

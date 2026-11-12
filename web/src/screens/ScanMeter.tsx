@@ -89,22 +89,31 @@ export default function ScanMeter() {
         nav(`/usage/${OWN.id}`)
         return
       }
-      const next = hs.slice(idx + 1).find((x) => !x.reading)
-      // After the last sub-meter, step 6 is Bautista's own meter.
-      nav(next ? `/scan/meter/${next.id}` : `/scan/meter/${OWN.id}?flow=1`)
+      goNext()
     } catch (e) {
       setErr(errText(e, 'scan.errSaveReading'))
       setPhase(source === 'typed' ? 'editing' : 'read')
     }
   }
 
-  const shown = scan ? meterDigits(scan.value) : '-----'
+  // Steps run in order so each one can be reviewed: a step already done shows its saved reading.
+  function goNext() {
+    const next = hs[idx + 1]
+    // After the last sub-meter, step 6 is Bautista's own meter.
+    nav(next ? `/scan/meter/${next.id}` : `/scan/meter/${OWN.id}?flow=1`)
+  }
+  const back = own
+    ? inFlow ? () => nav(`/scan/meter/${hs[hs.length - 1]?.id ?? 'D'}`) : undefined
+    : () => nav(idx > 0 ? `/scan/meter/${hs[idx - 1].id}` : '/scan/bill')
+  const saved = !own && !scan && phase === 'idle' ? hs[idx]?.reading : undefined
+
+  const shown = scan ? meterDigits(scan.value) : saved ? meterDigits(saved.value) : '-----'
   const typedN = Number(typed)
   const since = (n: number) => (own ? t('scan.sinceBill', { n }) : t('scan.sinceLast', { n }))
 
   return (
     <div className="screen no-nav" ref={ref}>
-      <ScanHeader step={own ? (inFlow ? SCAN_STEPS : 1) : idx + 2} total={own && !inFlow ? 1 : SCAN_STEPS} title={h.name} />
+      <ScanHeader step={own ? (inFlow ? SCAN_STEPS : 1) : idx + 2} total={own && !inFlow ? 1 : SCAN_STEPS} title={h.name} onBack={back} />
       <CameraPanel key={householdId} onPhoto={(f) => { setPreview(URL.createObjectURL(f)); read(f) }} disabled={phase === 'reading'} preview={preview}>
         <div style={{ position: 'relative' }}>
           <div className="digits">
@@ -174,6 +183,14 @@ export default function ScanMeter() {
           </>
         ) : (
           <div className="scan-foot">
+            {saved && phase === 'idle' && (
+              <>
+                <p className="support scan-hint">{t('scan.savedReading', { value: meterDigits(saved.value), kwh: saved.kwh })}</p>
+                <button className="btn" onClick={goNext}>
+                  <Check {...ICON} /> {t('scan.keepNext')}
+                </button>
+              </>
+            )}
             <p className="support scan-hint">
               {phase === 'reading' ? t('scan.readingMeter') : t('scan.tapMeter', { name: h.name })}
             </p>

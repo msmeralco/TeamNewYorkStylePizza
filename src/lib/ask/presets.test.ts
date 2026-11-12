@@ -234,7 +234,7 @@ describe("regressions: rate check sign and single-mode kWh", () => {
     it(`why_share in own-meter mode uses the bill kWh (${lang})`, () => {
       const ctx = buildContextFromState(sampleBautistaState(), "hBautista", lang);
       const a = answerPreset("why_share", ctx).answer;
-      expect(a).toContain("48 kWh");
+      expect(a).toContain("56 kWh");
       expect(a).not.toContain("32 kWh");
       expect(ctx.factSheet).not.toContain("used for the split");
     });

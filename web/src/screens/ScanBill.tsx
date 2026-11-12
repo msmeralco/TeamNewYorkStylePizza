@@ -9,7 +9,7 @@ import { Brackets, CameraPanel, ScanBeam, ScanHeader } from '../components/Scan'
 import { useReveal } from '../components/motion'
 import { ICON } from '../components/ui'
 import { day, php } from '../lib/format'
-import { notifyChange } from '../lib/useAsync'
+import { notifyChange, useAsync } from '../lib/useAsync'
 
 
 const CONSENT_KEY = 'kahati-bill-consent'
@@ -45,6 +45,9 @@ export default function ScanBill() {
   const errText = useErrText()
   const ref = useRef<HTMLDivElement>(null)
   useReveal(ref, true, `${consented}-${phase === 'typing'}-${!!scan}`)
+  // Reached with the back button after the bill was confirmed: show it so it can be kept.
+  const month = useAsync(() => api.getMonth(), [])
+  const savedBill = !scan && phase === 'idle' ? month.data?.bill ?? null : null
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview) }, [preview])
 
@@ -102,11 +105,12 @@ export default function ScanBill() {
 
   if (phase === 'typing') return <TypeBill onCancel={() => setPhase('idle')} onDone={confirm} />
 
+  const b = scan ?? savedBill
   const rows = [
-    { Icon: Calendar, k: t('scan.period'), v: scan ? t('common.range', { a: day(scan.periodStart), b: day(scan.periodEnd) }) : '–' },
-    { Icon: Zap, k: t('scan.totalKwh'), v: scan ? String(scan.kwh) : '–' },
-    { Icon: Banknote, k: t('scan.amount'), v: scan ? php(scan.amount) : '–' },
-    { Icon: Hash, k: t('scan.account'), v: scan ? `•••• ${scan.accountLast4}` : '–' },
+    { Icon: Calendar, k: t('scan.period'), v: b ? t('common.range', { a: day(b.periodStart), b: day(b.periodEnd) }) : '–' },
+    { Icon: Zap, k: t('scan.totalKwh'), v: b ? String(b.kwh) : '–' },
+    { Icon: Banknote, k: t('scan.amount'), v: b ? php(b.amount) : '–' },
+    { Icon: Hash, k: t('scan.account'), v: b ? `•••• ${b.accountLast4}` : '–' },
   ]
 
   return (
@@ -121,7 +125,7 @@ export default function ScanBill() {
       <div className="scan-sheet">
         {err && <div className="status-line" role="alert">{err}</div>}
         {/* Like the meter step: the read values appear only once the bill has been scanned. */}
-        {scan && (
+        {b && (
           <div className="card" style={{ padding: '4px 20px' }}>
             {rows.map(({ Icon, k, v }) => (
               <div className="kv" key={k}>
@@ -139,6 +143,14 @@ export default function ScanBill() {
               {scan.linesAddUp === false && <> {t('scan.linesSpread')}</>}
             </span>
           </div>
+        )}
+        {savedBill && (
+          <>
+            <button className="btn" onClick={() => nav('/scan/meter/A')}>
+              <Check {...ICON} /> {t('scan.keepNext')}
+            </button>
+            <p className="support scan-hint">{t('scan.rescanBillNote')}</p>
+          </>
         )}
         {scan && (
           <button className="btn" disabled={phase === 'saving'} onClick={() => confirm(scan)}>

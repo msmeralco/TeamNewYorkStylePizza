@@ -114,8 +114,8 @@ describe("forecast: Bautista (own meter, stage 2)", () => {
     const s = sampleBautistaState();
     s.currentReadings[0].value = 12520 + 90; // 5 kWh a day against about 1.5 usual
     const g = forecast({ state: s, householdId: "hBautista" });
-    expect(g.spike?.percentAbove).toBe(223);
-    expect(g.spike?.message).toBe("Your use so far this month is 223% above your usual.");
+    expect(g.spike?.percentAbove).toBe(177);
+    expect(g.spike?.message).toBe("Your use so far this month is 177% above your usual.");
     expect(g.actions.some((a) => a.includes("about 30 kWh a month (assumes about 1 kW)"))).toBe(true);
   });
   it("falls back to stage 1 without a photo", () => {
@@ -124,9 +124,9 @@ describe("forecast: Bautista (own meter, stage 2)", () => {
     const g = forecast({ state: s, householdId: "hBautista" });
     expect(g.stage).toBe(1);
     expect(g.label).toBe("Rough guess");
-    expect(g.kwh).toBe(48);
-    expect(g.low).toBe(43);
-    expect(g.high).toBe(53);
+    expect(g.kwh).toBe(56);
+    expect(g.low).toBe(50);
+    expect(g.high).toBe(62);
   });
 });
 
