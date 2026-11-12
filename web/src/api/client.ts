@@ -45,6 +45,8 @@ export interface KahatiApi {
   ask(input: AskInput): Promise<AskAnswer>
   /** Demo helper: fills the readings the active sample has. `loaded` counts what it filled; `missing` what is still empty (nothing is invented). */
   loadSampleReadings(): Promise<{ loaded: number; missing: number }>
+  /** Digit-fix demo: all readings as photos, one misread at low confidence (built-in sample only). */
+  loadMisreadDemo(): Promise<{ ok: boolean; reason?: 'no_bill' | 'not_sample' }>
   resetDemo(): Promise<void>
   /** Bautista's own meter, from the active sample or scenario (serial and the bill's read-day reading). */
   getOwnMeter(): Promise<{ name: string; meterSerial: string; previousReading: number }>

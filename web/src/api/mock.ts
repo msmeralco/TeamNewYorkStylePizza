@@ -454,6 +454,10 @@ export const mockApi: KahatiApi = {
     }
   },
 
+  async loadMisreadDemo() {
+    return { ok: false, reason: 'not_sample' as const }
+  },
+
   async loadSampleReadings() {
     await wait(300)
     let loaded = 0

@@ -734,6 +734,26 @@ export function createHttpApi(baseUrl: string): KahatiApi {
       return { loaded, missing }
     },
 
+    /**
+     * Demo of the digit fix: every reading arrives as a photo (none typed), and Santos's photo comes in as
+     * 04542 at low confidence instead of 04572. That leaves a 30 kWh gap that one digit closes, so Check
+     * offers "Did you mean 04572, not 04542?". Built-in sample month only (its numbers make the fix unique).
+     */
+    async loadMisreadDemo(): Promise<{ ok: boolean; reason?: 'no_bill' | 'not_sample' }> {
+      if (!local.billConfirmed) return { ok: false, reason: 'no_bill' }
+      const s = await state()
+      const base = await builtInCompound()
+      if (local.scenario || s.bill.kwh !== base.bill.kwh) return { ok: false, reason: 'not_sample' }
+      const at = s.bill.readDate + 'T09:00:00+08:00'
+      s.currentReadings = base.currentReadings.map((r) =>
+        r.meterId === 'mB'
+          ? { ...r, id: `r-mB-misread`, value: 4542, confidence: 0.62, source: 'photo' as const, capturedAt: at }
+          : { ...r, source: 'photo' as const, capturedAt: at },
+      )
+      save()
+      return { ok: true }
+    },
+
     async resetDemo() {
       local = { state: null, billConfirmed: false, bau: null, scenario: local.scenario ?? null }
       save()

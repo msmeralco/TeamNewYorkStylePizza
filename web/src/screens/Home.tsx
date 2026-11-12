@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CircleAlert, CircleCheck, Ellipsis, FlaskConical, Languages, RotateCcw, ScanLine, TrendingUp, Zap, Gauge } from 'lucide-react'
+import { CircleAlert, CircleCheck, Ellipsis, FlaskConical, Languages, RotateCcw, ScanLine, TrendingUp, Zap, Gauge, Search } from 'lucide-react'
 import { api } from '../api'
 import { CountUp, useReveal } from '../components/motion'
 import { HomeSkeleton } from '../components/Skeletons'
@@ -45,6 +45,21 @@ export default function Home() {
           <span className="grow">
             <span className="body">{t('home.useBuiltIn')}</span>
             <span className="meta">{t('home.scenarioActive', { name: scenario })}</span>
+          </span>
+        </button>
+      )}
+      {!scenario && (
+        <button className="list-row" onClick={async () => {
+          const r = await api.loadMisreadDemo()
+          setMenu(false)
+          if (!r.ok) { toast(t(r.reason === 'no_bill' ? 'home.misreadNoBill' : 'home.misreadSample')); return }
+          notifyChange()
+          nav('/check')
+        }}>
+          <span className="icon-chip"><Search {...ICON} /></span>
+          <span className="grow">
+            <span className="body">{t('home.misread')}</span>
+            <span className="meta">{t('home.misreadMeta')}</span>
           </span>
         </button>
       )}
