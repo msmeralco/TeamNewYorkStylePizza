@@ -46,7 +46,7 @@ function modelsToTry(now = Date.now()): string[] {
     const score = (m: string) => (m === first ? -2 : 0) + (resting(m) ? 2 : 0);
     return score(a) - score(b);
   });
-  return ordered.slice(0, 3);
+  return ordered.slice(0, 4);
 }
 
 /**
@@ -106,6 +106,96 @@ async function errorText(res: Response): Promise<string> {
     .catch(() => "");
 }
 
+/** A scan gives up before the host's 60 s function limit, so the app can show a clean message. */
+const SCAN_DEADLINE_MS = 45_000;
+
+/** Start the next model if the current one has not answered within this time. */
+const HEDGE_MS = 4_000;
+
+type AttemptResult = { res?: Response; error?: ReaderError; tryNextKey: boolean };
+
+/**
+ * Hedged request with one key: start the first model; start the next one after HEDGE_MS, or at
+ * once if the previous one fails with a status another model may not have (404, 429, 5xx, timeout).
+ * The first OK answer wins and the others are aborted. A 401/403 moves on to the next key; any
+ * other failure (for example 400, a bad request) stops without trying more.
+ */
+async function hedgedAttempt(key: string, models: string[], body: string, deadline: number | null): Promise<AttemptResult> {
+  const controllers = models.map(() => new AbortController());
+  const go: Array<() => void> = [];
+  const started = models.map((_, i) => new Promise<void>((resolve) => (go[i] = resolve)));
+  let stopped = false;
+  let tryNextKey = false;
+  let lastError: ReaderError | undefined;
+  const timers: ReturnType<typeof setTimeout>[] = [];
+  go[0]();
+  for (let i = 1; i < models.length; i++) timers.push(setTimeout(() => go[i](), i * HEDGE_MS));
+  const startNext = (i: number) => { if (i + 1 < models.length) go[i + 1](); };
+
+  const attempt = async (i: number): Promise<{ res: Response; model: string }> => {
+    await started[i];
+    if (stopped) throw new Error("stopped");
+    const model = models[i];
+    let timeoutMs = ATTEMPT_TIMEOUT_MS;
+    if (deadline != null) {
+      timeoutMs = Math.min(deadline - Date.now(), ATTEMPT_TIMEOUT_MS);
+      if (timeoutMs <= 0) {
+        lastError = new ReaderError("network", "The reading service took too long.");
+        throw lastError;
+      }
+    }
+    let res: Response;
+    try {
+      res = await fetch(`${BASE}/${model}:generateContent`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": key },
+        body,
+        signal: AbortSignal.any([controllers[i].signal, AbortSignal.timeout(timeoutMs)]),
+      });
+    } catch (e) {
+      if (controllers[i].signal.aborted) throw new Error("aborted");
+      const timedOut = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
+      if (timedOut) {
+        setAsideUntil.set(model, Date.now() + SET_ASIDE_MS);
+        lastError = new ReaderError("network", `The reading service took too long (${model}).`);
+        startNext(i);
+      } else {
+        lastError = new ReaderError("network", "Could not reach the reading service.");
+        tryNextKey = true;
+        stopped = true;
+      }
+      throw lastError;
+    }
+    if (res.ok) return { res, model };
+    lastError = new ReaderError("http_error", `The reading service returned HTTP ${res.status} (${model}). ${await errorText(res)}`.trim());
+    if (res.status === 503 || res.status === 429) setAsideUntil.set(model, Date.now() + SET_ASIDE_MS);
+    // Listed but retired ("no longer available to new users"): never try it again on this instance.
+    if (res.status === 404 && rankedModels) rankedModels = rankedModels.filter((m) => m !== model);
+    if (TRY_NEXT_MODEL.has(res.status)) {
+      // Another model may work; if this was the last one, another key might.
+      if (i + 1 < models.length) startNext(i);
+      else if (TRY_NEXT_KEY.has(res.status)) tryNextKey = true;
+    } else {
+      if (TRY_NEXT_KEY.has(res.status)) tryNextKey = true;
+      stopped = true;
+    }
+    throw lastError;
+  };
+
+  try {
+    const win = await Promise.any(models.map((_, i) => attempt(i)));
+    lastGoodModel = win.model;
+    return { res: win.res, tryNextKey: false };
+  } catch {
+    return { error: lastError, tryNextKey };
+  } finally {
+    stopped = true;
+    for (const t of timers) clearTimeout(t);
+    for (const g of go) g();
+    for (const c of controllers) if (!c.signal.aborted) c.abort();
+  }
+}
+
 async function callGemini(prompt: string, img: ReaderImage | null, schema: object, opts: { deadlineMs?: number } = {}): Promise<unknown> {
   const deadline = opts.deadlineMs != null ? Date.now() + opts.deadlineMs : null;
   const keys = geminiKeys();
@@ -127,45 +217,14 @@ async function callGemini(prompt: string, img: ReaderImage | null, schema: objec
     rankedModels = found.length ? found : [DEFAULT_MODEL];
   }
 
-  keyLoop: for (const key of keys) {
-    const models = modelsToTry();
-    for (let i = 0; i < models.length; i++) {
-      const model = models[i];
-      let timeoutMs = ATTEMPT_TIMEOUT_MS;
-      if (deadline != null) {
-        const left = deadline - Date.now();
-        if (left <= 0) throw new ReaderError("network", "The reading service took too long.");
-        timeoutMs = Math.min(left, ATTEMPT_TIMEOUT_MS);
-      }
-      let res: Response;
-      try {
-        res = await fetch(`${BASE}/${model}:generateContent`, {
-          method: "POST",
-          headers: { "content-type": "application/json", "x-goog-api-key": key },
-          body,
-          signal: AbortSignal.timeout(timeoutMs),
-        });
-      } catch (e) {
-        const timedOut = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
-        if (timedOut) {
-          setAsideUntil.set(model, Date.now() + SET_ASIDE_MS);
-          lastError = new ReaderError("network", `The reading service took too long (${model}).`);
-          continue;
-        }
-        lastError = new ReaderError("network", "Could not reach the reading service.");
-        continue keyLoop;
-      }
-      if (res.ok) {
-        good = res;
-        lastGoodModel = model;
-        break keyLoop;
-      }
-      lastError = new ReaderError("http_error", `The reading service returned HTTP ${res.status} (${model}). ${await errorText(res)}`.trim());
-      if (res.status === 503 || res.status === 429) setAsideUntil.set(model, Date.now() + SET_ASIDE_MS);
-      if (TRY_NEXT_MODEL.has(res.status) && i < models.length - 1) continue;
-      if (TRY_NEXT_KEY.has(res.status)) continue keyLoop;
-      break keyLoop;
+  for (const key of keys) {
+    const r = await hedgedAttempt(key, modelsToTry(), body, deadline);
+    if (r.res) {
+      good = r.res;
+      break;
     }
+    lastError = r.error ?? lastError;
+    if (!r.tryNextKey) break;
   }
   if (!good) throw lastError ?? new ReaderError("http_error", "The reading service failed.");
   let reply: any;
@@ -255,7 +314,7 @@ function parseMeter(raw: unknown, expectedDigits?: number): { digitsText: string
 export class GeminiMeterReader implements MeterReader {
   async readMeter(img: ReaderImage, opts?: { expectedDigits?: number }): Promise<MeterScan> {
     const prompt = meterPrompt(opts?.expectedDigits);
-    const [a, b] = await Promise.all([callGemini(prompt, img, METER_SCHEMA), callGemini(prompt, img, METER_SCHEMA)]);
+    const [a, b] = await Promise.all([callGemini(prompt, img, METER_SCHEMA, { deadlineMs: SCAN_DEADLINE_MS }), callGemini(prompt, img, METER_SCHEMA, { deadlineMs: SCAN_DEADLINE_MS })]);
     const first = parseMeter(a, opts?.expectedDigits);
     const second = parseMeter(b, opts?.expectedDigits);
     return {
@@ -392,7 +451,7 @@ function parseBill(raw: unknown): BillScan {
 
 export class GeminiBillReader implements BillReader {
   async readBill(img: ReaderImage): Promise<BillScan> {
-    const scan = parseBill(await callGemini(BILL_PROMPT, img, BILL_SCHEMA));
+    const scan = parseBill(await callGemini(BILL_PROMPT, img, BILL_SCHEMA, { deadlineMs: SCAN_DEADLINE_MS }));
     return { ...scan, model: lastGoodModel ?? undefined };
   }
 }

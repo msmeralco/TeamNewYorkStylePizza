@@ -84,3 +84,50 @@ describe("rankFlashModels and model failover", () => {
     expect(calls.some((c) => c.includes("gemini-3.8-flash-lite:"))).toBe(true);
   });
 });
+
+describe("hedged requests", () => {
+  it("drops a retired model (404) and answers from the next one", async () => {
+    process.env.GEMINI_API_KEY = "k1";
+    delete process.env.GEMINI_API_KEY_2;
+    delete process.env.GEMINI_MODEL;
+    delete process.env.GEMINI_MODEL_FIRST;
+    resetReaderStateForTests();
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      calls.push(url);
+      if (url.includes("?pageSize")) {
+        return new Response(JSON.stringify({ models: ["gemini-3.8-flash", "gemini-2.5-flash-lite"].map((n) => ({ name: `models/${n}`, supportedGenerationMethods: ["generateContent"] })) }), { status: 200 });
+      }
+      if (url.includes("gemini-3.8-flash:")) return new Response(JSON.stringify({ error: { status: "NOT_FOUND", message: "no longer available to new users" } }), { status: 404 });
+      return okReply({ digits: "12552", serial: "MM-5520", confidence: 0.95 });
+    }));
+    const scan = await new GeminiMeterReader().readMeter({ base64: "aGk=", mimeType: "image/jpeg" }, { expectedDigits: 5 });
+    expect(scan.value).toBe(12552);
+    const again = calls.length;
+    await new GeminiMeterReader().readMeter({ base64: "aGk=", mimeType: "image/jpeg" }, { expectedDigits: 5 });
+    expect(calls.slice(again).some((u) => u.includes("gemini-3.8-flash:"))).toBe(false);
+  });
+
+  it("starts the next model when the first is slow and takes the first answer", async () => {
+    process.env.GEMINI_API_KEY = "k1";
+    delete process.env.GEMINI_MODEL;
+    delete process.env.GEMINI_MODEL_FIRST;
+    resetReaderStateForTests();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
+      if (url.includes("?pageSize")) {
+        return new Response(JSON.stringify({ models: ["gemini-3.8-flash", "gemini-3.5-flash"].map((n) => ({ name: `models/${n}`, supportedGenerationMethods: ["generateContent"] })) }), { status: 200 });
+      }
+      if (url.includes("gemini-3.8-flash:")) {
+        return new Promise<Response>((_, reject) => init.signal?.addEventListener("abort", () => reject(Object.assign(new Error("aborted"), { name: "AbortError" }))));
+      }
+      return okReply({ digits: "04572", serial: "SM-0214", confidence: 0.95 });
+    }));
+    const p = new GeminiMeterReader().readMeter({ base64: "aGk=", mimeType: "image/jpeg" }, { expectedDigits: 5 });
+    await vi.advanceTimersByTimeAsync(4_500);
+    const scan = await p;
+    vi.useRealTimers();
+    expect(scan.value).toBe(4572);
+    expect(scan.model).toBe("gemini-3.5-flash");
+  });
+});
