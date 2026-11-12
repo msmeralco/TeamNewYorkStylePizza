@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Bell, ChevronDown, ScanLine, CircleCheck, Sparkles, Clock, Gauge, Leaf, Plug, Snowflake, Tag, TrendingUp } from 'lucide-react'
+import { Bell, ChevronDown, ScanLine, CircleCheck, Sparkles, Gauge, Leaf, Tag, TrendingUp } from 'lucide-react'
 import { api } from '../api'
 import { UsageChart } from '../components/UsageChart'
 import { SharedUsageChart } from '../components/SharedUsageChart'
@@ -22,7 +22,6 @@ const PEOPLE_IDS = [
   { id: 'C', note: 'usage.shared' as const },
   { id: 'D', note: 'usage.shared' as const },
 ]
-const ACTION_ICON = { plug: Plug, clock: Clock, snowflake: Snowflake }
 const whole = (n: number) => `${Math.round(n)} kWh`
 
 /** An .ics with one event on the 15th at 9:00 Manila time (written in UTC). Unknown or past period: the next 15th. */
@@ -244,18 +243,6 @@ export default function Usage() {
           </div>
         )
       )}
-
-      <div className="card list">
-        {u.actions.map((a) => {
-          const I = ACTION_ICON[a.icon]
-          return (
-            <div className="list-row" key={a.text}>
-              <I {...ICON} size={16} style={{ flex: 'none' }} />
-              <span className="tip">{t(`action.${a.icon}`)}</span>
-            </div>
-          )
-        })}
-      </div>
 
       <div className="btn-row">
         {u.mode === 'shared' && (
