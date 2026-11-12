@@ -102,6 +102,9 @@ export default function Usage() {
 
   if ((error as { code?: string } | undefined)?.code?.startsWith('needs_')) {
     const own = householdId === 'BAU'
+    // This household has its reading but the month is incomplete: say what is missing, not "No readings yet".
+    const waiting = !own && !!month?.households.find((h) => h.id === householdId)?.reading
+    const nextMissing = month?.households.find((h) => !h.reading)
     // No household name until there is data: the title stays neutral and the picker chooses whose meter.
     return (
       <div className="screen">
@@ -112,10 +115,10 @@ export default function Usage() {
           </button>
         </div>
         <EmptyState
-          title={t('usage.emptyTitle')}
-          body={t('usage.emptyBody')}
+          title={t(waiting ? 'usage.waitTitle' : 'usage.emptyTitle')}
+          body={t(waiting ? 'usage.waitBody' : 'usage.emptyBody')}
           label={t(own || month?.bill ? 'check.scanMeter' : 'home.scanBill')}
-          onScan={() => nav(own ? '/scan/meter/BAU' : '/scan')}
+          onScan={() => nav(own ? '/scan/meter/BAU' : waiting && nextMissing ? `/scan/meter/${nextMissing.id}` : '/scan')}
         />
         {picker}
       </div>
@@ -131,7 +134,7 @@ export default function Usage() {
       <div className="stack" style={{ gap: 'calc(var(--gap) * 0.6)' }}>
         <div className="header-row">
           <button className="title title-btn" onClick={() => setPicking(true)} aria-label={t('usage.choose')}>
-            {t('usage.title', { household: u.name })}
+            <span className="title-text">{t('usage.title', { household: u.name })}</span>
             <ChevronDown size={20} strokeWidth={2} />
           </button>
           <button className="icon-btn sm" onClick={() => nav(`/ask/${householdId}`)} aria-label={t('ask.open')}>

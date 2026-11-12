@@ -35,6 +35,16 @@ export default function ScanMeter() {
   const ref = useRef<HTMLDivElement>(null)
   const own = householdId === OWN_ID
   const ownMeter = useAsync(() => api.getOwnMeter(), [])
+  // Bautista's saved reading: his photo point in the forecast (kWh since the read day); getUsage throws until he has scanned.
+  const ownSaved = useAsync(async () => {
+    if (!own) return { kwh: null as number | null }
+    try {
+      const p = (await api.getUsage(OWN_ID)).points.find((x) => x.kind === 'photo')
+      return { kwh: p ? p.kwhUsed : null }
+    } catch {
+      return { kwh: null as number | null }
+    }
+  }, [own])
   useReveal(ref, own ? !!ownMeter.data : !!month.data, householdId)
   // Digits fade in one by one, in place, when a reading arrives.
   useGSAP(
@@ -52,7 +62,7 @@ export default function ScanMeter() {
   }, [householdId])
 
   if (own && ownMeter.error) return <div className="screen no-nav"><ErrorState error={ownMeter.error} onRetry={ownMeter.reload} /></div>
-  if (own && !ownMeter.data) return <ScanSkeleton />
+  if (own && (!ownMeter.data || !ownSaved.data)) return <ScanSkeleton />
   if (!own && month.error) return <div className="screen no-nav"><ErrorState error={month.error} onRetry={month.reload} /></div>
   if (!own && !month.data) return <ScanSkeleton />
 
@@ -100,6 +110,8 @@ export default function ScanMeter() {
 
   // Steps run in order so each one can be reviewed: a step already done shows its saved reading.
   function goNext() {
+    // Bautista is the last step: on to his forecast (or Home when opened on its own).
+    if (own) { nav(inFlow ? `/usage/${OWN_ID}` : '/'); return }
     const next = hs[idx + 1]
     // After the last sub-meter, step 6 is Bautista's own meter.
     nav(next ? `/scan/meter/${next.id}` : `/scan/meter/${OWN_ID}?flow=1`)
@@ -107,7 +119,12 @@ export default function ScanMeter() {
   const back = own
     ? inFlow ? () => nav(`/scan/meter/${hs[hs.length - 1]?.id ?? 'D'}`) : undefined
     : () => nav(idx > 0 ? `/scan/meter/${hs[idx - 1].id}` : '/scan/bill')
-  const saved = !own && !scan && phase === 'idle' ? hs[idx]?.reading : undefined
+  const ownKwh = ownSaved.data?.kwh
+  const saved = scan || phase !== 'idle'
+    ? undefined
+    : own
+      ? ownKwh != null ? { value: h.previousReading + ownKwh, kwh: ownKwh } : undefined
+      : hs[idx]?.reading
 
   const shown = scan ? meterDigits(scan.value) : saved ? meterDigits(saved.value) : '-----'
   const typedN = Number(typed)

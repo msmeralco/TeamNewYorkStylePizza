@@ -96,11 +96,23 @@ function lastBill() {
 /** /scan goes to the next step not yet done, so the bill is never re-confirmed by accident. */
 function ScanRedirect() {
   const { data, error } = useAsync(() => api.getMonth(), [])
+  // Only consulted once A to D are done.
+  const own = useAsync(async () => {
+    try {
+      const p = (await api.getUsage('BAU')).points.find((x) => x.kind === 'photo')
+      return { kwh: p ? p.kwhUsed : null }
+    } catch {
+      return { kwh: null as number | null }
+    }
+  }, [])
   if (error) return <Navigate to="/scan/bill" replace />
   if (!data) return <ScanSkeleton />
   if (!data.bill) return <Navigate to="/scan/bill" replace />
   const next = data.households.find((h) => !h.reading)
-  return <Navigate to={next ? `/scan/meter/${next.id}` : '/scan/meter/BAU?flow=1'} replace />
+  if (next) return <Navigate to={`/scan/meter/${next.id}`} replace />
+  // A to D are done: Bautista's own meter is the last step, then everything is done and /scan goes Home.
+  if (own.error || !own.data) return own.error ? <Navigate to="/" replace /> : <ScanSkeleton />
+  return <Navigate to={own.data.kwh == null ? '/scan/meter/BAU?flow=1' : '/'} replace />
 }
 
 /** Tabs and tenant pages render normally; scan routes render in a sheet over the last tab. */

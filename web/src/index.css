@@ -391,14 +391,51 @@ a { color: inherit; text-decoration: none; }
 /* Own-meter Usage is the tallest screen. On short phones the bubble (17px above the bar) would
    cover the buttons and footnote, so the chart is shorter and only the first tip shows. */
 @media (max-height: 860px) { .screen.own .card.usage-chart { --chart-h: min(12dvh, 100px); } }
-/* 840 covers iPhone Safari with its toolbars (about 700 to 800px of page); 844 and taller fit the full layout. */
-@media (max-height: 840px) {
+/* Up to 860px tall (an 844px iPhone, or Safari with its toolbars: about 700 to 800px of page) the tips and rate range fold away; taller screens fit the full layout. */
+@media (max-height: 860px) {
   .screen.own .card.usage-chart { --chart-h: 86px; } /* the SVG scales its text with height; below about 85px labels get too small */
   .screen.own .rate-range { display: none; }
   .screen.own .card.list .list-row:nth-child(n+2) { display: none; }
 }
 /* Safety net: if a phone is shorter still, own-meter Usage scrolls instead of hiding the footnote. */
 .screen.own, .screen.scrolls { overflow-y: auto; }
+
+/* Bill: the breakdown card (7 lines) and a footnote that can carry the lifeline note. */
+.card.bill-lines { padding: 20px 20px 4px; }
+.bill-rows { margin-top: 10px; }
+.footnote .fn-extra { display: block; margin-bottom: 4px; font-size: 13px; line-height: 1.3; }
+/* Long titles (Filipino "Bayarin ni Garcia" at 360px wide) shrink to one line with an ellipsis; the chevron stays. */
+.header-row > .title-btn { min-width: 0; max-width: 100%; }
+.title-btn .title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.title-btn svg { flex: none; }
+
+/* Home, Bill and Check hold the most content (hero, rows, notes). Up to 860px tall they get a tighter
+   rhythm so everything ends 12px above the nav bubble at rest; .scrolls is only the safety net. */
+@media (max-height: 860px) {
+  .screen.scrolls { --top: 22px; --gap: 14px; --row-y: 9px; --hero: 40px; }
+  .screen.scrolls .hero { --py: 18px; padding: var(--py) 20px; }
+  .screen.scrolls .lime-card { --py: 18px; padding: var(--py) 20px; }
+  .screen.scrolls .card { padding: 16px 18px; }
+  .screen.scrolls .card.list { padding: 2px 18px; }
+  .screen.scrolls .card.bill-lines { padding: 16px 18px 2px; }
+  .screen.scrolls .bill-rows { margin-top: 8px; }
+  .screen.scrolls .avatar { width: 36px; height: 36px; }
+  .screen.scrolls .support { font-size: 13px; line-height: 1.3; }
+  .screen.scrolls .footnote { font-size: 13px; }
+}
+@media (max-height: 700px) {
+  .screen.scrolls { --top: 14px; --gap: 9px; --row-y: 5px; --hero: 34px; }
+  .screen.scrolls .hero, .screen.scrolls .lime-card { --py: 14px; padding: var(--py) 18px; }
+  .screen.scrolls .card { padding: 12px 16px; }
+  .screen.scrolls .card.list { padding: 2px 16px; }
+  .screen.scrolls .card.bill-lines { padding: 12px 16px 2px; }
+  .screen.scrolls .bill-rows { margin-top: 6px; }
+  .screen.scrolls .avatar { width: 30px; height: 30px; font-size: 14px; }
+  .screen.scrolls .icon-chip { width: 30px; height: 30px; }
+  .screen.scrolls .btn { min-height: 46px; }
+  /* Own-meter Usage: a little less air so the buttons and footnote clear the bubble at 667px. */
+  .screen.own { --top: 12px; --gap: 8px; }
+}
 
 /* Buttons: icon stays beside the text and the pair stays centred, even if a long translation wraps. */
 .btn, .link-btn { padding: 0 20px; text-align: center; line-height: 1.2; }

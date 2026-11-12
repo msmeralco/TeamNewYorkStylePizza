@@ -151,7 +151,7 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
           <div className="header-row">
             {people.length > 0 ? (
               <button className="title title-btn" onClick={() => setPicking(true)} aria-label={t('usage.choose')}>
-                {t('bill.title', { household: s.name })}
+                <span className="title-text">{t('bill.title', { household: s.name })}</span>
                 <ChevronDown size={20} strokeWidth={2} />
               </button>
             ) : (
@@ -168,13 +168,13 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
         <p className="hero-num"><CountUp value={s.amount} format={php} /></p>
       </div>
 
-      <div className="card" style={{ padding: '20px 20px 4px' }}>
+      <div className="card bill-lines">
         <div className="stacked" aria-hidden>
           {s.lines.map((l) => (
             <div key={l.key} style={{ flex: l.amount / total, background: LINE_STYLE[l.key].color }} />
           ))}
         </div>
-        <div style={{ marginTop: 10 }}>
+        <div className="bill-rows">
           {shownLines.map((l) => {
             const st = LINE_STYLE[l.key]
             return (
@@ -190,8 +190,11 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
         </div>
       </div>
 
-      {lifelineKwh !== undefined && <p className="support">{t('bill.lifelineNote', { kwh: lifelineKwh })}</p>}
-      <Footnote>{t(tenant && (data as { sample?: boolean } | undefined)?.sample ? 'bill.footer' : 'bill.footerOwn')}</Footnote>
+      {/* The lifeline note rides in the footnote (smaller type), so it costs no extra gap. */}
+      <Footnote>
+        {lifelineKwh !== undefined && <span className="fn-extra">{t('bill.lifelineNote', { kwh: lifelineKwh })}</span>}
+        {t(tenant && (data as { sample?: boolean } | undefined)?.sample ? 'bill.footer' : 'bill.footerOwn')}
+      </Footnote>
       {picker}
     </div>
   )

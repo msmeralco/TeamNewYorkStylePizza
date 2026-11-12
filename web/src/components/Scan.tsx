@@ -14,10 +14,13 @@ export function ScanHeader({ step, total, title, onBack }: { step: number; total
     // 8px between the step dashes / close row and the title (was 16px).
     <div className="stack-lg" style={{ gap: 8 }}>
       <div className="row-between">
-        {onBack && (
+        {onBack ? (
           <button className="icon-btn" aria-label={t('scan.back')} onClick={onBack}>
             <ChevronLeft {...ICON} />
           </button>
+        ) : (
+          // Keeps the step dashes in the same place when there is no back button.
+          <span aria-hidden style={{ width: 40, height: 40, flex: 'none' }} />
         )}
         <div className="dashes" aria-label={t('scan.step', { n: step, total })}>
           {Array.from({ length: total }, (_, i) => (

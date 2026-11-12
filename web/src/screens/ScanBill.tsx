@@ -103,7 +103,8 @@ export default function ScanBill() {
     )
   }
 
-  if (phase === 'typing') return <TypeBill onCancel={() => setPhase('idle')} onDone={confirm} />
+  const hasBill = !!month.data?.bill
+  if (phase === 'typing') return <TypeBill replacing={hasBill} onCancel={() => setPhase('idle')} onDone={confirm} />
 
   const b = scan ?? savedBill
   const rows = [
@@ -145,12 +146,9 @@ export default function ScanBill() {
           </div>
         )}
         {savedBill && (
-          <>
-            <button className="btn" onClick={() => nav('/scan/meter/A')}>
-              <Check {...ICON} /> {t('scan.keepNext')}
-            </button>
-            <p className="support scan-hint">{t('scan.rescanBillNote')}</p>
-          </>
+          <button className="btn" onClick={() => nav('/scan/meter/A')}>
+            <Check {...ICON} /> {t('scan.keepNext')}
+          </button>
         )}
         {scan && (
           <button className="btn" disabled={phase === 'saving'} onClick={() => confirm(scan)}>
@@ -163,6 +161,7 @@ export default function ScanBill() {
               {phase === 'reading' ? t('scan.readingBill') : t('scan.tapBill')}
             </p>
           )}
+          {(savedBill || (scan && hasBill)) && <p className="support scan-hint">{t('scan.rescanBillNote')}</p>}
           <button className="link-btn" onClick={() => setPhase('typing')}>
             <Keyboard {...ICON} /> {t('scan.typeInstead')}
           </button>
@@ -177,7 +176,7 @@ export default function ScanBill() {
   )
 }
 
-function TypeBill({ onCancel, onDone }: { onCancel: () => void; onDone: (s: BillScan) => void }) {
+function TypeBill({ replacing, onCancel, onDone }: { replacing: boolean; onCancel: () => void; onDone: (s: BillScan) => void }) {
   const [f, setF] = useState({
     periodStart: SAMPLE_BILL.periodStart,
     periodEnd: SAMPLE_BILL.periodEnd,
@@ -221,6 +220,7 @@ function TypeBill({ onCancel, onDone }: { onCancel: () => void; onDone: (s: Bill
         >
           <Check {...ICON} /> {t('scan.confirmBill')}
         </button>
+        {replacing && <p className="support" style={{ margin: 0, textAlign: 'center' }}>{t('scan.rescanBillNote')}</p>}
         <button className="link-btn" onClick={onCancel}>{t('scan.backCamera')}</button>
       </div>
     </div>

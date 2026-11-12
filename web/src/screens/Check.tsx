@@ -57,7 +57,7 @@ export default function Check() {
   const pct = Math.min(100, (c.readingsKwh / c.masterKwh) * 100)
 
   return (
-    <div className="screen" ref={ref}>
+    <div className="screen scrolls" ref={ref}>
       <div className="header-row"><h1 className="title">{t('check.title')}</h1></div>
 
       <div className="lime-card" style={{ ['--num' as string]: c.addsUp ? 'calc(var(--hero) * 0.68)' : 'var(--hero)', ['--text-gap' as string]: 'calc(var(--num) * 0.1259)' }}>
