@@ -291,7 +291,7 @@ export interface TenantView {
   share: Share;
   rateCheck: RateCheck | null;
   perKwhValue: number;
-  bill: Pick<Bill, "periodStart" | "periodEnd" | "kwh" | "amount" | "accountLast4">;
+  bill: Pick<Bill, "periodStart" | "periodEnd" | "kwh" | "amount" | "accountLast4" | "fixedCharges">;
   expiresAt: string;
   footer: string;
   /** The tenant decides whether the organizer sees the rate line. Defaults to false. */

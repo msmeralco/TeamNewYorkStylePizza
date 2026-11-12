@@ -40,6 +40,7 @@ export function buildTenantView(state: CompoundState, householdId: string, _now:
       kwh: bill.kwh,
       amount: bill.amount,
       accountLast4: bill.accountLast4,
+      fixedCharges: bill.fixedCharges,
     },
     expiresAt: tenantExpiry(bill.nextReadDate),
     footer: TENANT_FOOTER,

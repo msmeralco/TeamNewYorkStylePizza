@@ -26,7 +26,7 @@ describe("buildTenantView", () => {
   it("never carries the 4Ps flag and limits household fields", () => {
     expect(JSON.stringify(v).toLowerCase()).not.toContain("fourps");
     expect(Object.keys(v.household).sort()).toEqual(["displayName", "id", "label"]);
-    expect(Object.keys(v.bill).sort()).toEqual(["accountLast4", "amount", "kwh", "periodEnd", "periodStart"]);
+    expect(Object.keys(v.bill).sort()).toEqual(["accountLast4", "amount", "fixedCharges", "kwh", "periodEnd", "periodStart"]);
   });
   it("throws for an unknown household", () => {
     expect(() => buildTenantView(sampleCompoundState(), "nope", new Date())).toThrow();

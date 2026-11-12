@@ -106,11 +106,14 @@ async function errorText(res: Response): Promise<string> {
     .catch(() => "");
 }
 
-async function callGemini(prompt: string, img: ReaderImage, schema: object): Promise<unknown> {
+async function callGemini(prompt: string, img: ReaderImage | null, schema: object, opts: { deadlineMs?: number } = {}): Promise<unknown> {
+  const deadline = opts.deadlineMs != null ? Date.now() + opts.deadlineMs : null;
   const keys = geminiKeys();
   if (keys.length === 0) throw new ReaderError("no_api_key", "The reader is not configured.");
+  const parts: object[] = [{ text: prompt }];
+  if (img) parts.push({ inline_data: { mime_type: img.mimeType, data: img.base64 } });
   const body = JSON.stringify({
-    contents: [{ role: "user", parts: [{ text: prompt }, { inline_data: { mime_type: img.mimeType, data: img.base64 } }] }],
+    contents: [{ role: "user", parts }],
     generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0 },
   });
   let lastError: ReaderError | null = null;
@@ -118,7 +121,9 @@ async function callGemini(prompt: string, img: ReaderImage, schema: object): Pro
 
   // Learn this key's models up front (once per server instance), so a retired default costs nothing.
   if (!process.env.GEMINI_MODEL && !rankedModels) {
-    const found = rankFlashModels(await listModels(keys[0]).catch(() => []));
+    const found = rankFlashModels(
+      await (deadline == null ? listModels(keys[0]) : Promise.race([listModels(keys[0]), new Promise<string[]>((_, rej) => setTimeout(() => rej(new Error("slow")), Math.max(1, deadline - Date.now())))])).catch(() => []),
+    );
     rankedModels = found.length ? found : [DEFAULT_MODEL];
   }
 
@@ -126,13 +131,19 @@ async function callGemini(prompt: string, img: ReaderImage, schema: object): Pro
     const models = modelsToTry();
     for (let i = 0; i < models.length; i++) {
       const model = models[i];
+      let timeoutMs = ATTEMPT_TIMEOUT_MS;
+      if (deadline != null) {
+        const left = deadline - Date.now();
+        if (left <= 0) throw new ReaderError("network", "The reading service took too long.");
+        timeoutMs = Math.min(left, ATTEMPT_TIMEOUT_MS);
+      }
       let res: Response;
       try {
         res = await fetch(`${BASE}/${model}:generateContent`, {
           method: "POST",
           headers: { "content-type": "application/json", "x-goog-api-key": key },
           body,
-          signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
+          signal: AbortSignal.timeout(timeoutMs),
         });
       } catch (e) {
         const timedOut = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
@@ -170,6 +181,12 @@ async function callGemini(prompt: string, img: ReaderImage, schema: object): Pro
   } catch {
     throw new ReaderError("bad_output", "The reading service sent malformed JSON.");
   }
+}
+
+/** Text-only JSON generation (no image). Shares key failover, model ranking and timeouts. */
+export async function generateJson(prompt: string, schema: object, opts: { deadlineMs?: number } = {}): Promise<{ data: unknown; model?: string }> {
+  const data = await callGemini(prompt, null, schema, opts);
+  return { data, model: lastGoodModel ?? undefined };
 }
 
 /** For /api/health: the ranked models in use (names only, no keys). */
