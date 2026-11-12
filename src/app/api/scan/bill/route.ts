@@ -2,6 +2,7 @@
 import { RATES } from "@/data/tables";
 import { fail, ok, readJson } from "@/lib/http";
 import { getReaders, ReaderError } from "@/lib/readers";
+import { reconcileLines } from "@/lib/engine/billLines";
 
 export const dynamic = "force-dynamic";
 
@@ -31,8 +32,18 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   try {
-    const scan = await getReaders().bill.readBill({ base64: imageBase64, mimeType });
-    return ok({ scan, sanity: sanity(scan.amount, scan.kwh, scan.periodEnd) });
+    const raw = await getReaders().bill.readBill({ base64: imageBase64, mimeType });
+    const lines = reconcileLines(raw.lines, raw.amount);
+    const scan = { ...raw, lines: lines.lines };
+    return ok({
+      scan,
+      sanity: {
+        ...sanity(scan.amount, scan.kwh, scan.periodEnd),
+        linesAddUp: lines.addsUp,
+        linesAdjustedBy: lines.adjusted ? lines.difference : 0,
+        linesNote: lines.note,
+      },
+    });
   } catch (e) {
     const msg = e instanceof ReaderError ? "The bill could not be read." : "The bill could not be read right now.";
     return fail(502, "reader_failed", msg, "Try again, or type it instead");

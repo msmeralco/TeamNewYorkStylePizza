@@ -205,6 +205,10 @@ A household with no linked meter gets the flag "Reading needs a second look: no 
 
 **Accuracy harness:** see `scripts/README.md` (needs `GEMINI_API_KEY` and the labelled photos in `data-private/`).
 
+### Scan bill: charge lines reconciled (12 Nov, about 11 AM)
+
+`sanity` now also carries `linesAddUp: boolean`, `linesAdjustedBy: number` and `linesNote: string | null`. When the scanned lines differ from the total by ₱5 or less, the difference is moved into `lines.other` (so every state endpoint accepts the bill) and `linesNote` says so, for the UI to show before Confirm. A larger difference is left as read, with `linesAddUp: false` and a note asking the user to check each line; confirming it as is would fail with 400 `bad_state` ("Bill lines do not add up to the bill amount.").
+
 ## Golden sample values (the frontend can test against these)
 
 - Bill: 30 Sep to 31 Oct 2026, 180 kWh, ₱2,711.07, account •••• 4821.
