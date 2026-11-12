@@ -9,6 +9,8 @@ Kahati shows any household, including the ones behind someone else's meter, what
 | App (phone browser) | https://kahati-app.vercel.app |
 | API | https://kahati.vercel.app ([contract](docs/API.md)) |
 | Tenant view example | https://kahati-app.vercel.app/t/demo-santos |
+| Test lab (make your own test month) | https://kahati-lab.vercel.app |
+| Start the app empty | https://kahati-app.vercel.app/#fresh |
 
 > **All data in this repo is sample data.** Invented households and a sample bill, drawn as printable props. Computed by Kahati. Not a Meralco statement.
 
@@ -27,6 +29,17 @@ flowchart LR
 
 - **Shared meter (the way in):** tenants pay through someone else's account. Kahati splits the bill fairly, shows each household what it pays for, and checks the readings against the bill.
 - **Own meter:** the same engine gives one household its bill breakdown, a usage forecast and the lifeline warning.
+
+"Sub-meter" means two different things, and the app asks which one a household has on its first screen:
+
+| | Meralco multi-metering | Private sub-meter |
+|---|---|---|
+| Whose meter | Meralco's, one per unit | The landlord's, behind one Meralco service |
+| Own bill and Service ID | Yes | No |
+| Lifeline possible | Yes, on that account | No (lifeline sits on one Meralco account) |
+| Kahati mode | Own meter: forecast and lifeline line | Shared: the fair split, rate check, readings check |
+
+For private sub-meters Kahati does what ERC's redistribution rule already asks of landlords (ERC Res. No. 02, s. 2010, DSOAR Art. VI): charge at cost, no higher than Meralco's rate, and show tenants the master bill. A household behind a shared meter sees what it would pay on its own meter if eligible for lifeline (4Ps or SWDO-certified), and how to get there.
 
 ## How it works
 
@@ -67,6 +80,14 @@ flowchart TD
     C --> T["Tenant link: Lorna's share<br/>₱742.50 asked, ₱64.73 above the bill's rate"]
     T --> Q["Ask Kahati: why is my share this amount?"]
 ```
+
+## Try it yourself
+
+- **Your own test month:** open the [test lab](https://kahati-lab.vercel.app), press Randomize, print or show the bill and meters. The bill carries a small QR (`#lab=<seed>.<min>.<max>.<flags>`); scanning the bill in Kahati loads that month, so the meters you scan next line up. The lab and the app share one deterministic generator (`web/src/lib/labMonth.ts`, a byte-for-byte copy of the lab's).
+- **Start clean:** `https://kahati-app.vercel.app/#fresh` wipes the saved month (normal reloads keep it).
+- **See the digit fix:** after scanning the sample bill, Home ⋯ menu → "Demo: a misread meter". One meter comes in as 04542 at low confidence; Check finds the single digit that closes the gap: "Did you mean 04572, not 04542?"
+
+Lab links also come as `#scenario=` (plain JSON), `#scenarioz=` (compressed) and `#s2=` (compact) for hand-edited months; all are validated before anything is replaced.
 
 ## The split
 
@@ -209,6 +230,13 @@ web/                 the phone-first front end (its own package.json)
 ## Libraries and APIs
 
 Next.js, React, TypeScript, Vitest; Vite, React Router, GSAP, lucide-react, Inter Tight (front end). Google Gemini API (reading photos, Ask Kahati). Open-Meteo (temperatures, no key). Hosted on Vercel.
+
+## Legal and privacy basis
+
+- **Data Privacy Act (RA 10173):** photos are read and not kept; Kahati keeps the period, kWh, amounts, charge lines and the last 4 account digits. The consent screen names Google Gemini and that it may process photos outside the Philippines. Tenant links never carry the 4Ps flag. The prototype uses Gemini's standard API with sample data only; production would use the paid tier and mask names and addresses on the phone first.
+- **Lifeline (RA 11552):** for 4Ps households or households certified below the poverty line by their city or municipal social welfare office (SWDO), on one Meralco account and its meter. Kahati shows usage against the line and what lifeline would take off; it never promises a discount.
+- **Sub-metering (ERC Res. No. 02, s. 2010, DSOAR Art. VI):** at cost, no higher than Meralco's rate, master bill shown. Kahati's rate check says "above the bill's average rate" and that landlords may bill some costs separately; it never calls anything illegal.
+- Kahati is a calculator, not an electricity seller, and is independent of Meralco.
 
 ## What Kahati asks of Meralco
 
