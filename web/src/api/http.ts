@@ -87,9 +87,7 @@ const LINE_ORDER: LineKey[] = ['generation', 'transmission', 'systemLoss', 'dist
 const toB = (id: string) => (id === 'BAU' ? 'hBautista' : `h${id}`)
 const toF = (id: string) => (id === 'hBautista' ? 'BAU' : id.replace(/^h/, ''))
 /** Sample persona names used by the design for the tenant view. */
-const TENANT_FIRST_NAMES: Record<string, string> = { B: 'Lorna' }
 /** The built-in sample's household name behind each persona name: a scenario that renames the household wins. */
-const TENANT_SAMPLE_NAMES: Record<string, string> = { B: 'Santos' }
 /** The demo tenant link in the design ("/t/demo-santos") mints a real signed link. */
 const DEMO_TOKENS: Record<string, string> = { 'demo-santos': 'hB' }
 const RATE_SOURCE = 'Meralco rate announcement (team rate table)'
@@ -661,7 +659,8 @@ export function createHttpApi(baseUrl: string): KahatiApi {
       const fid = toF(v.household.id)
       return {
         householdId: fid,
-        name: v.household.displayName === TENANT_SAMPLE_NAMES[fid] ? TENANT_FIRST_NAMES[fid] : v.household.displayName,
+        // The link belongs to the household: it is named by the household, never by a persona's first name.
+        name: v.household.displayName,
         share: v.share.amount,
         kwh: v.share.kwh,
         askedToPay: v.rateCheck?.askedAmount ?? null,
