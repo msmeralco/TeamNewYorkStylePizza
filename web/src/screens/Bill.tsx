@@ -2,14 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
-import { ArrowLeft, ChevronDown, Gauge, Share2, Sparkles, Landmark, Layers, Network, TrendingDown, UtilityPole, Zap, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Gauge, Share2, Sparkles, Tag, Landmark, Layers, Network, TrendingDown, UtilityPole, Zap, type LucideIcon } from 'lucide-react'
 import { api, type LineKey } from '../api'
 import { CountUp, reduceMotion, useReveal } from '../components/motion'
 import { BillSkeleton } from '../components/Skeletons'
 import { EmptyState, ErrorState, Footnote, ICON, Sheet, toast } from '../components/ui'
 import { lineKey, useT } from '../i18n/copy'
-import { kwh as kwhText, php } from '../lib/format'
+import { kwh as kwhText, php, phpWhole } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
+import { lifelineDiscount } from '../lib/lifeline'
 
 const LINE_STYLE: Record<LineKey, { Icon: LucideIcon; color: string; ink?: string }> = {
   generation: { Icon: Zap, color: 'var(--lime)' },
@@ -123,7 +124,12 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
   // Lifeline is per Meralco account: a 4Ps household at or under 50 kWh still gets none when the compound's one account is above it.
   const fourPs = tenant ? s.fourPs : month?.households.find((h) => h.id === s.householdId)?.fourPs
   const accountKwh = tenant ? s.billKwh : month?.bill?.kwh
-  const lifelineKwh = fourPs && s.kwh <= 50 && accountKwh !== undefined && accountKwh > 50 ? accountKwh : undefined
+  // What lifeline would take off this share on the household's own Meralco meter. It covers most charges but not
+  // universal charges (in "other"), so the estimate leaves the "other" line out and is said as "about".
+  const ownPct = fourPs ? lifelineDiscount(s.kwh) : 0
+  const showLifeline = ownPct > 0 && accountKwh !== undefined && lifelineDiscount(accountKwh) < ownPct
+  const otherLine = s.lines.find((l) => l.key === 'other')?.amount ?? 0
+  const lifelineSave = showLifeline ? Math.round(ownPct * (s.amount - otherLine)) : 0
   const total = s.lines.reduce((a, l) => a + l.amount, 0)
   // Shown lines are rounded to centavos so they add up exactly to the rounded share (largest remainder).
   const shownLines = (() => {
@@ -190,9 +196,16 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
         </div>
       </div>
 
-      {/* The lifeline note rides in the footnote (smaller type), so it costs no extra gap. */}
+      {showLifeline && (
+        <div className="card note bill-lifeline">
+          <span className="icon-chip lime"><Tag {...ICON} /></span>
+          <div className="stack" style={{ gap: 2 }}>
+            <span className="body">{t('bill.lifelineSave', { amount: phpWhole(lifelineSave), pct: Math.round(ownPct * 100) })}</span>
+            <span className="support">{t('bill.lifelineNote', { kwh: accountKwh })}</span>
+          </div>
+        </div>
+      )}
       <Footnote>
-        {lifelineKwh !== undefined && <span className="fn-extra">{t('bill.lifelineNote', { kwh: lifelineKwh })}</span>}
         {t(tenant && (data as { sample?: boolean } | undefined)?.sample ? 'bill.footer' : 'bill.footerOwn')}
       </Footnote>
       {picker}
