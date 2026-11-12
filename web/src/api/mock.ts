@@ -484,6 +484,9 @@ export const mockApi: KahatiApi = {
   importScenarioFromHash() {
     return null
   },
+  async importScenarioLink() {
+    return { ok: false as const, reason: 'scenarios need the live API' }
+  },
   getScenarioName() {
     return null
   },

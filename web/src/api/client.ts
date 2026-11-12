@@ -50,13 +50,15 @@ export interface KahatiApi {
   getOwnMeter(): Promise<{ name: string; meterSerial: string; previousReading: number }>
   /** Startup: imports `#scenario=` from the URL hash if present (and removes the hash). Null when there is none. */
   importScenarioFromHash(): ScenarioImport | null
+  /** Imports a scenario link (full URL or hash: #s2=, #scenarioz= or #scenario=): validates, stores and resets this month. `unchanged` means that scenario was already active, so nothing was reset. */
+  importScenarioLink(link: string, opts?: { force?: boolean }): Promise<ScenarioImport>
   /** Display name of the active lab scenario, or null when the built-in sample is in use. */
   getScenarioName(): string | null
   /** Drops the scenario and resets the demo to the built-in sample. */
   clearScenario(): Promise<void>
 }
 
-export type ScenarioImport = { ok: true; name: string } | { ok: false; reason: string }
+export type ScenarioImport = { ok: true; name: string; unchanged?: boolean } | { ok: false; reason: string }
 
 export class ApiError extends Error {
   status: number

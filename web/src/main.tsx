@@ -6,6 +6,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation, type Location } fr
 import './index.css'
 import { api } from './api'
 import { useAsync } from './lib/useAsync'
+import { inflateScenarioPayload } from './lib/scenarioLink'
 import { ScanSkeleton } from './components/Skeletons'
 import { LangProvider, useT } from './i18n/copy'
 import { BareShell, TabShell } from './components/Shell'
@@ -24,29 +25,24 @@ import Ask from './screens/Ask'
 async function inflateScenarioHash() {
   const hit = /(?:^#|&)scenarioz=([^&]*)/.exec(window.location.hash)
   if (!hit) return
-  let plain = '!'
-  try {
-    const b64 = hit[1].replace(/-/g, '+').replace(/_/g, '/')
-    const bin = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4))
-    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0))
-    const json = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text()
-    const utf8 = new TextEncoder().encode(json)
-    let s = ''
-    for (const b of utf8) s += String.fromCharCode(b)
-    plain = btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-  } catch {
-    /* '!' fails validation, so the person is told the link is damaged */
-  }
+  const plain = (await inflateScenarioPayload(hit[1])) ?? '!' // '!' fails validation: the person is told the link is damaged
   try { history.replaceState(null, '', `${window.location.pathname}${window.location.search}#scenario=${plain}`) } catch { /* ignore */ }
 }
 await inflateScenarioHash()
 // A scenario link pasted into an already-open tab only changes the hash; reload so it is imported.
 window.addEventListener('hashchange', () => {
-  if (/(?:^#|&)scenarioz?=/.test(window.location.hash)) window.location.reload()
+  if (/(?:^#|&)(?:scenarioz?|s2)=/.test(window.location.hash)) window.location.reload()
 })
 
 // A lab link (#scenario=...) is imported once, before the first screen reads any state.
-const scenarioImport = api.importScenarioFromHash()
+// The compact #s2= form is rebuilt from the sample states, so it is read here (async) instead.
+const compactHash = /(?:^#|&)s2=/.test(window.location.hash)
+const scenarioImport = compactHash ? await importCompactHash() : api.importScenarioFromHash()
+async function importCompactHash() {
+  const link = window.location.hash
+  try { history.replaceState(null, '', window.location.pathname + window.location.search) } catch { /* ignore */ }
+  return api.importScenarioLink(link, { force: true })
+}
 
 /** Tells the person what the link did, once the splash is gone. */
 function ScenarioToast({ ready }: { ready: boolean }) {

@@ -7,8 +7,9 @@ import { SAMPLE_BILL } from '../api/mock'
 import { SCAN_STEPS } from './ScanMeter'
 import { Brackets, CameraPanel, ScanBeam, ScanHeader } from '../components/Scan'
 import { useReveal } from '../components/motion'
-import { ICON } from '../components/ui'
+import { ICON, toast } from '../components/ui'
 import { day, php } from '../lib/format'
+import { findScenarioLink } from '../lib/scenarioQr'
 import { notifyChange, useAsync } from '../lib/useAsync'
 
 
@@ -54,6 +55,18 @@ export default function ScanBill() {
   async function read(file: Blob) {
     setErr(undefined)
     setPhase('reading')
+    // A lab-printed bill carries a QR with the scenario link: load it, unless it is already active.
+    try {
+      const link = await findScenarioLink(file)
+      if (link) {
+        const r = await api.importScenarioLink(link)
+        if (!r.ok) toast(t('scenario.invalid', { why: r.reason }))
+        else if (!r.unchanged) {
+          toast(t('scenario.fromBill', { name: r.name }))
+          notifyChange()
+        }
+      }
+    } catch { /* an unreadable QR never blocks the normal read */ }
     // TODO(privacy): mask name, address and account number on the device before upload.
     try {
       setScan(await api.scanBill(file))

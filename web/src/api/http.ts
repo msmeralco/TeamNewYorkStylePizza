@@ -1,3 +1,4 @@
+import { scenarioPayloadFromLink } from '../lib/scenarioLink'
 import { ApiError, type KahatiApi, type ScenarioImport } from './client'
 import type {
   AskAnswer,
@@ -198,6 +199,11 @@ export function parseScenario(encoded: string): { ok: true; scenario: Scenario }
   } catch {
     return { ok: false, reason: 'the link is damaged' }
   }
+  return validateScenario(data)
+}
+
+/** Validates a scenario object (from a plain link, or rebuilt from the compact form). */
+export function validateScenario(data: unknown): { ok: true; scenario: Scenario } | { ok: false; reason: string } {
   if (!isObj(data) || data.v !== 1) return { ok: false, reason: 'unsupported version' }
   if (!allFinite(data)) return { ok: false, reason: 'a number is not valid' }
   const bad =
@@ -205,6 +211,82 @@ export function parseScenario(encoded: string): { ok: true; scenario: Scenario }
     checkState(data.bau, 'Bautista', 'cBautista', ['hBautista'], ['mBautista'])
   if (bad) return { ok: false, reason: bad }
   return { ok: true, scenario: { v: 1, compound: data.compound as unknown as BState, bau: data.bau as unknown as BState } }
+}
+
+// ---------- compact scenario (#s2=) ----------
+
+const DAY = 86400000
+const str = (x: unknown) => { if (typeof x !== 'string') throw new Error('not text'); return x }
+const num = (x: unknown) => { if (typeof x !== 'number') throw new Error('not a number'); return x }
+const arr = (x: unknown, n: number) => { if (!Array.isArray(x) || x.length !== n) throw new Error('bad list'); return x as unknown[] }
+
+/**
+ * Rebuilds a full scenario from the compact lab form by overwriting fields of the built-in sample states.
+ * The compact JSON is {v:2, n, h: 4 household rows, o: own meter row, b: bill row}.
+ */
+function buildCompact(json: string, compoundSample: BState, bauSample: BState): { ok: true; scenario: Scenario } | { ok: false; reason: string } {
+  try {
+    const d = JSON.parse(json) as unknown
+    if (!isObj(d) || d.v !== 2) return { ok: false, reason: 'unsupported version' }
+    const n = str(d.n)
+    const h = arr(d.h, 4).map((r) => arr(r, 6))
+    const o = arr(d.o, 6)
+    const b = arr(d.b, 13)
+    const [periodStart, periodEnd, readDate, nextReadDate] = [str(b[0]), str(b[1]), str(b[2]), str(b[3])]
+    const lineVals = arr(b[6], 7).map(num)
+    const hist = arr(b[10], 12).map(num)
+    const masterSerial = str(b[12])
+
+    const c = structuredClone(compoundSample)
+    c.compound.displayName = n
+    ;['A', 'B', 'C', 'D'].forEach((l, i) => {
+      const row = h[i]
+      const hh = c.households.find((x) => x.id === 'h' + l) as (BHousehold & { language?: string }) | undefined
+      const m = c.meters.find((x) => x.id === 'm' + l)
+      const p = c.previousReadings.find((x) => x.meterId === 'm' + l)
+      const k = c.currentReadings.find((x) => x.meterId === 'm' + l)
+      if (!hh || !m || !p || !k) throw new Error('sample shape')
+      hh.displayName = str(row[0]); hh.fourPs = !!row[1]; hh.language = str(row[2])
+      const serial = str(row[3])
+      m.serial = serial
+      Object.assign(p, { value: num(row[4]), capturedAt: periodStart + 'T09:00:00+08:00', source: 'typed', confidence: null, confirmed: true, serialRead: serial })
+      Object.assign(k, { value: num(row[5]), capturedAt: readDate + 'T09:00:00+08:00', source: 'typed', confidence: null, confirmed: true, serialRead: serial })
+    })
+    const master = c.meters.find((x) => x.id === 'mMaster')
+    if (!master) throw new Error('sample shape')
+    master.serial = masterSerial
+    const [ey, em] = periodEnd.split('-').map(Number)
+    const history = hist.map((kwh, i) => {
+      const t = ey * 12 + (em - 1) - (11 - i)
+      return { month: Math.floor(t / 12) + '-' + String((t % 12) + 1).padStart(2, '0'), kwh }
+    })
+    Object.assign(c.bill, {
+      periodStart, periodEnd, readDate, nextReadDate, kwh: num(b[4]), amount: num(b[5]),
+      lines: Object.fromEntries(LINE_ORDER.map((k, i) => [k, lineVals[i]])) as Lines,
+      fixedCharges: num(b[7]), previousReading: num(b[8]), presentReading: num(b[9]), history, accountLast4: str(b[11]),
+    })
+
+    const a = structuredClone(bauSample)
+    a.compound.displayName = n + ' (own meter)'
+    const bh = a.households.find((x) => x.id === 'hBautista') as (BHousehold & { language?: string }) | undefined
+    const bm = a.meters.find((x) => x.id === 'mBautista')
+    const bp = a.previousReadings.find((x) => x.meterId === 'mBautista')
+    const bk = a.currentReadings.find((x) => x.meterId === 'mBautista')
+    if (!bh || !bm || !bp || !bk) throw new Error('sample shape')
+    const bserial = str(o[3])
+    const readDay = num(o[4])
+    bh.displayName = str(o[0]); bh.fourPs = !!o[1]; bh.language = str(o[2])
+    bm.serial = bserial
+    a.bill.presentReading = readDay
+    a.bill.previousReading = readDay - a.bill.kwh
+    Object.assign(bp, { value: readDay, capturedAt: a.bill.readDate, source: 'bill', confidence: null, confirmed: true })
+    const day18 = new Date(Date.parse(a.bill.readDate.slice(0, 10) + 'T00:00:00Z') + 18 * DAY).toISOString().slice(0, 10)
+    Object.assign(bk, { value: num(o[5]), capturedAt: day18 + 'T08:30:00+08:00', source: 'typed', confidence: null, confirmed: true, serialRead: bserial })
+
+    return validateScenario({ v: 1, compound: c, bau: a })
+  } catch {
+    return { ok: false, reason: 'the link is damaged' }
+  }
 }
 
 const withReadings = (s: BState): BState => ({ ...s, currentReadings: s.currentReadings ?? [] })
@@ -257,11 +339,15 @@ export function createHttpApi(baseUrl: string): KahatiApi {
     }
   }
   let sampleCache: BState | null = null
+  /** The built-in compound sample (GET /api/sample), whatever scenario is active. */
+  async function builtInCompound(): Promise<BState> {
+    if (!sampleCache) sampleCache = await call<BState>('/api/sample?which=compound')
+    return structuredClone(sampleCache)
+  }
   /** The active scenario's compound, else GET /api/sample. */
   async function sample(): Promise<BState> {
     if (local.scenario) return structuredClone(local.scenario.compound)
-    if (!sampleCache) sampleCache = await call<BState>('/api/sample?which=compound')
-    return structuredClone(sampleCache)
+    return builtInCompound()
   }
   /** Working state: the sample compound with this month's readings cleared until scanned. */
   async function state(): Promise<BState> {
@@ -275,10 +361,13 @@ export function createHttpApi(baseUrl: string): KahatiApi {
   }
   let bauCache: BState | null = null
   /** The active scenario's Bautista state, else GET /api/sample?which=bautista (with its seeded day-18 reading). */
-  async function bauSample(): Promise<BState> {
-    if (local.scenario) return structuredClone(local.scenario.bau)
+  async function builtInBau(): Promise<BState> {
     if (!bauCache) bauCache = await call<BState>('/api/sample?which=bautista')
     return structuredClone(bauCache)
+  }
+  async function bauSample(): Promise<BState> {
+    if (local.scenario) return structuredClone(local.scenario.bau)
+    return builtInBau()
   }
   /** Bautista's own-meter state: starts from GET /api/sample?which=bautista, then persists. */
   async function bauState(): Promise<BState> {
@@ -389,6 +478,27 @@ export function createHttpApi(baseUrl: string): KahatiApi {
   }
 
   // ---------- KahatiApi ----------
+  /** Validates a plain payload and makes it the active scenario, restarting this month's progress.
+   * With skipSame, the scenario already active is left alone (re-importing would wipe progress). */
+  function applyScenario(r: ReturnType<typeof parseScenario>, skipSame: boolean): ScenarioImport {
+    if (!r.ok) return r
+    const compound = withReadings(r.scenario.compound)
+    const bau = withReadings(r.scenario.bau)
+    const name = compound.compound.displayName
+    if (skipSame && local.scenario && JSON.stringify(local.scenario.compound) === JSON.stringify(compound) && JSON.stringify(local.scenario.bau) === JSON.stringify(bau)) {
+      return { ok: true, name, unchanged: true }
+    }
+    // This month's progress restarts from the scenario: no readings yet, bill not confirmed.
+    local = {
+      scenario: { v: 1, compound, bau },
+      state: { ...structuredClone(compound), currentReadings: [] },
+      billConfirmed: false,
+      bau: { ...structuredClone(bau), currentReadings: [] },
+    }
+    save()
+    return { ok: true, name }
+  }
+
   return {
     async getMonth(): Promise<MonthView> {
       const s = await state()
@@ -643,18 +753,19 @@ export function createHttpApi(baseUrl: string): KahatiApi {
       if (!hit) return null
       // Drop the hash first so a reload never re-imports (also when the scenario turns out invalid).
       try { history.replaceState(null, '', window.location.pathname + window.location.search) } catch { /* ignore */ }
-      const r = parseScenario(hit[1])
-      if (!r.ok) return r
-      const { compound, bau } = r.scenario
-      // This month's progress restarts from the scenario: no readings yet, bill not confirmed.
-      local = {
-        scenario: { v: 1, compound: withReadings(compound), bau: withReadings(bau) },
-        state: { ...structuredClone(withReadings(compound)), currentReadings: [] },
-        billConfirmed: false,
-        bau: { ...structuredClone(withReadings(bau)), currentReadings: [] },
+      return applyScenario(parseScenario(hit[1]), false)
+    },
+
+    async importScenarioLink(link: string, opts?: { force?: boolean }): Promise<ScenarioImport> {
+      const p = await scenarioPayloadFromLink(link)
+      if (p == null) return { ok: false, reason: 'no scenario in the link' }
+      let r: ReturnType<typeof parseScenario>
+      if (p.kind === 'plain') r = parseScenario(p.payload)
+      else if (p.json == null) r = { ok: false, reason: 'the link is damaged' }
+      else {
+        try { r = buildCompact(p.json, await builtInCompound(), await builtInBau()) } catch { r = { ok: false, reason: 'could not reach Kahati to read the link' } }
       }
-      save()
-      return { ok: true, name: compound.compound.displayName }
+      return applyScenario(r, !opts?.force)
     },
 
     getScenarioName() {
