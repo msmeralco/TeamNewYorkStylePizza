@@ -2,7 +2,7 @@
 import type { Meter, MeterScan, Reading } from "@/types";
 
 export interface MeterIssue {
-  code: "below_previous" | "digit_count" | "reads_disagree" | "serial_mismatch" | "low_confidence";
+  code: "below_previous" | "digit_count" | "reads_disagree" | "serial_mismatch" | "low_confidence" | "previous_mismatch";
   message: string;
 }
 
@@ -28,7 +28,9 @@ export function validateMeterScan(input: {
   const issues: MeterIssue[] = [];
 
   let kwhSinceLast: number | null = null;
-  if (previous) {
+  if (previous && meter && previous.meterId !== meter.id) {
+    issues.push({ code: "previous_mismatch", message: "The last reading belongs to a different meter. Reading needs a second look." });
+  } else if (previous) {
     if (scan.value < previous.value) {
       issues.push({ code: "below_previous", message: "Reading needs a second look: it is lower than last month's." });
     } else {

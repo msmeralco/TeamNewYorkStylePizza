@@ -31,6 +31,7 @@ const MOCK_METERS: Record<string, { serial: string; value: number }> = {
   "SM-0215": { serial: "SM-0215", value: 2238 },
   "SM-0216": { serial: "SM-0216", value: 5055 },
   "MM-5520": { serial: "MM-5520", value: 12552 },
+  "MM-7781": { serial: "MM-7781", value: 12520 },
 };
 
 // Meter ids and the seed's master serial map onto the same props.
@@ -39,8 +40,7 @@ const ALIAS: Record<string, string> = {
   mB: "SM-0214",
   mC: "SM-0215",
   mD: "SM-0216",
-  mMaster: "MM-5520",
-  "MM-7781": "MM-5520",
+  mMaster: "MM-7781",
 };
 
 export class MockMeterReader implements MeterReader {

@@ -196,6 +196,8 @@ export interface Forecast {
   perKwhValue: number | null;
   spike: null | { percentAbove: number; message: string };
   actions: string[];
+  /** Optional plain note, for example when weather data was unavailable or partly last year's. */
+  note?: string;
 }
 
 export type CheckStatus = "ok" | "gap";
@@ -203,7 +205,7 @@ export type CheckStatus = "ok" | "gap";
 export interface HouseholdCheck {
   householdId: string;
   kwh: number;
-  chip: "verified" | "typed";
+  chip: "verified" | "typed" | "missing";
   /** "Reading needs a second look" flags, never naming the household to others. */
   flags: string[];
   suggestion?: { from: string; to: string; message: string } | null;
@@ -221,6 +223,8 @@ export interface CheckResult {
   alignedTo: string;
   gapRule: string | null;
   headline: string;
+  /** On a gap: "Readings add up to 162 of 180 kWh." Null when the readings add up. */
+  detail?: string | null;
 }
 
 /** Shape the vision readers return before the user confirms. */
@@ -248,6 +252,8 @@ export interface BillScan {
   history: { month: string; kwh: number }[];
   accountLast4: string;
   confidence: number;
+  /** Fields the reader could not find (e.g. "lines.taxes", "fixedCharges"); present only when something is missing. */
+  missing?: string[];
   provider: "mock" | "gemini";
 }
 
@@ -280,6 +286,8 @@ export interface TenantView {
   bill: Pick<Bill, "periodStart" | "periodEnd" | "kwh" | "amount" | "accountLast4">;
   expiresAt: string;
   footer: string;
+  /** The tenant decides whether the organizer sees the rate line. Defaults to false. */
+  rateLineVisibleToOrganizer?: boolean;
 }
 
 export interface ApiError {

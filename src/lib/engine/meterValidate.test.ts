@@ -25,6 +25,9 @@ describe("mock meter reader", () => {
     const mm = await r.readMeter(img, { hint: "MM-5520" });
     expect(mm.value).toBe(12552);
     expect(mm.digitsText).toBe("12552");
+    const master = await r.readMeter(img, { hint: "MM-7781", expectedDigits: 5 });
+    expect(master.value).toBe(12520);
+    expect((await r.readMeter(img, { hint: "mMaster" })).value).toBe(12520);
     expect((await r.readMeter(img, { hint: "nope" })).value).toBe(4572);
     expect((await r.readMeter(img)).value).toBe(4572);
   });
@@ -75,5 +78,15 @@ describe("validateMeterScan", () => {
   it("messages never use banned words or em dashes", () => {
     const v = validateMeterScan({ scan: { ...base, value: 1, serial: "X", confidence: 0.1, secondRead: 2 }, meter: meterB, previous: prevB });
     for (const i of v.issues) expect(i.message).not.toMatch(/overcharged|owed|—|Santos/i);
+  });
+});
+
+describe("previous_mismatch", () => {
+  it("does not compute kwhSinceLast when the previous reading is for another meter", () => {
+    const scan: MeterScan = { value: 4572, digitsText: "04572", serial: "SM-0214", confidence: 0.97, secondRead: 4572, provider: "mock" };
+    const v = validateMeterScan({ scan, meter: meterB, previous: { ...prevB, meterId: "mA" } });
+    expect(v.kwhSinceLast).toBeNull();
+    expect(v.ok).toBe(false);
+    expect(v.issues.map((i) => i.code)).toEqual(["previous_mismatch"]);
   });
 });

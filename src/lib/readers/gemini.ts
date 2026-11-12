@@ -56,8 +56,13 @@ function num(x: unknown, what: string): number {
   return n;
 }
 function date(x: unknown, what: string): string {
-  if (typeof x !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(x.trim())) throw new ReaderError("bad_output", `Missing or invalid ${what}.`);
-  return x.trim();
+  const s = typeof x === "string" ? x.trim() : "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  const d = m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null;
+  if (!m || !d || d.getUTCFullYear() !== +m[1] || d.getUTCMonth() !== +m[2] - 1 || d.getUTCDate() !== +m[3]) {
+    throw new ReaderError("bad_output", `Missing or invalid ${what}.`);
+  }
+  return s;
 }
 function clamp01(x: unknown, fallback = 0.5): number {
   const n = numOrNull(x);
@@ -86,11 +91,12 @@ function meterPrompt(expectedDigits?: number): string {
   );
 }
 
-function parseMeter(raw: unknown): { digitsText: string; value: number; serial: string | null; confidence: number } {
+function parseMeter(raw: unknown, expectedDigits?: number): { digitsText: string; value: number; serial: string | null; confidence: number } {
   if (!isObj(raw)) throw new ReaderError("bad_output", "The meter reading was not an object.");
   const d = typeof raw.digits === "number" ? String(Math.trunc(raw.digits)) : typeof raw.digits === "string" ? raw.digits : "";
-  const digitsText = d.split(/[.,]/)[0].replace(/\D/g, "");
+  let digitsText = d.split(/[.,]/)[0].replace(/\D/g, "");
   if (!digitsText) throw new ReaderError("bad_output", "No digits were read from the meter.");
+  if (expectedDigits && digitsText.length < expectedDigits) digitsText = digitsText.padStart(expectedDigits, "0");
   const serial = typeof raw.serial === "string" && raw.serial.trim() ? raw.serial.trim().toUpperCase() : null;
   return { digitsText, value: Number(digitsText), serial, confidence: clamp01(raw.confidence) };
 }
@@ -99,8 +105,8 @@ export class GeminiMeterReader implements MeterReader {
   async readMeter(img: ReaderImage, opts?: { expectedDigits?: number }): Promise<MeterScan> {
     const prompt = meterPrompt(opts?.expectedDigits);
     const [a, b] = await Promise.all([callGemini(prompt, img, METER_SCHEMA), callGemini(prompt, img, METER_SCHEMA)]);
-    const first = parseMeter(a);
-    const second = parseMeter(b);
+    const first = parseMeter(a, opts?.expectedDigits);
+    const second = parseMeter(b, opts?.expectedDigits);
     return {
       value: first.value,
       digitsText: first.digitsText,
@@ -157,12 +163,19 @@ const BILL_PROMPT =
 
 function parseBill(raw: unknown): BillScan {
   if (!isObj(raw)) throw new ReaderError("bad_output", "The bill reading was not an object.");
-  if (!isObj(raw.lines)) throw new ReaderError("bad_output", "The bill reading has no charge lines.");
+  const rawLines: Record<string, unknown> = isObj(raw.lines) ? raw.lines : {};
   const lines = {} as Lines;
+  const missing: string[] = [];
   for (const k of LINE_KEYS as readonly LineKey[]) {
-    const v = raw.lines[k];
-    lines[k] = v === undefined || v === null ? 0 : num(v, `line ${k}`);
+    const v = rawLines[k];
+    if (v === undefined || v === null || v === "") {
+      lines[k] = 0;
+      missing.push(`lines.${k}`);
+    } else lines[k] = num(v, `line ${k}`);
   }
+  const fixedCharges =
+    raw.fixedCharges === undefined || raw.fixedCharges === null || raw.fixedCharges === "" ? null : num(raw.fixedCharges, "fixed charges");
+  if (fixedCharges === null) missing.push("fixedCharges");
   const history: { month: string; kwh: number }[] = [];
   if (Array.isArray(raw.history)) {
     for (const h of raw.history) {
@@ -181,12 +194,13 @@ function parseBill(raw: unknown): BillScan {
     kwh: num(raw.kwh, "kWh"),
     amount: num(raw.amount, "amount"),
     lines,
-    fixedCharges: raw.fixedCharges === undefined || raw.fixedCharges === null ? 0 : num(raw.fixedCharges, "fixed charges"),
+    fixedCharges: fixedCharges ?? 0,
     previousReading: numOrNull(raw.previousReading),
     presentReading: numOrNull(raw.presentReading),
     history,
     accountLast4: digits.slice(-4),
-    confidence: clamp01(raw.confidence),
+    confidence: missing.length ? Math.min(clamp01(raw.confidence), 0.5) : clamp01(raw.confidence),
+    ...(missing.length ? { missing } : {}),
     provider: "gemini",
   };
 }

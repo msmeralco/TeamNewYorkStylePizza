@@ -23,3 +23,31 @@ describe("POST /api/check", () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe("POST /api/check hardening", () => {
+  it("400 bad_state on huge digits", async () => {
+    const s = sampleCompoundState();
+    s.meters[0].digits = 1e7;
+    const res = await post({ state: s });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.code).toBe("bad_state");
+  });
+  it("400 bad_state on garbage capturedAt", async () => {
+    const s = sampleCompoundState();
+    s.currentReadings[0].capturedAt = "garbage";
+    expect((await post({ state: s })).status).toBe(400);
+  });
+  it("400 on duplicate household id", async () => {
+    const s = sampleCompoundState();
+    s.households.push({ ...s.households[0] });
+    expect((await post({ state: s })).status).toBe(400);
+  });
+  it("household with no meter gets a missing row", async () => {
+    const s = sampleCompoundState();
+    s.households.push({ ...s.households[0], id: "hNew" });
+    const j = await (await post({ state: s })).json();
+    const row = j.households.find((h: { householdId: string }) => h.householdId === "hNew");
+    expect(row.chip).toBe("missing");
+    expect(row.kwh).toBe(0);
+  });
+});

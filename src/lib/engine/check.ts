@@ -22,12 +22,17 @@ function shortDate(iso: string): string {
 
 const tidy = (n: number) => String(Number(n.toFixed(1)));
 
+const round1 = (n: number) => Math.round(n * 10) / 10 + 0;
+
 export function checkCompound(state: CompoundState, opts: CheckOptions = {}): CheckResult {
   const { bill } = state;
-  const usage = householdUsage(state);
+  const known = new Set(state.households.map((h) => h.id));
+  // Meters of households that are not in the state are ignored, like in the split.
+  const usage = householdUsage(state).filter((u) => known.has(u.householdId));
   const toleranceKwh = bill.kwh * ADD_UP_TOLERANCE;
   const unmetered = Math.min(Math.max(state.unmeteredKwh || 0, 0), bill.kwh * UNMETERED_CAP);
 
+  // One row per meter; a household with several meters adds them up.
   const kwhById = new Map<string, number>();
   let metered = 0;
   const candidates: DigitFixCandidate[] = [];
@@ -39,24 +44,38 @@ export function checkCompound(state: CompoundState, opts: CheckOptions = {}): Ch
       const meter = state.meters.find((m) => m.id === u.meterId);
       if (meter) candidates.push({ householdId: u.householdId, previous: u.previous, current: u.current, digits: meter.digits });
     }
-    kwhById.set(u.householdId, kwh);
+    kwhById.set(u.householdId, (kwhById.get(u.householdId) ?? 0) + kwh);
     metered += kwh;
   }
 
-  const readingsKwh = metered + unmetered;
-  const missingKwh = bill.kwh - readingsKwh;
+  const readingsRaw = metered + unmetered;
+  const missingRaw = bill.kwh - readingsRaw;
+  const readingsKwh = round1(readingsRaw);
+  const missingKwh = round1(missingRaw);
+  // Decided on the rounded gap so the headline never looks within tolerance while saying gap.
   const status = Math.abs(missingKwh) > toleranceKwh ? "gap" : "ok";
 
-  const fix = suggestDigitFix({ candidates, gapKwh: missingKwh, toleranceKwh });
+  // The gap is on aligned kWh, so the digit fix aligns its candidate the same way (see digitFix.ts).
+  const fix = suggestDigitFix({ candidates, gapKwh: missingRaw, toleranceKwh, readDate: bill.readDate });
 
-  const households: HouseholdCheck[] = usage.map((u) => {
-    const meter = state.meters.find((m) => m.id === u.meterId);
+  const householdIds = state.households.map((h) => h.id);
+  const households: HouseholdCheck[] = householdIds.map((householdId) => {
+    const mine = usage.filter((u) => u.householdId === householdId);
     const flags: string[] = [];
-    const kwh = kwhById.get(u.householdId) ?? 0;
+    // A household with no usable meter at all counts as a missing reading.
+    let anyMissing = mine.length === 0;
+    let anyTyped = false;
+    if (mine.length === 0) flags.push("Reading needs a second look: no reading yet. Take a photo of the meter.");
 
-    if (!u.current) {
-      flags.push("Reading needs a second look: no reading yet. Take a photo of the meter.");
-    } else {
+    for (const u of mine) {
+      const meter = state.meters.find((m) => m.id === u.meterId);
+      const kwh = u.previous && u.current ? alignToReadDate(u.previous, u.current, bill.readDate) - u.previous.value : 0;
+      if (!u.current) {
+        anyMissing = true;
+        flags.push("Reading needs a second look: no reading yet. Take a photo of the meter.");
+        continue;
+      }
+      if (u.current.source === "typed") anyTyped = true;
       if (u.previous && u.current.value < u.previous.value) {
         flags.push("Reading needs a second look: it is below the previous reading.");
       }
@@ -69,19 +88,19 @@ export function checkCompound(state: CompoundState, opts: CheckOptions = {}): Ch
         const late = cap - manilaDay(bill.readDate) > STALE_DAYS;
         if (before || late) flags.push("Reading needs a second look: Photo time is outside this billing period.");
       }
-      const prevKwh = opts.previousKwh?.[u.householdId];
-      if (prevKwh && prevKwh > 0 && u.previous && Math.abs(kwh - prevKwh) / prevKwh > PATTERN_LIMIT) {
+      const prevKwh = opts.previousKwh?.[householdId];
+      if (prevKwh && prevKwh > 0 && u.previous && mine.length === 1 && Math.abs(kwh - prevKwh) / prevKwh > PATTERN_LIMIT) {
         flags.push("Reading needs a second look: usage is far from the usual pattern.");
       }
     }
 
-    const mine = fix && fix.householdId === u.householdId ? fix : null;
+    const sug = fix && fix.householdId === householdId ? fix : null;
     return {
-      householdId: u.householdId,
-      kwh,
-      chip: u.current?.source === "typed" ? "typed" : "verified",
+      householdId,
+      kwh: round1(kwhById.get(householdId) ?? 0),
+      chip: anyMissing ? "missing" : anyTyped ? "typed" : "verified",
       flags,
-      suggestion: mine ? { from: mine.from, to: mine.to, message: mine.message } : null,
+      suggestion: sug ? { from: sug.from, to: sug.to, message: sug.message } : null,
     };
   });
 
@@ -104,5 +123,6 @@ export function checkCompound(state: CompoundState, opts: CheckOptions = {}): Ch
     alignedTo: `Reading dates aligned to the bill: ${shortDate(bill.readDate)}`,
     gapRule: status === "gap" ? GAP_RULE : null,
     headline,
+    detail: status === "gap" ? `Readings add up to ${tidy(readingsKwh)} of ${tidy(bill.kwh)} kWh.` : null,
   };
 }

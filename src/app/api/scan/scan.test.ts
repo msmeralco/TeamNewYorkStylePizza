@@ -18,17 +18,37 @@ describe("POST /api/scan/bill", () => {
     expect(j.scan.accountLast4).toBe("4821");
     expect(j.sanity.withinBand).toBe(true);
     expect(j.sanity.effectiveRate).toBeCloseTo(15.0615, 2);
+    expect(j.sanity.rateMonth).toBe("2026-10");
+    expect(j.sanity.note).toContain("2026-10 rate");
   });
   it("400 on missing image, bad json", async () => {
+    vi.stubEnv("READER", "");
     const r = await postBill(req({ mimeType: "image/jpeg" }));
     expect(r.status).toBe(400);
     expect((await r.json()).error.next).toBe("Type it instead");
     expect((await postBill(req("{nope"))).status).toBe(400);
   });
   it("413 on a huge image", async () => {
+    vi.stubEnv("READER", "");
     const r = await postBill(req({ imageBase64: "A".repeat(4 * 1024 * 1024 + 10), mimeType: "image/jpeg" }));
     expect(r.status).toBe(413);
     expect((await r.json()).error.next).toBe("Retake the photo closer, or type it instead");
+  });
+  it("falls back to the latest earlier rate row and says so", async () => {
+    vi.stubEnv("READER", "gemini");
+    vi.stubEnv("GEMINI_API_KEY", "k");
+    const bill = {
+      periodStart: "2026-11-30", periodEnd: "2026-12-31", readDate: "2026-12-31", nextReadDate: "2027-01-30",
+      kwh: 180, amount: 2711.07, fixedCharges: 21.38, accountLast4: "4821", confidence: 0.9,
+      lines: { generation: 1690, transmission: 230, systemLoss: 150, distribution: 330, supplyMetering: 70, taxes: 190, other: 51.07 },
+    };
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(bill) }] } }] }), { status: 200 })));
+    const r = await postBill(req({ imageBase64: "AAAA", mimeType: "image/jpeg" }));
+    vi.unstubAllGlobals();
+    const j = await r.json();
+    expect(j.sanity.rateMonth).toBe("2026-10");
+    expect(j.sanity.note).toContain("the latest before this bill");
   });
   it("502 when the reader fails", async () => {
     vi.stubEnv("READER", "gemini");
@@ -55,12 +75,14 @@ describe("POST /api/scan/meter", () => {
     expect(j.serialLine).toBe("Serial SM-0214 matches");
   });
   it("flags a mismatch when the hint points at another meter", async () => {
+    vi.stubEnv("READER", "");
     const res = await postMeter(req({ imageBase64: "AAAA", mimeType: "image/jpeg", meter, previous, hint: "SM-0215" }));
     const j = await res.json();
     expect(j.validation.issues.map((i: { code: string }) => i.code)).toContain("serial_mismatch");
     expect(j.serialLine).toBe("Serial SM-0215 does not match this meter");
   });
   it("400 and 413", async () => {
+    vi.stubEnv("READER", "");
     expect((await postMeter(req({}))).status).toBe(400);
     expect((await postMeter(req({ imageBase64: "A".repeat(4 * 1024 * 1024 + 10) }))).status).toBe(413);
   });

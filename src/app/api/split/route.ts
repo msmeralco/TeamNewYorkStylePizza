@@ -1,20 +1,18 @@
 import { computeSplit, SplitError } from "@/lib/engine/split";
 import { fail, ok, readJson } from "@/lib/http";
-import type { CompoundState } from "@/types";
+import { validateState } from "@/lib/validate";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const body = await readJson<{ state?: CompoundState }>(req);
-  if (body instanceof Response) return body;
-  const state = body?.state;
-  if (!state || !state.bill || !Array.isArray(state.households) || !Array.isArray(state.meters)) {
-    return fail(400, "bad_state", "The request needs a state object.", "Send {state} from GET /api/sample.");
-  }
   try {
-    return ok(computeSplit(state));
+    const body = await readJson<{ state?: unknown }>(req);
+    if (body instanceof Response) return body;
+    const v = validateState(body?.state);
+    if (!v.ok) return fail(400, v.code, v.message, v.next);
+    return ok(computeSplit(v.state));
   } catch (e) {
     if (e instanceof SplitError) return fail(422, e.code, e.message, e.next);
-    throw e;
+    return fail(500, "internal", "Something went wrong on our side.", "Try again.");
   }
 }

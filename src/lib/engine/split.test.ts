@@ -87,3 +87,56 @@ describe("rateCheck", () => {
     expect(c.message).toBe("The charged rate matches the bill's rate.");
   });
 });
+
+describe("hardening", () => {
+  it("throws bad_bill for zero kWh or non-finite amounts", () => {
+    for (const mut of [
+      (s: ReturnType<typeof sampleCompoundState>) => (s.bill.kwh = 0),
+      (s: ReturnType<typeof sampleCompoundState>) => (s.bill.amount = NaN),
+      (s: ReturnType<typeof sampleCompoundState>) => (s.bill.kwh = Infinity),
+    ]) {
+      const st = sampleCompoundState();
+      mut(st);
+      let err: unknown;
+      try {
+        computeSplit(st);
+      } catch (e) {
+        err = e;
+      }
+      expect(err).toBeInstanceOf(SplitError);
+      expect((err as SplitError).code).toBe("bad_bill");
+    }
+  });
+
+  it("sums every meter of a household", () => {
+    const st = sampleCompoundState();
+    st.meters.push({ id: "mB2", householdId: "hB", serial: "SM-B2", type: "digital", digits: 5 });
+    st.previousReadings.push({ id: "p", meterId: "mB2", value: 100, capturedAt: "2026-10-01T09:00:00+08:00", source: "photo", confidence: 0.99, confirmed: true });
+    st.currentReadings.push({ id: "c", meterId: "mB2", value: 105, capturedAt: "2026-10-31T09:00:00+08:00", source: "photo", confidence: 0.99, confirmed: true });
+    const r = computeSplit(st);
+    expect(r.shares[1].kwh).toBeCloseTo(50, 10);
+    expect(r.total).toBeCloseTo(2711.07, 10);
+  });
+
+  it("ignores meters of unknown households", () => {
+    const st = sampleCompoundState();
+    st.meters.push({ id: "mX", householdId: "nobody", serial: "SM-X", type: "digital", digits: 5 });
+    const r = computeSplit(st);
+    expect(r.shares.map((s) => s.amount)).toEqual([782.36, 677.77, 573.17, 677.77]);
+  });
+});
+
+describe("rateCheck below", () => {
+  it("says below when more than 2% under", () => {
+    const st = sampleCompoundState();
+    st.chargedRates = [{ householdId: "hB", perKwh: 12 }];
+    const c = rateCheck(st, "hB")!;
+    expect(c.flagged).toBe(false);
+    expect(c.message).toBe("The charged rate is below the bill's rate.");
+  });
+  it("matches within 2%", () => {
+    const st = sampleCompoundState();
+    st.chargedRates = [{ householdId: "hB", perKwh: 14.9 }];
+    expect(rateCheck(st, "hB")!.message).toBe("The charged rate matches the bill's rate.");
+  });
+});

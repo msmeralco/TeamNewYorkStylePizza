@@ -6,7 +6,7 @@ import { householdUsage } from "./readings";
 
 export class SplitError extends Error {
   constructor(
-    public code: "missing_reading" | "negative_kwh" | "no_usage",
+    public code: "missing_reading" | "negative_kwh" | "no_usage" | "bad_bill",
     message: string,
     public next: string,
   ) {
@@ -20,17 +20,22 @@ export function computeSplit(state: CompoundState): SplitResult {
   const N = households.length;
   if (N === 0) throw new SplitError("no_usage", "There are no households to split between.", "Add at least one household.");
 
+  if (!Number.isFinite(bill.kwh) || bill.kwh <= 0 || !Number.isFinite(bill.amount) || !Number.isFinite(bill.fixedCharges)) {
+    throw new SplitError("bad_bill", "The bill kWh must be above zero and the amounts must be numbers.", "Check the bill scan and fix the numbers.");
+  }
+
+  // A household may have several meters: add them up. Meters of unknown households are ignored.
   const usage = householdUsage(state);
   const kOf = new Map<string, number>();
   for (const h of households) {
-    const u = usage.find((x) => x.householdId === h.id);
-    if (!u || u.kwh === null) {
+    const mine = usage.filter((x) => x.householdId === h.id);
+    if (mine.length === 0 || mine.some((u) => u.kwh === null)) {
       throw new SplitError("missing_reading", "A reading is missing, so the bill cannot be split yet.", "Scan or type the missing reading");
     }
-    if (u.kwh < 0) {
+    if (mine.some((u) => (u.kwh as number) < 0)) {
       throw new SplitError("negative_kwh", "A reading is lower than last month's.", "Check the reading and scan or type it again");
     }
-    kOf.set(h.id, u.kwh);
+    kOf.set(h.id, mine.reduce((a, u) => a + (u.kwh as number), 0));
   }
 
   const F = bill.fixedCharges;

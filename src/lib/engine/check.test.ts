@@ -110,3 +110,53 @@ describe("suggestDigitFix", () => {
     expect(suggestDigitFix({ candidates: [{ householdId: "hB", previous: prev, current: cur, digits: 5 }], gapKwh: 500, toleranceKwh: 9 })).toBeNull();
   });
 });
+
+describe("check hardening", () => {
+  it("cheat result has detail", () => {
+    const r = checkCompound(withCurrent("mC", { value: 2220, source: "typed", confidence: null }));
+    expect(r.detail).toBe("Readings add up to 162 of 180 kWh.");
+    expect(checkCompound(sampleCompoundState()).detail).toBeNull();
+  });
+
+  it("missing reading gets the missing chip", () => {
+    const s = sampleCompoundState();
+    s.currentReadings = s.currentReadings.filter((r) => r.meterId !== "mD");
+    const r = checkCompound(s);
+    const d = r.households.find((h) => h.householdId === "hD")!;
+    expect(d.chip).toBe("missing");
+    expect(d.kwh).toBe(0);
+    expect(r.status).toBe("gap");
+  });
+
+  it("rounds kWh to one decimal and keeps integers", () => {
+    const s = sampleCompoundState();
+    s.currentReadings = s.currentReadings.map((r) => (r.meterId === "mA" ? { ...r, capturedAt: "2026-11-02T09:00:00+08:00" } : r));
+    const r = checkCompound(s);
+    for (const n of [r.readingsKwh, r.missingKwh, ...r.households.map((h) => h.kwh)]) expect(n).toBe(Math.round(n * 10) / 10);
+    expect(checkCompound(sampleCompoundState()).households.map((h) => h.kwh)).toEqual([52, 45, 38, 45]);
+  });
+
+  it("sums a household with two meters into one row", () => {
+    const s = sampleCompoundState();
+    s.meters.push({ id: "mB2", householdId: "hB", serial: "SM-B2", type: "digital", digits: 5 });
+    s.previousReadings.push(rd({ meterId: "mB2", value: 100, capturedAt: "2026-10-01T09:00:00+08:00" }));
+    s.currentReadings.push(rd({ meterId: "mB2", value: 110 }));
+    const r = checkCompound(s);
+    expect(r.households.filter((h) => h.householdId === "hB")).toHaveLength(1);
+    expect(r.households.find((h) => h.householdId === "hB")!.kwh).toBe(55);
+    expect(r.readingsKwh).toBe(190);
+  });
+
+  it("digit fix still finds the Santos fix", () => {
+    const r = checkCompound(withCurrent("mB", { value: 4512, confidence: 0.6 }));
+    expect(r.households.find((h) => h.householdId === "hB")!.suggestion?.to).toBe("04572");
+  });
+});
+
+describe("suggestDigitFix odd values", () => {
+  it.each([-5, 1e21, 45.5])("never suggests a fix for value %s", (value) => {
+    const prev = { id: "p", meterId: "mB", value: 4400, capturedAt: "2026-09-30", source: "photo" as const, confidence: 1, confirmed: true };
+    const cur = { id: "c", meterId: "mB", value, capturedAt: "2026-10-31", source: "photo" as const, confidence: 0.5, confirmed: false };
+    expect(suggestDigitFix({ candidates: [{ householdId: "hB", previous: prev, current: cur, digits: 5 }], gapKwh: 60, toleranceKwh: 9 })).toBeNull();
+  });
+});

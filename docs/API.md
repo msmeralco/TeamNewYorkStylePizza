@@ -26,8 +26,8 @@ Types: `src/types/index.ts` (import them directly from the frontend if you share
 | POST | `/api/rate-check` | `CompoundState` + householdId → `RateCheck` | live |
 | POST | `/api/forecast` | Readings + bill → `Forecast` (stages 1 to 3, 50 kWh line) | live |
 | POST | `/api/check` | `CompoundState` → `CheckResult` (add-up, typed chips, gap rule, digit suggestion) | live |
-| POST | `/api/tenant-link` | `CompoundState` + householdId → `{ token, url, expiresAt }` | planned |
-| GET | `/api/tenant/{token}` | → `TenantView` | planned |
+| POST | `/api/tenant-link` | `CompoundState` + householdId → `{ token, url, expiresAt, view }` | live |
+| GET | `/api/tenant/{token}` | → `TenantView` | live |
 
 ## Endpoints
 
@@ -96,7 +96,7 @@ Errors: same 400/413/502 set as the bill route.
 
 ### POST /api/forecast
 
-Request: {state, householdId, asOf?, ownMeter?, history?, nextPeriodCdd?}. Response: Forecast {householdId, stage, readDate, kwh, low, high, label, points, rate, lifeline, perKwhValue, spike, actions}. Sample Bautista: stage 2, kwh 53 (51 to 55), rate 15.0615 (2026-10, fallback, note "Using October's rate. November's is announced mid-month."), lifeline message "Stay under 50 kWh: about ₱0 instead of about ₱519". Sample Santos (hB): stage 1 "Rough guess", kwh 45, perKwhValue 14.94, lifeline null, points 2026-10-31 (day 0) to 2026-11-30 (day 30). Errors: 400 bad_body, bad_state (incl. compound.mode not single or shared), bad_household, bad_as_of, bad_own_meter, bad_history, bad_cdd; 422 unknown_household, no_meter, no_base_reading, reading_below_base, no_last_period. Each has a "next" step. When the rate is a fallback and the table has more than one row, lifeline.message gets an appended peso range sentence (also in lifeline.pesoLow and pesoHigh).
+Request: {state, householdId, asOf?, ownMeter?, history?, nextPeriodCdd?, useWeather?}. `useWeather: true` fits stage 3 from Open-Meteo temperatures and state.bill.history (6 to 24 months), only for a single-meter compound with no ownMeter:false and no mid-period photo; it is ignored in shared mode. If the weather lookup fails (8 s budget) the normal forecast is returned with note "Weather unavailable, using the photo-based forecast." (stage 2) or "Weather unavailable, using last bill's kWh." (stage 1). Stage 3 may carry note "Days past the 16-day weather forecast use last year's temperatures for the same dates." Response: Forecast {householdId, stage, readDate, kwh, low, high, label, points, rate, lifeline, perKwhValue, spike, actions, note?}. Sample Bautista: stage 2, kwh 53 (51 to 55), rate 15.0615 (2026-10, fallback, note "Using October's rate. November's is announced mid-month."), lifeline message "Stay under 50 kWh: about ₱0 instead of about ₱519". Sample Santos (hB): stage 1 "Rough guess", kwh 45, perKwhValue 14.94, lifeline null, points 2026-10-31 (day 0) to 2026-11-30 (day 30). Errors: 400 bad_body, bad_state (incl. compound.mode not single or shared), bad_household, bad_as_of, bad_own_meter, bad_history, bad_cdd, bad_use_weather; 422 unknown_household, no_meter, no_base_reading, reading_below_base, no_last_period. Each has a "next" step. When the rate is a fallback and the table has more than one row, lifeline.message gets an appended peso range sentence (also in lifeline.pesoLow and pesoHigh).
 
 ### POST /api/check
 
@@ -122,19 +122,67 @@ Response 200 (CheckResult), sample compound:
   ],
   "alignedTo": "Reading dates aligned to the bill: 31 Oct",
   "gapRule": null,
-  "headline": "Readings add up: 180 of 180 kWh"
+  "headline": "Readings add up: 180 of 180 kWh",
+  "detail": null
 }
 ```
-Gap example (Dela Cruz typed 2220): status "gap", readingsKwh 162, missingKwh 18, headline "18 kWh missing", hC chip "typed", gapRule "Until it is fixed, the gap is split by kWh.", no suggestion. Over-reporting gives "N kWh extra".
+`detail` is null when ok; on a gap it reads "Readings add up to 162 of 180 kWh." Household chip is "verified", "typed" or "missing" (no current reading). kWh figures are rounded to 1 decimal.
+Gap example (Dela Cruz typed 2220): status "gap", readingsKwh 162, missingKwh 18, headline "18 kWh missing", detail "Readings add up to 162 of 180 kWh.", hC chip "typed", gapRule "Until it is fixed, the gap is split by kWh.", no suggestion. Over-reporting gives "N kWh extra".
 Digit fix example (Santos photo 4512, confidence 0.6): hB.suggestion = {"from":"04512","to":"04572","message":"Did you mean 04572, not 04512?"}.
 Flags (all start "Reading needs a second look", never name a household): below previous reading, serial mismatch, "Photo time is outside this billing period." (captured before the previous reading or more than 7 days after the read date), missing reading, usage over 40% from previous-period kWh (only when provided).
 
 Errors:
 - 400 bad_json: body is not JSON. next: "Send a JSON body."
-- 400 bad_state: state missing or lacks bill, meters or readings. next: start from GET /api/sample.
-- 422 bad_bill_kwh: bill.kwh is 0 or negative. next: check the bill scan.
+- 400 bad_state: state missing or malformed, with a specific message, for example bill.kwh not above zero, bill.amount not above zero, fixedCharges above amount or above lines.supplyMetering, a reading value that is negative, fractional or has more digits than the meter, a bad date, serialRead not a string, confidence outside 0 to 1. next: "Send {state} from GET /api/sample."
+- 500 internal: next "Try again."
+(422 bad_bill_kwh no longer exists; a non-positive bill.kwh is a 400 bad_state.)
 
 Engine exports: checkCompound(state, opts?: {previousKwh?: Record<householdId, number>}), alignToReadDate(prev, curr, readDate) -> number (also exports manilaDay), suggestDigitFix({candidates, gapKwh, toleranceKwh}) -> {householdId, from, to, message} | null.
+
+
+## Batch 2 changes (12 Nov, about 10 AM)
+
+### All state endpoints (split, rate-check, check, tenant-link)
+
+Bodies are validated by `validateState`. Invalid state returns 400 `bad_state` with the specific reason; unexpected errors return 500 `internal` (next "Try again."). Rate check message when the charged rate is more than 2% below the bill's rate: "The charged rate is below the bill's rate."
+
+### POST /api/tenant-link
+Request: `{ state: CompoundState, householdId: string, baseUrl?: string }`. `state` goes through the shared `validateState`. `baseUrl` must be http or https; if omitted, the request origin is used.
+
+Response 200: `{ token, url: "<base>/t/<token>", expiresAt: "2026-12-07T23:59:59+08:00", view: TenantView }`. The view includes the footer "Computed by Kahati. Not a Meralco statement." and never includes the 4Ps flag.
+
+Errors (all `{error:{code,message,next}}`):
+- 400 `bad_state`: state fails validation (next "Send {state} from GET /api/sample.").
+- 400 `bad_request`: householdId is not a string, or baseUrl is not http(s).
+- 400 `bad_json`: body is not valid JSON (from readJson).
+- 404: unknown household (TenantError code).
+- 422 `link_expired_on_issue`: the bill period has already ended (next "Scan this month's bill first."), or a SplitError.
+- 500 `internal`: unexpected error, or TENANT_SECRET missing when VERCEL_ENV=production (next "Try again.").
+
+Limitation: `rateLineVisibleToOrganizer` is fixed at false inside the signed token. The organizer creating the link can see the full rateCheck in the POST response and the base64url token, so the flag is not yet enforced. A later fix is to omit rateCheck from the organizer response or add a tenant-side re-sign endpoint.
+
+### GET /api/tenant/{token}
+Response 200: TenantView. Errors: 401 `bad_signature` and 410 `expired` (next "Ask the organizer for a new link"), 400 `malformed`, 500 `internal`. Both rows in the API.md endpoint table should be marked live and the old `{token,url,expiresAt}` shape replaced.
+
+### Check (update)
+
+POST /api/check: 200 CheckResult now carries `detail` (null when ok; "Readings add up to 162 of 180 kWh." on a gap). Household chip is verified | typed | missing. kWh rounded to 1 decimal. Errors: 400 bad_json; 400 bad_state (specific message, next "Send {state} from GET /api/sample."); 500 internal (next "Try again."). 422 bad_bill_kwh was removed. New bad_state reasons (also apply to /api/split and /api/rate-check): bill.amount must be above zero; fixedCharges cannot exceed amount or lines.supplyMetering; reading value must be a whole number >= 0 and fit the meter's digits; capturedAt date part must be a real date; serialRead must be a string; confidence 0 to 1; perKwh <= 10000; bill.kwh <= 1e7. docs/API.md was updated for the check section only, to cover the above, since the verifier listed that as an issue. The brief said not to edit it, so reconcile if needed.
+
+### Forecast with weather (update)
+
+POST /api/forecast: request adds optional useWeather (boolean; non-boolean gives 400 bad_use_weather). Stage 3 from Open-Meteo applies only when compound.mode is "single", ownMeter is not false, the household has no mid-period photo, and bill.history has 6 to 24 months. It is ignored in shared mode, even with ownMeter:true. Lookups run in parallel under one 8 s deadline. On failure the normal forecast is returned with note "Weather unavailable, using the photo-based forecast." (stage 2) or "Weather unavailable, using last bill's kWh." (stage 1). Stage 3 may carry note "Days past the 16-day weather forecast use last year's temperatures for the same dates." Response gains optional note. This text is already merged into docs/API.md (the "do not edit docs/API.md" rule was overridden by the verifier's explicit fix request).
+
+### Scan (update)
+
+#### POST /api/scan/bill (changed)
+Request: `{ "imageBase64": "...", "mimeType": "image/jpeg" }`
+Response 200: `{ "scan": BillScan, "sanity": { "effectiveRate": 15.0615, "withinBand": true, "note": "About ₱15.06 per kWh, close to Meralco's 2026-10 rate of ₱15.0615.", "rateMonth": "2026-10" } }`
+- Sanity compares amount/kWh with the RATES row for the month of scan.periodEnd, else the latest earlier row. The note names the month used; when it fell back it reads "2026-10 rate (the latest before this bill)". `rateMonth` is the new field. If no row is at or before the bill month, or kwh <= 0: effectiveRate 0, withinBand false, note "Could not check the rate. Please confirm the numbers."
+- `scan.missing?: string[]` (e.g. ["lines.taxes","fixedCharges"]) appears only when the reader could not find those fields; confidence is then <= 0.5, so the UI should ask the user to confirm them.
+- Errors: 400 missing_image / bad_mime, 413 image_too_large, 502 reader_failed (next: "Try again, or type it instead").
+
+#### POST /api/scan/meter (changed)
+Response `validation.issues[].code` gains `"previous_mismatch"` (when previous.meterId !== meter.id; kwhSinceLast is then null, ok false). Mock now maps mMaster and MM-7781 to 12520 (digitsText "12520"); MM-5520 stays 12552. Golden: SM-0214 -> 04572, vs 4527 -> 45 kWh, serial matches.
 
 
 ## Golden sample values (the frontend can test against these)

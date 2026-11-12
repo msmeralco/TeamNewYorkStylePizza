@@ -32,25 +32,28 @@ export async function POST(req: Request): Promise<Response> {
 
   try {
     const scan = await getReaders().bill.readBill({ base64: imageBase64, mimeType });
-    return ok({ scan, sanity: sanity(scan.amount, scan.kwh) });
+    return ok({ scan, sanity: sanity(scan.amount, scan.kwh, scan.periodEnd) });
   } catch (e) {
     const msg = e instanceof ReaderError ? "The bill could not be read." : "The bill could not be read right now.";
     return fail(502, "reader_failed", msg, "Try again, or type it instead");
   }
 }
 
-function sanity(amount: number, kwh: number) {
-  const latest = [...RATES].sort((a, b) => a.month.localeCompare(b.month)).at(-1);
-  if (!(kwh > 0) || !latest) {
+function sanity(amount: number, kwh: number, periodEnd: string) {
+  const month = /^\d{4}-\d{2}/.test(periodEnd) ? periodEnd.slice(0, 7) : "";
+  const sorted = [...RATES].sort((a, b) => a.month.localeCompare(b.month));
+  const row = sorted.filter((r) => r.month <= month).at(-1);
+  if (!(kwh > 0) || !row) {
     return { effectiveRate: 0, withinBand: false, note: "Could not check the rate. Please confirm the numbers." };
   }
   const effectiveRate = amount / kwh;
-  const diff = (effectiveRate - latest.perKwh) / latest.perKwh;
+  const diff = (effectiveRate - row.perKwh) / row.perKwh;
   const withinBand = Math.abs(diff) <= BAND;
+  const used = row.month === month ? `${row.month} rate` : `${row.month} rate (the latest before this bill)`;
   const note = withinBand
-    ? `About ₱${effectiveRate.toFixed(2)} per kWh, close to Meralco's ${latest.month} rate of ₱${latest.perKwh.toFixed(4)}.`
-    : `About ₱${effectiveRate.toFixed(2)} per kWh, far from Meralco's ${latest.month} rate of ₱${latest.perKwh.toFixed(4)}. Please check the kWh and the total.`;
-  return { effectiveRate, withinBand, note };
+    ? `About ₱${effectiveRate.toFixed(2)} per kWh, close to Meralco's ${used} of ₱${row.perKwh.toFixed(4)}.`
+    : `About ₱${effectiveRate.toFixed(2)} per kWh, far from Meralco's ${used} of ₱${row.perKwh.toFixed(4)}. Please check the kWh and the total.`;
+  return { effectiveRate, withinBand, note, rateMonth: row.month };
 }
 
 function missing(): Response {

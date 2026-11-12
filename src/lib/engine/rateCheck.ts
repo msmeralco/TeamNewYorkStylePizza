@@ -16,10 +16,13 @@ export function rateCheck(state: CompoundState, householdId: string): RateCheck 
   const askedAmount = charged.perKwh * share.kwh;
   const aboveBy = round2(askedAmount - share.amount);
   const flagged = charged.perKwh > split.effectiveRate * (1 + RATE_CHECK_THRESHOLD);
+  const below = charged.perKwh < split.effectiveRate * (1 - RATE_CHECK_THRESHOLD);
   const kwhText = String(Math.round(share.kwh * 100) / 100);
   const message = flagged
     ? `${peso(charged.perKwh)} charged, ${peso(split.effectiveRate)} on the bill. That is ${peso(aboveBy)} above the bill's rate on a ${kwhText} kWh share.`
-    : "The charged rate matches the bill's rate.";
+    : below
+      ? "The charged rate is below the bill's rate."
+      : "The charged rate matches the bill's rate.";
 
   return {
     householdId,

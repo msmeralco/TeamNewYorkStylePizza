@@ -67,6 +67,16 @@ describe("GeminiMeterReader", () => {
   });
 });
 
+describe("GeminiMeterReader padding", () => {
+  it("pads dropped zeros and numeric digits to expectedDigits", async () => {
+    const replies = [{ digits: 4572, confidence: 0.9 }, { digits: "4572", confidence: 0.9 }];
+    vi.stubGlobal("fetch", vi.fn(async () => geminiReply(replies.shift())));
+    const s = await new GeminiMeterReader().readMeter(img, { expectedDigits: 5 });
+    expect(s.digitsText).toBe("04572");
+    expect(s.value).toBe(4572);
+  });
+});
+
 describe("GeminiBillReader", () => {
   const good = {
     periodStart: "2026-09-30",
@@ -103,6 +113,28 @@ describe("GeminiBillReader", () => {
   it("rejects a bill with a bad date", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => geminiReply({ ...good, periodStart: "Sept 30" })));
     await expect(new GeminiBillReader().readBill(img)).rejects.toMatchObject({ code: "bad_output" });
+  });
+
+  it("rejects impossible calendar dates", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => geminiReply({ ...good, periodEnd: "2026-02-31" })));
+    await expect(new GeminiBillReader().readBill(img)).rejects.toMatchObject({ code: "bad_output" });
+  });
+
+  it("lowers confidence and lists missing fields instead of using 0 silently", async () => {
+    const { taxes: _t, ...lines } = good.lines;
+    const { fixedCharges: _f, ...rest } = good;
+    vi.stubGlobal("fetch", vi.fn(async () => geminiReply({ ...rest, lines })));
+    const b = await new GeminiBillReader().readBill(img);
+    expect(b.confidence).toBeLessThanOrEqual(0.5);
+    expect(b.missing).toEqual(["lines.taxes", "fixedCharges"]);
+    expect(b.lines.taxes).toBe(0);
+  });
+
+  it("has no missing field on a complete bill", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => geminiReply(good)));
+    const b = await new GeminiBillReader().readBill(img);
+    expect(b.missing).toBeUndefined();
+    expect(b.confidence).toBe(0.9);
   });
 
   it("uses GEMINI_MODEL when set", async () => {
