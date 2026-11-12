@@ -37,6 +37,37 @@ Dev-only shortcuts ("Use the sample bill (mock)", "Use the sample meter (mock)")
 
 Scan routes render in `ScanOverlay`, a sheet that slides up over the last tab, so the tab bar is covered, never removed.
 
+### Screen flow
+
+```mermaid
+flowchart TD
+    HOME["Home /"] -->|"Scan the bill"| SB["Scan bill /scan/bill<br/>step 1 of 6"]
+    SB --> SA["Scan meter A to D<br/>steps 2 to 5"]
+    SA --> SBAU["Scan Bautista /scan/meter/BAU?flow=1<br/>step 6"]
+    SBAU --> UBAU["Usage /usage/BAU<br/>forecast + tier bar"]
+    HOME --> BILL["Bill /bill/:id<br/>household picker"]
+    HOME --> CHECK["Check /check<br/>tap a row to type a reading"]
+    UBAU -->|"Scan the meter"| SOWN["Scan Bautista<br/>single step"]
+    SOWN --> UBAU
+    BILL -->|"chat icon"| ASK["Ask Kahati /ask/:id"]
+    UBAU -->|"chat icon"| ASK
+    LINK["Tenant link /t/:token"] --> TBILL["/t/:token/bill"]
+    LINK --> TASK["/t/:token/ask"]
+```
+
+### Data flow
+
+```mermaid
+flowchart LR
+    S["Screens"] --> C["KahatiApi<br/>src/api/client.ts"]
+    C --> I{"VITE_API_URL set?"}
+    I -- "no" --> M["mock.ts<br/>sample compound in localStorage"]
+    I -- "yes" --> H["http.ts<br/>CompoundState in localStorage"]
+    H -->|"stateless calls"| API["kahati.vercel.app<br/>../docs/API.md"]
+    API --> H
+    H -->|"maps shapes + error codes"| S
+```
+
 ## Code map
 
 ```
