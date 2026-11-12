@@ -120,11 +120,17 @@ const BACKEND_CODES: Record<string, string> = {
  * would be pro-rated back to that date by the read-date alignment check. While the
  * demo clock is on (the default), confirmed readings are stamped on the bill's read
  * date. Set VITE_DEMO_CLOCK=off for real use with current bills.
+ * Bautista's own meter (householdId "BAU") has its own story clock: a confirmed reading
+ * is stamped on 2026-11-18 at 08:30 (the story's day-18 photo), so the printed 12552
+ * reads as 32 kWh at day 18 and forecasts 53 kWh (51 to 55).
  */
 const DEMO_CLOCK = (import.meta.env.VITE_DEMO_CLOCK as string | undefined) !== 'off'
 
+const BAU_DEMO_PHOTO_AT = '2026-11-18T08:30:00+08:00'
+
 const KEY = 'kahati-http-v1'
-interface Local { state: BState | null; billConfirmed: boolean }
+/** `bau` is Bautista's own-meter state, kept apart from the shared compound. */
+interface Local { state: BState | null; billConfirmed: boolean; bau?: BState | null }
 
 export function createHttpApi(baseUrl: string): KahatiApi {
   // ---------- transport ----------
@@ -144,7 +150,12 @@ export function createHttpApi(baseUrl: string): KahatiApi {
         if (e.error?.message) msg = e.error.next ? `${e.error.message} ${e.error.next}` : e.error.message
         code = e.error?.code ? (BACKEND_CODES[e.error.code] ?? e.error.code) : undefined
       } catch {
-        /* plain text */
+        // Not JSON: the host's own error page (e.g. a function timeout during a slow photo read).
+        // Show a translated message instead of the host's raw text.
+        code = path.includes('/api/scan/') ? 'reader_failed' : 'internal'
+        msg = code === 'reader_failed'
+          ? 'The photo could not be read right now. Try again, or type it instead.'
+          : 'Something went wrong on our side. Try again.'
       }
       throw new ApiError(msg, res.status, code)
     }
@@ -178,10 +189,20 @@ export function createHttpApi(baseUrl: string): KahatiApi {
     if (!local.state) {
       const s = await sample()
       s.currentReadings = []
-      local = { state: s, billConfirmed: false }
+      local = { ...local, state: s, billConfirmed: false }
       save()
     }
     return local.state!
+  }
+  let bauCache: BState | null = null
+  /** Bautista's own-meter state: starts from GET /api/sample?which=bautista, then persists. */
+  async function bauState(): Promise<BState> {
+    if (!local.bau) {
+      if (!bauCache) bauCache = await call<BState>('/api/sample?which=bautista')
+      local.bau = structuredClone(bauCache)
+      save()
+    }
+    return local.bau
   }
   const meterOf = (s: BState, hid: string) => s.meters.find((m) => m.householdId === hid)
   const prevOf = (s: BState, meterId: string) => s.previousReadings.find((r) => r.meterId === meterId)
@@ -311,7 +332,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
     },
 
     async scanMeter(householdId, image): Promise<MeterScan> {
-      const s = await state()
+      const s = householdId === 'BAU' ? await bauState() : await state()
       const hid = toB(householdId)
       const m = meterOf(s, hid)
       if (!m) throw new ApiError('Unknown household', 404, 'unknown_household')
@@ -334,7 +355,8 @@ export function createHttpApi(baseUrl: string): KahatiApi {
     },
 
     async confirmReading({ householdId, value, source, capturedAt }): Promise<Reading> {
-      const s = await state()
+      const own = householdId === 'BAU'
+      const s = own ? await bauState() : await state()
       const hid = toB(householdId)
       const m = meterOf(s, hid)
       if (!m) throw new ApiError('Unknown household', 404, 'unknown_household')
@@ -343,7 +365,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
       s.currentReadings = s.currentReadings.filter((r) => r.meterId !== m.id)
       s.currentReadings.push({
         id: `r-${m.id}-${Date.now()}`, meterId: m.id, value, source,
-        capturedAt: DEMO_CLOCK ? `${s.bill.readDate}T09:00:00+08:00` : capturedAt,
+        capturedAt: DEMO_CLOCK ? (own ? BAU_DEMO_PHOTO_AT : `${s.bill.readDate}T09:00:00+08:00`) : capturedAt,
         confidence: source === 'photo' ? 0.95 : null, confirmed: true, serialRead: source === 'photo' ? m.serial : null,
       })
       save()
@@ -365,7 +387,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
     async getUsage(householdId): Promise<UsageView> {
       const own = householdId === 'BAU'
       const s = own
-        ? await call<BState>('/api/sample?which=bautista')
+        ? await bauState()
         : await (async () => { const w = await state(); return local.billConfirmed && allIn(w) ? w : sample() })()
       const hid = toB(householdId)
       const f = await post<BForecast>('/api/forecast', { state: s, householdId: hid })
@@ -431,7 +453,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
       if (!householdId) throw new ApiError('Pick a household first.', 400, 'bad_request')
       const own = householdId === 'BAU'
       const s = own
-        ? await call<BState>('/api/sample?which=bautista')
+        ? await bauState()
         : await (async () => { const w = await state(); return local.billConfirmed && allIn(w) ? w : sample() })()
       return post<AskAnswer>('/api/ask', { ...base, state: s, householdId: toB(householdId) })
     },
@@ -446,7 +468,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
     },
 
     async resetDemo() {
-      local = { state: null, billConfirmed: false }
+      local = { state: null, billConfirmed: false, bau: null }
       save()
     },
   }

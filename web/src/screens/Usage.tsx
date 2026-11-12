@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Bell, ChevronDown, CircleCheck, Sparkles, Clock, Gauge, Leaf, Plug, Snowflake, Tag, TrendingUp } from 'lucide-react'
+import { Bell, Camera, ChevronDown, CircleCheck, Sparkles, Clock, Gauge, Leaf, Plug, Snowflake, Tag, TrendingUp } from 'lucide-react'
 import { api } from '../api'
 import { UsageChart } from '../components/UsageChart'
 import { LifelineBar } from '../components/LifelineBar'
@@ -143,6 +143,12 @@ export default function Usage() {
           )
         })}
       </div>
+
+      {u.mode === 'own' && (
+        <button className="btn compact dark" onClick={() => nav('/scan/meter/BAU')}>
+          <span className="btn-label"><Camera {...ICON} /> {t('usage.scan')}</span>
+        </button>
+      )}
 
       <button
         className={`btn compact${reminded ? ' done' : ''}`}

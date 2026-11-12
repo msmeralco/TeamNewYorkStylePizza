@@ -1,14 +1,14 @@
-import { useRef } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
-import { ArrowLeft, Gauge, Sparkles, Landmark, Layers, Network, TrendingDown, UtilityPole, Zap, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Gauge, Sparkles, Landmark, Layers, Network, TrendingDown, UtilityPole, Zap, type LucideIcon } from 'lucide-react'
 import { api, type LineKey } from '../api'
 import { CountUp, reduceMotion, useReveal } from '../components/motion'
 import { BillSkeleton } from '../components/Skeletons'
-import { ErrorState, Footnote, ICON } from '../components/ui'
+import { ErrorState, Footnote, ICON, Sheet } from '../components/ui'
 import { lineKey, useT } from '../i18n/copy'
-import { php } from '../lib/format'
+import { kwh as kwhText, php } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
 
 const LINE_STYLE: Record<LineKey, { Icon: LucideIcon; color: string; ink?: string }> = {
@@ -28,6 +28,17 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
     const id = tenant ? (await api.getTenantView(params.token!)).householdId : params.householdId!
     return api.getShare(id)
   }, [params.householdId, params.token])
+  const nav = useNavigate()
+  const [picking, setPicking] = useState(false)
+  // Organizer only: the households A to D for the picker (the tenant view has no picker).
+  const { data: month } = useAsync(async () => (tenant ? null : api.getMonth()), [tenant])
+  const people = (month?.households ?? []).filter((h) => h.meterKind === 'sub')
+  const currentId = tenant ? undefined : params.householdId
+  // Remember the household only once its share loaded, so a failed pick is not reopened next time.
+  useEffect(() => {
+    if (!currentId || !data || data.householdId !== currentId) return
+    try { sessionStorage.setItem('kahati-last-bill', currentId) } catch { /* storage unavailable */ }
+  }, [currentId, data])
   const ref = useRef<HTMLDivElement>(null)
   useReveal(ref, !!data, data?.householdId)
   useGSAP(
@@ -43,6 +54,19 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
     <Link to={`/t/${params.token}`} className="icon-btn" aria-label={t('common.back')}>
       <ArrowLeft {...ICON} />
     </Link>
+  )
+  const picker = !tenant && people.length > 0 && (
+    <Sheet open={picking} onClose={() => setPicking(false)}>
+      {people.map((p) => (
+        <button key={p.id} className="list-row" onClick={() => { setPicking(false); nav(`/bill/${p.id}`) }}>
+          <span className="grow">
+            <span className="body">{p.name}</span>
+            <span className="meta">{p.reading && p.share ? `${kwhText(p.reading.kwh)} · ${php(p.share.amount)}` : '-'}</span>
+          </span>
+          {p.id === currentId && <span className="chip">{t('usage.showing')}</span>}
+        </button>
+      ))}
+    </Sheet>
   )
   const cls = `screen${tenant ? ' no-nav' : ''}`
 
@@ -79,7 +103,14 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
           <h1 className="title">{t('bill.title', { household: s.name })}</h1>
         ) : (
           <div className="header-row">
-            <h1 className="title">{t('bill.title', { household: s.name })}</h1>
+            {people.length > 0 ? (
+              <button className="title title-btn" onClick={() => setPicking(true)} aria-label={t('usage.choose')}>
+                {t('bill.title', { household: s.name })}
+                <ChevronDown size={20} strokeWidth={2} />
+              </button>
+            ) : (
+              <h1 className="title">{t('bill.title', { household: s.name })}</h1>
+            )}
             {askBtn}
           </div>
         )}
@@ -109,6 +140,7 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
       </div>
 
       <Footnote>{t('bill.footer')}</Footnote>
+      {picker}
     </div>
   )
 }

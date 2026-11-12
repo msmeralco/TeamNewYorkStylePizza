@@ -44,6 +44,10 @@ function App() {
   )
 }
 
+function lastBill() {
+  try { return sessionStorage.getItem('kahati-last-bill') || 'B' } catch { return 'B' }
+}
+
 /** Tabs and tenant pages render normally; scan routes render in a sheet over the last tab. */
 function AppRoutes() {
   const loc = useLocation()
@@ -55,7 +59,7 @@ function AppRoutes() {
       <Routes location={scanning ? lastTab.current : loc}>
           <Route element={<TabShell />}>
             <Route index element={<Home />} />
-            <Route path="bill" element={<Navigate to="/bill/B" replace />} />
+            <Route path="bill" element={<Navigate to={`/bill/${lastBill()}`} replace />} />
             <Route path="bill/:householdId" element={<BillScreen />} />
             <Route path="usage" element={<Navigate to="/usage/BAU" replace />} />
             <Route path="usage/:householdId" element={<Usage />} />

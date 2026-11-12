@@ -12,6 +12,10 @@ import { useErrText, useT, type TKey } from '../i18n/copy'
 import { meterDigits } from '../lib/format'
 import { notifyChange, useAsync } from '../lib/useAsync'
 
+/** Bautista's own meter (printed prop MM-5520); the bill's read-day reading was 12520. */
+const OWN = { id: 'BAU', name: 'Bautista', meterSerial: 'MM-5520', previousReading: 12520 }
+type Target = { id: string; name: string; meterSerial: string; previousReading: number }
+
 export default function ScanMeter() {
   const { householdId = 'A' } = useParams()
   const nav = useNavigate()
@@ -24,7 +28,8 @@ export default function ScanMeter() {
   const [preview, setPreview] = useState<string>()
   const [err, setErr] = useState<string>()
   const ref = useRef<HTMLDivElement>(null)
-  useReveal(ref, !!month.data, householdId)
+  const own = householdId === OWN.id
+  useReveal(ref, own || !!month.data, householdId)
   // Digits fade in one by one, in place, when a reading arrives.
   useGSAP(
     () => {
@@ -40,13 +45,14 @@ export default function ScanMeter() {
     setPhase('idle'); setScan(undefined); setTyped(''); setPreview(undefined); setErr(undefined)
   }, [householdId])
 
-  if (month.error) return <div className="screen no-nav"><ErrorState error={month.error} onRetry={month.reload} /></div>
-  if (!month.data) return <ScanSkeleton />
+  if (!own && month.error) return <div className="screen no-nav"><ErrorState error={month.error} onRetry={month.reload} /></div>
+  if (!own && !month.data) return <ScanSkeleton />
 
-  const hs = month.data.households
-  const idx = hs.findIndex((h) => h.id === householdId)
-  const h = hs[idx]
-  if (!h) return <div className="screen no-nav"><ErrorState error={Object.assign(new Error(''), { code: 'unknown_household' })} /></div>
+  const hs = month.data?.households ?? []
+  const idx = own ? 0 : hs.findIndex((h) => h.id === householdId)
+  const found: Target | undefined = own ? OWN : hs[idx]
+  if (!found) return <div className="screen no-nav"><ErrorState error={Object.assign(new Error(''), { code: 'unknown_household' })} /></div>
+  const h: Target = found
 
   async function read(file: Blob) {
     setErr(undefined)
@@ -66,6 +72,11 @@ export default function ScanMeter() {
     try {
       await api.confirmReading({ householdId: h.id, value, source, capturedAt: scan?.capturedAt ?? new Date().toISOString() })
       notifyChange()
+      if (own) {
+        // Bautista's own meter: back to the forecast it just updated.
+        nav(`/usage/${OWN.id}`)
+        return
+      }
       const next = hs.slice(idx + 1).find((x) => !x.reading)
       nav(next ? `/scan/meter/${next.id}` : '/')
     } catch (e) {
@@ -76,11 +87,12 @@ export default function ScanMeter() {
 
   const shown = scan ? meterDigits(scan.value) : '-----'
   const typedN = Number(typed)
+  const since = (n: number) => (own ? t('scan.sinceBill', { n }) : t('scan.sinceLast', { n }))
 
   return (
     <div className="screen no-nav" ref={ref}>
-      <ScanHeader step={idx + 1} total={hs.length} title={h.name} />
-      <CameraPanel onPhoto={(f) => { setPreview(URL.createObjectURL(f)); read(f) }} disabled={phase === 'reading'} preview={preview}>
+      <ScanHeader step={own ? 1 : idx + 1} total={own ? 1 : hs.length} title={h.name} />
+      <CameraPanel key={householdId} onPhoto={(f) => { setPreview(URL.createObjectURL(f)); read(f) }} disabled={phase === 'reading'} preview={preview}>
         <div style={{ position: 'relative' }}>
           <div className="digits">
             {shown.split('').map((d, i) => <span key={i}>{d === '-' ? '' : d}</span>)}
@@ -100,7 +112,7 @@ export default function ScanMeter() {
               <label>{t('scan.meterLabel', { n: meterDigits(h.previousReading) })}</label>
               <input inputMode="numeric" autoFocus value={typed} onChange={(e) => setTyped(e.target.value.replace(/\D/g, ''))} />
             </div>
-            {typed && <p className="support" style={{ margin: 0 }}>{t('scan.sinceLast', { n: typedN - h.previousReading })}</p>}
+            {typed && <p className="support" style={{ margin: 0 }}>{since(typedN - h.previousReading)}</p>}
             <button className="btn" disabled={!typed} onClick={() => save(typedN, 'typed')}>
               <Check {...ICON} /> {t('scan.confirm')}
             </button>
@@ -112,7 +124,7 @@ export default function ScanMeter() {
           <>
             <div className="card stack" style={{ gap: 6 }}>
               <span className="hero-num">{meterDigits(scan.value)}</span>
-              <span className="body" style={{ fontWeight: 500 }}>{t('scan.sinceLast', { n: scan.kwhSinceLast })}</span>
+              <span className="body" style={{ fontWeight: 500 }}>{since(scan.kwhSinceLast)}</span>
               <span className="meta" style={{ fontSize: 14 }}>
                 {scan.serialMatches ? <CircleCheck size={15} strokeWidth={1.75} /> : <CircleAlert size={15} strokeWidth={1.75} />}
                 {t(scan.serialMatches ? 'scan.serialMatch' : 'scan.serialNo', { s: scan.serial, name: h.name })}

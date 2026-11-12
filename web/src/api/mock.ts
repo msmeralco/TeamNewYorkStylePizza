@@ -57,10 +57,16 @@ const BAUTISTA: Household = {
 
 /** What each printed demo meter reads (print/README.md). */
 const METER_FACES: Record<string, number> = { A: 3162, B: 4572, C: 2238, D: 5055 }
+/** Bautista's printed own meter (MM-5520); the sample photo also reads 12552. */
+const BAUTISTA_FACE = 12552
+/** Story day of Bautista's mid-month photo (18 Nov, 18 days after the 31 Oct read). */
+const BAUTISTA_PHOTO_DAY = 18
 
 interface State {
   bill: Bill | null
   readings: Record<string, Reading>
+  /** Bautista's confirmed own-meter reading (kept apart from the shared compound's readings). */
+  bau?: number
 }
 
 const KEY = 'kahati-demo-v1'
@@ -201,13 +207,25 @@ export const mockApi: KahatiApi = {
     await wait(300)
     const { confidence: _c, ...rest } = scan
     void _c
-    state = { bill: { id: 'bill-2026-10', ...rest }, readings: {} }
+    state = { ...state, bill: { id: 'bill-2026-10', ...rest }, readings: {} }
     save()
     return state.bill!
   },
 
   async scanMeter(householdId) {
     await wait(1500)
+    if (householdId === BAUTISTA.id) {
+      return {
+        householdId,
+        value: BAUTISTA_FACE,
+        kwhSinceLast: BAUTISTA_FACE - BAUTISTA.previousReading,
+        serial: BAUTISTA.meterSerial,
+        serialMatches: true,
+        confidence: 0.95,
+        capturedAt: nowIso(),
+        needsSecondLook: false,
+      } satisfies MeterScan
+    }
     const h = HOUSEHOLDS.find((x) => x.id === householdId)
     if (!h) throw new ApiError('Unknown household', 404, 'unknown_household')
     const value = METER_FACES[h.id]
@@ -225,6 +243,21 @@ export const mockApi: KahatiApi = {
 
   async confirmReading({ householdId, value, source, capturedAt }) {
     await wait(250)
+    if (householdId === BAUTISTA.id) {
+      if (value < BAUTISTA.previousReading) {
+        throw new ApiError("This reading is below last month's. Check the number.", 422, 'reading_below')
+      }
+      state.bau = value
+      save()
+      return {
+        householdId,
+        value,
+        kwh: value - BAUTISTA.previousReading,
+        source,
+        capturedAt,
+        confirmed: true,
+      } satisfies Reading
+    }
     const h = HOUSEHOLDS.find((x) => x.id === householdId)
     if (!h) throw new ApiError('Unknown household', 404, 'unknown_household')
     if (value < h.previousReading) {
@@ -263,7 +296,7 @@ export const mockApi: KahatiApi = {
     if (householdId === BAUTISTA.id) {
       const rate = SAMPLE_BILL.amount / SAMPLE_BILL.kwh // 15.0615
       const totalDays = 30
-      const photo = { day: 18, kwhUsed: 32 }
+      const photo = { day: BAUTISTA_PHOTO_DAY, kwhUsed: (state.bau ?? BAUTISTA_FACE) - BAUTISTA.previousReading }
       const daily = photo.kwhUsed / photo.day
       const toCome = daily * (totalDays - photo.day)
       const kwh = photo.kwhUsed + toCome
@@ -278,7 +311,7 @@ export const mockApi: KahatiApi = {
         totalDays,
         points: [
           { date: '2026-10-31', day: 0, kwhUsed: 0, kind: 'bill' },
-          { date: '2026-11-18', day: 18, kwhUsed: 32, kind: 'photo' },
+          { date: '2026-11-18', day: photo.day, kwhUsed: photo.kwhUsed, kind: 'photo' },
         ],
         forecast: { kwh, low: kwh - 0.1 * toCome, high: kwh + 0.1 * toCome },
         lifeline: {
@@ -390,7 +423,7 @@ export const mockApi: KahatiApi = {
   },
 
   async resetDemo() {
-    state = { bill: null, readings: {} }
+    state = { bill: null, readings: {}, bau: undefined }
     save()
   },
 }

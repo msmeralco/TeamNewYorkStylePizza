@@ -1,10 +1,11 @@
-import { useRef, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useCloseScan } from './ScanOverlay'
-import { X } from 'lucide-react'
+import { RotateCcw, X } from 'lucide-react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { ICON } from './ui'
 import { useT } from '../i18n/copy'
+import { LiveCamera } from './LiveCamera'
 
 export function ScanHeader({ step, total, title }: { step: number; total: number; title: string }) {
   const close = useCloseScan()
@@ -49,8 +50,9 @@ export function Brackets() {
 }
 
 /**
- * Tappable viewfinder that opens the phone camera (in-app capture, so the
- * capture time is ours and an old gallery photo cannot be passed off).
+ * Viewfinder with a live rear camera (in-app capture, so the capture time is ours and
+ * an old gallery photo cannot be passed off). If the camera cannot start it falls back
+ * to a tappable frame that opens the phone's camera app.
  */
 export function CameraPanel({
   onPhoto,
@@ -65,27 +67,74 @@ export function CameraPanel({
 }) {
   const input = useRef<HTMLInputElement>(null)
   const { t } = useT()
+  const [mode, setMode] = useState<'live' | 'frozen' | 'fallback'>('live')
+  const [frozen, setFrozen] = useState<string>()
+
+  const setFrame = (url?: string) => {
+    setFrozen((old) => {
+      if (old) URL.revokeObjectURL(old)
+      return url
+    })
+  }
+  const latest = useRef<string | undefined>(undefined)
+  latest.current = frozen
+  useEffect(() => () => { if (latest.current) URL.revokeObjectURL(latest.current) }, [])
+
+  const fallback = useCallback(() => setMode('fallback'), [])
+
+  if (mode === 'fallback') {
+    return (
+      <button
+        className="viewfinder"
+        disabled={disabled}
+        onClick={() => input.current?.click()}
+        aria-label={t('scan.takePhoto')}
+      >
+        {preview && <img src={preview} alt="" />}
+        {children}
+        {!preview && <span className="lc-hint">{t('scan.cameraFallback')}</span>}
+        <input
+          ref={input}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) onPhoto(f, new Date().toISOString())
+            e.target.value = ''
+          }}
+        />
+      </button>
+    )
+  }
+
   return (
-    <button
-      className="viewfinder"
-      disabled={disabled}
-      onClick={() => input.current?.click()}
-      aria-label={t('scan.takePhoto')}
-    >
-      {preview && <img src={preview} alt="" />}
+    <div className={`viewfinder${mode === 'live' ? ' is-live' : ''}`}>
+      {mode === 'live' && (
+        <LiveCamera
+          onUnavailable={fallback}
+          onPhoto={(f, at) => {
+            setFrame(URL.createObjectURL(f))
+            setMode('frozen')
+            onPhoto(f, at)
+          }}
+        />
+      )}
+      {mode === 'frozen' && frozen && <img className="lc-frozen" src={frozen} alt="" />}
       {children}
-      <input
-        ref={input}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        hidden
-        onChange={(e) => {
-          const f = e.target.files?.[0]
-          if (f) onPhoto(f, new Date().toISOString())
-          e.target.value = ''
-        }}
-      />
-    </button>
+      {mode === 'frozen' && !disabled && (
+        <button
+          type="button"
+          className="lc-retake"
+          onClick={() => {
+            setFrame(undefined)
+            setMode('live')
+          }}
+        >
+          <RotateCcw {...ICON} /> {t('scan.retake')}
+        </button>
+      )}
+    </div>
   )
 }
