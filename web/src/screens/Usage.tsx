@@ -93,18 +93,18 @@ export default function Usage() {
 
   if ((error as { code?: string } | undefined)?.code?.startsWith('needs_')) {
     const own = householdId === 'BAU'
-    const name = PEOPLE.find((p) => p.id === householdId)?.name ?? householdId
+    // No household name until there is data: the title stays neutral and the picker chooses whose meter.
     return (
       <div className="screen">
         <div className="header-row">
           <button className="title title-btn" onClick={() => setPicking(true)} aria-label={t('usage.choose')}>
-            {t('usage.title', { household: name })}
+            {t('nav.usage')}
             <ChevronDown size={20} strokeWidth={2} />
           </button>
         </div>
         <EmptyState
-          title={t(own ? 'usage.bauEmptyTitle' : 'usage.emptyTitle')}
-          body={t(own ? 'usage.bauEmptyBody' : 'usage.emptyBody')}
+          title={t('usage.emptyTitle')}
+          body={t('usage.emptyBody')}
           onScan={() => nav(own ? '/scan/meter/BAU' : '/scan')}
         />
         {picker}
