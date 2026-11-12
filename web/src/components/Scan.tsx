@@ -94,7 +94,7 @@ export function CameraPanel({
   if (mode === 'fallback') {
     return (
       <button
-        className="viewfinder"
+        className={`viewfinder${preview ? '' : ' has-hint'}`}
         disabled={disabled}
         onClick={() => input.current?.click()}
         aria-label={t('scan.takePhoto')}

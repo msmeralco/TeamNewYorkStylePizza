@@ -329,6 +329,8 @@ a { color: inherit; text-decoration: none; }
 .screen > .spacer, .screen > .viewfinder { flex-shrink: 1; }
 /* A little more air under the camera frame than the screen gap alone. */
 .screen > .viewfinder { margin-bottom: 8px; }
+/* Short phones: no extra air under the frame and a 128px minimum, so the bill review step fits. */
+@media (max-height: 700px) { .screen > .viewfinder { margin-bottom: 0; min-height: 128px; } }
 
 /* Short phones (iPhone SE and similar): tighter rhythm so every screen still fits. */
 /* One title position for every screen (titles, header icons, toast all hang off --top):
@@ -575,6 +577,22 @@ a { color: inherit; text-decoration: none; }
 .lc-hint {
   position: absolute; left: 12px; right: 12px; bottom: 10px; z-index: 2; text-align: center;
   font-size: 14px; font-weight: 500; color: var(--white);
+}
+/* Camera fallback with its hint: the corners sit further out (7% inset) and the hint sits inside them,
+   centred 16px below the drawing, so it never runs over the paper or a corner. The bill drawing scales
+   with the frame (up to 190px) so drawing + hint always fit inside the corners, even at the 140px minimum. */
+.viewfinder.has-hint { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 0 14%; container-type: size; }
+.viewfinder.has-hint > .brackets { top: 7%; right: 7%; bottom: 7%; left: 7%; align-self: stretch; }
+.viewfinder.has-hint > .lc-hint { position: static; padding: 0; line-height: 1.3; max-width: 250px; flex: none; }
+/* 86% between the corners, less the hint (2 lines), the 16px gap and 12px of air above and below. */
+.viewfinder.has-hint .bill-drawing { height: max(0px, min(190px, calc(86% - 90px))); flex: none; }
+/* A short frame (bill review, short phones) shows the message alone, centred between the corners:
+   a thumbnail-sized paper says nothing and would push the message onto the corners. */
+@container (max-height: 240px) {
+  .viewfinder.has-hint .bill-drawing { display: none; }
+  /* Between the corner marks: frame width less, each side, the 7% inset, the 28px corner and 8px.
+     100cqw is the content box (72% of the frame, after the 14% side padding). */
+  .viewfinder.has-hint > .lc-hint { max-width: calc(100cqw * 100 / 72 - 2 * (100cqw * 7 / 72 + 36px)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .lc-skeleton { animation: none; }
