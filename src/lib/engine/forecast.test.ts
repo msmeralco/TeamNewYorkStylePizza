@@ -99,7 +99,7 @@ describe("forecast: Bautista (own meter, stage 2)", () => {
       lineKwh: 50,
       forecastPeso: 518.87,
       underLinePeso: 0,
-      message: "Stay under 50 kWh: about ₱0 instead of about ₱519",
+      message: "Stay under 50 kWh: 100% off instead of about ₱519",
       tierLine: "4Ps lifeline: 100% off up to 50 kWh, 35% off from 51 to 70",
     });
     expect(f.perKwhValue).toBeNull();

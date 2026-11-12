@@ -171,10 +171,12 @@ export function forecast(input: ForecastInput): Forecast {
       lineKwh: LIFELINE_LINE_KWH,
       forecastPeso: round2(forecastPeso),
       underLinePeso: round2(underLinePeso),
+      // Under the line the 100% discount makes the figure exactly ₱0; say the rule ("100% off")
+      // rather than "about ₱0", which reads oddly and sounds like nothing at all is owed.
       message:
         kwh <= LIFELINE_LINE_KWH
-          ? `On track to stay under 50 kWh: about ₱${peso(underLinePeso)}`
-          : `Stay under 50 kWh: about ₱${peso(underLinePeso)} instead of about ₱${peso(forecastPeso)}`,
+          ? `On track to stay under 50 kWh: ${underLinePeso < 0.005 ? "100% off" : `about ₱${peso(underLinePeso)}`}`
+          : `Stay under 50 kWh: ${underLinePeso < 0.005 ? "100% off" : `about ₱${peso(underLinePeso)}`} instead of about ₱${peso(forecastPeso)}`,
       tierLine: tierLine(),
       tiers: LIFELINE_TIERS.map((t) => ({ ...t })),
     };

@@ -110,9 +110,9 @@ describe("readings gap with a typed reading", () => {
 
 describe("Bautista, own meter", () => {
   const ctx = buildContextFromState(sampleBautistaState(), "hBautista", "en");
-  it("lifeline says about ₱0 instead of about ₱519", () => {
+  it("lifeline says 100% off instead of about ₱519", () => {
     const a = answerPreset("lifeline", ctx).answer;
-    expect(a).toContain("about ₱0 instead of about ₱519");
+    expect(a).toContain("100% off instead of about ₱519");
     expect(a).toContain("53 kWh");
     expect(a).toContain("51 to 55");
     selfCheck(a, ctx);
@@ -173,7 +173,8 @@ describe("Filipino templates", () => {
   it("Bautista lifeline in Filipino", () => {
     const c = buildContextFromState(sampleBautistaState(), "hBautista", "fil");
     const a = answerPreset("lifeline", c).answer;
-    expect(a).toContain("₱0");
+    expect(a).toContain("100% diskwento");
+    expect(a).not.toContain("₱0");
     expect(a).toContain("₱519");
   });
 });

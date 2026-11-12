@@ -183,11 +183,17 @@ function saveKwh(ctx: AskContext): Answer {
   // The 50 kWh line is only for a household's own meter, so a shared meter never mentions it here.
   if (ctx.mode === "single" && f.lifelineForecastPeso != null && f.lifelineUnderPeso != null && (f.forecastKwh ?? 0) > 50) {
     answer += fil
-      ? ` Mas malaki ang pagbabago kapag 50 kWh o mas mababa: mga ${pesoWhole(f.lifelineUnderPeso)} sa halip na mga ${pesoWhole(f.lifelineForecastPeso)}.`
-      : ` Getting to 50 kWh or less is a bigger change: about ${pesoWhole(f.lifelineUnderPeso)} instead of about ${pesoWhole(f.lifelineForecastPeso)}.`;
+      ? ` Mas malaki ang pagbabago kapag 50 kWh o mas mababa: ${underLine(f.lifelineUnderPeso, true)} sa halip na mga ${pesoWhole(f.lifelineForecastPeso)}.`
+      : ` Getting to 50 kWh or less is a bigger change: ${underLine(f.lifelineUnderPeso, false)} instead of about ${pesoWhole(f.lifelineForecastPeso)}.`;
     sources.push("lifeline");
   }
   return { answer, sources };
+}
+
+/** What staying under 50 kWh gives: "100% off" when that is ₱0 (never "about ₱0"), otherwise an estimate. */
+function underLine(peso: number, fil: boolean): string {
+  if (peso < 0.005) return fil ? "100% diskwento" : "100% off";
+  return `${fil ? "mga" : "about"} ${pesoWhole(peso)}`;
 }
 
 function lifeline(ctx: AskContext): Answer {
@@ -201,11 +207,11 @@ function lifeline(ctx: AskContext): Answer {
       ? `Sa sariling metro, 100% ang diskwento kapag 50 kWh o mas mababa. Tinatayang ${f.forecastKwh} kWh ang gamit mo${date ? ` sa ${date}` : ""}${range}. ` +
         (on
           ? `Kung mananatili ka roon, mga ${pesoWhole(f.lifelineForecastPeso)} ang bill mo.`
-          : `Kapag nanatili ka sa ilalim ng 50 kWh, mga ${pesoWhole(f.lifelineUnderPeso)} ito sa halip na mga ${pesoWhole(f.lifelineForecastPeso)}. Mula 51 hanggang 70 kWh, 35% na lang ang diskwento.`)
+          : `Kapag nanatili ka sa ilalim ng 50 kWh, ${underLine(f.lifelineUnderPeso, true)} ito sa halip na mga ${pesoWhole(f.lifelineForecastPeso)}. Mula 51 hanggang 70 kWh, 35% na lang ang diskwento.`)
       : `On your own meter, 50 kWh or less gives 100% off. You are forecast at about ${f.forecastKwh} kWh${date ? ` by ${date}` : ""}${range}. ` +
         (on
           ? `If you stay there, your bill is about ${pesoWhole(f.lifelineForecastPeso)}.`
-          : `Staying under 50 kWh is about ${pesoWhole(f.lifelineUnderPeso)} instead of about ${pesoWhole(f.lifelineForecastPeso)}. From 51 to 70 kWh the discount is 35%.`);
+          : `Staying under 50 kWh is ${underLine(f.lifelineUnderPeso, false)} instead of about ${pesoWhole(f.lifelineForecastPeso)}. From 51 to 70 kWh the discount is 35%.`);
     return { answer, sources: ["lifeline", "forecast"] };
   }
   if (ctx.mode === "shared") {
