@@ -174,6 +174,18 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
         <p className="hero-num"><CountUp value={s.amount} format={php} /></p>
       </div>
 
+      {/* Lifeline banner right under the amount: what this household would pay on its own Meralco meter. */}
+      {showLifeline && (
+        <div className="card note bill-lifeline banner">
+          <span className="icon-chip"><Tag {...ICON} /></span>
+          <div className="stack" style={{ gap: 2 }}>
+            {/* Lead with what they would pay on their own meter, not the saving. */}
+            <span className="body"><strong>{t('bill.lifelinePay', { pay: phpWhole(s.amount - lifelineSave), share: phpWhole(s.amount) })}</strong></span>
+            <span className="support">{t('bill.lifelineNote', { kwh: accountKwh, pct: Math.round(ownPct * 100) })}</span>
+          </div>
+        </div>
+      )}
+
       <div className="card bill-lines">
         <div className="stacked" aria-hidden>
           {s.lines.map((l) => (
@@ -196,16 +208,6 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
         </div>
       </div>
 
-      {showLifeline && (
-        <div className="card note bill-lifeline">
-          <span className="icon-chip lime"><Tag {...ICON} /></span>
-          <div className="stack" style={{ gap: 2 }}>
-            {/* Lead with what they would pay on their own meter, not the saving. */}
-            <span className="body"><strong>{t('bill.lifelinePay', { pay: phpWhole(s.amount - lifelineSave), share: phpWhole(s.amount) })}</strong></span>
-            <span className="support">{t('bill.lifelineNote', { kwh: accountKwh, pct: Math.round(ownPct * 100) })}</span>
-          </div>
-        </div>
-      )}
       <Footnote>
         {t(tenant && (data as { sample?: boolean } | undefined)?.sample ? 'bill.footer' : 'bill.footerOwn')}
       </Footnote>

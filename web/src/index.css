@@ -591,3 +591,9 @@ a { color: inherit; text-decoration: none; }
 
 /* Bill: the lifeline savings card stays compact on short phones. */
 @media (max-height: 800px) { .bill-lifeline { padding: 8px 12px; gap: 10px; margin-top: -6px; line-height: 1.25; } .bill-lifeline .icon-chip { width: 32px; height: 32px; } }
+
+/* Bill: lifeline banner under the amount, in brand lime. */
+.bill-lifeline.banner { background: var(--lime); color: var(--ink); }
+.bill-lifeline.banner .icon-chip { background: var(--ink); color: var(--lime); }
+.bill-lifeline.banner .support { color: var(--ink); opacity: 0.75; }
+.bill-lifeline.banner { margin-top: 0 !important; }
