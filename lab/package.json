@@ -1,0 +1,31 @@
+{
+  "name": "kahati-stress-lab",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5181",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 5181",
+    "build:hosted": "tsc --noEmit && vite build --mode hosted",
+    "dev:hosted": "vite --port 5182 --mode hosted"
+  },
+  "dependencies": {
+    "@fontsource/caveat": "^5.1.1",
+    "@fontsource/fira-sans": "^5.1.1",
+    "@fontsource/noto-sans": "^5.1.1",
+    "@types/qrcode": "^1.5.5",
+    "jspdf": "^2.5.2",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsqr": "^1.4.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}

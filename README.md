@@ -9,7 +9,7 @@ Kahati shows any household, including the ones behind someone else's meter, what
 | App (phone browser) | https://kahati-app.vercel.app |
 | API | https://kahati.vercel.app ([contract](docs/API.md)) |
 | Tenant view example | https://kahati-app.vercel.app/t/demo-santos |
-| Test lab (make your own test month) | https://kahati-lab.vercel.app |
+| Test lab (make your own test month) | https://kahati-lab.vercel.app ([source](lab/)) |
 | Start the app empty | https://kahati-app.vercel.app/#fresh |
 | Pitch deck (PowerPoint, with the launch video on slide 16) | [docs/Kahati-pitch-deck.pptx](docs/Kahati-pitch-deck.pptx) |
 
