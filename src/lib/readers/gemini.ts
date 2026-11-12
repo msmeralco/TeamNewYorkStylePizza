@@ -26,10 +26,23 @@ const DEFAULT_MODEL = "gemini-2.5-flash";
 /** Ranked Flash models this deployment's key can call, discovered once per server instance. */
 let rankedModels: string[] | null = null;
 
+/** The model that answered last (tried first), and models set aside after being overloaded. */
+let lastGoodModel: string | null = null;
+const setAsideUntil = new Map<string, number>();
+const SET_ASIDE_MS = 3 * 60 * 1000;
+/** One attempt may take this long before the next model is tried. */
+const ATTEMPT_TIMEOUT_MS = 20_000;
+
 /** The models to try, in order. GEMINI_MODEL pins a single model. */
-function modelsToTry(): string[] {
+function modelsToTry(now = Date.now()): string[] {
   if (process.env.GEMINI_MODEL) return [process.env.GEMINI_MODEL];
-  return rankedModels && rankedModels.length ? rankedModels.slice(0, 3) : [DEFAULT_MODEL];
+  const base = rankedModels && rankedModels.length ? rankedModels : [DEFAULT_MODEL];
+  const resting = (m: string) => (setAsideUntil.get(m) ?? 0) > now;
+  const ordered = [...base].sort((a, b) => {
+    const score = (m: string) => (m === lastGoodModel ? -2 : 0) + (resting(m) ? 2 : 0);
+    return score(a) - score(b);
+  });
+  return ordered.slice(0, 3);
 }
 
 /**
@@ -99,34 +112,41 @@ async function callGemini(prompt: string, img: ReaderImage, schema: object): Pro
   let lastError: ReaderError | null = null;
   let good: Response | null = null;
 
+  // Learn this key's models up front (once per server instance), so a retired default costs nothing.
+  if (!process.env.GEMINI_MODEL && !rankedModels) {
+    const found = rankFlashModels(await listModels(keys[0]).catch(() => []));
+    rankedModels = found.length ? found : [DEFAULT_MODEL];
+  }
+
   keyLoop: for (const key of keys) {
-    let models = modelsToTry();
+    const models = modelsToTry();
     for (let i = 0; i < models.length; i++) {
+      const model = models[i];
       let res: Response;
       try {
-        res = await fetch(`${BASE}/${models[i]}:generateContent`, {
+        res = await fetch(`${BASE}/${model}:generateContent`, {
           method: "POST",
           headers: { "content-type": "application/json", "x-goog-api-key": key },
           body,
+          signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
         });
-      } catch {
+      } catch (e) {
+        const timedOut = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
+        if (timedOut) {
+          setAsideUntil.set(model, Date.now() + SET_ASIDE_MS);
+          lastError = new ReaderError("network", `The reading service took too long (${model}).`);
+          continue;
+        }
         lastError = new ReaderError("network", "Could not reach the reading service.");
         continue keyLoop;
       }
       if (res.ok) {
         good = res;
+        lastGoodModel = model;
         break keyLoop;
       }
-      lastError = new ReaderError("http_error", `The reading service returned HTTP ${res.status} (${models[i]}). ${await errorText(res)}`.trim());
-      // Retired or unknown model: learn this key's models once and start over with the best ones.
-      if (res.status === 404 && !process.env.GEMINI_MODEL && !rankedModels) {
-        rankedModels = rankFlashModels(await listModels(key).catch(() => []));
-        if (rankedModels.length) {
-          models = modelsToTry();
-          i = -1;
-          continue;
-        }
-      }
+      lastError = new ReaderError("http_error", `The reading service returned HTTP ${res.status} (${model}). ${await errorText(res)}`.trim());
+      if (res.status === 503 || res.status === 429) setAsideUntil.set(model, Date.now() + SET_ASIDE_MS);
       if (TRY_NEXT_MODEL.has(res.status) && i < models.length - 1) continue;
       if (TRY_NEXT_KEY.has(res.status)) continue keyLoop;
       break keyLoop;
@@ -149,8 +169,8 @@ async function callGemini(prompt: string, img: ReaderImage, schema: object): Pro
 }
 
 /** For /api/health: the ranked models in use (names only, no keys). */
-export function readerModels(): string[] {
-  return modelsToTry();
+export function readerModels(): { order: string[]; lastGood: string | null } {
+  return { order: modelsToTry(), lastGood: lastGoodModel };
 }
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === "object" && x !== null && !Array.isArray(x);
@@ -319,4 +339,11 @@ export class GeminiBillReader implements BillReader {
   async readBill(img: ReaderImage): Promise<BillScan> {
     return parseBill(await callGemini(BILL_PROMPT, img, BILL_SCHEMA));
   }
+}
+
+/** Tests only: forget the learned models and the last good model. */
+export function resetReaderStateForTests(): void {
+  rankedModels = null;
+  lastGoodModel = null;
+  setAsideUntil.clear();
 }

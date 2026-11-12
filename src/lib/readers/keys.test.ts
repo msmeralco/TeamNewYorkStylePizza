@@ -1,11 +1,12 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { GeminiMeterReader, geminiKeys } from "./gemini";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { GeminiMeterReader, geminiKeys, resetReaderStateForTests } from "./gemini";
 
 const okReply = (obj: object) =>
   new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(obj) }] } }] }), { status: 200 });
 
 describe("Gemini backup keys", () => {
   const saved = { ...process.env };
+  beforeEach(() => resetReaderStateForTests());
   afterEach(() => {
     process.env = { ...saved };
     vi.unstubAllGlobals();
@@ -62,7 +63,7 @@ describe("rankFlashModels and model failover", () => {
     expect(rankFlashModels(["gemini-3.8-flash-lite", "models/gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.8-flash-image", "gemini-3.1-pro"])).toEqual(["gemini-3.8-flash", "gemini-3.8-flash-lite", "gemini-3.5-flash"]);
   });
 
-  it("learns the key's models after a 404 and moves to the next model on 503", async () => {
+  it("learns the key's models and moves to the next model on 503", async () => {
     process.env.GEMINI_API_KEY = "k1";
     delete process.env.GEMINI_API_KEY_2;
     delete process.env.GEMINI_MODEL;
@@ -76,6 +77,7 @@ describe("rankFlashModels and model failover", () => {
       if (url.includes("gemini-3.8-flash:")) return new Response(JSON.stringify({ error: { status: "UNAVAILABLE", message: "busy" } }), { status: 503 });
       return okReply({ digits: "04572", serial: "SM-0214", confidence: 0.9 });
     }));
+    resetReaderStateForTests();
     const { GeminiMeterReader: R } = await import("./gemini");
     const scan = await new R().readMeter({ base64: "aGk=", mimeType: "image/jpeg" }, { expectedDigits: 5 });
     expect(scan.value).toBe(4572);

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { GeminiBillReader, GeminiMeterReader } from "./gemini";
+import { GeminiBillReader, GeminiMeterReader, resetReaderStateForTests } from "./gemini";
 import { getReaders } from "./index";
 import { MockBillReader } from "./mock";
 import { ReaderError } from "./types";
@@ -13,7 +13,9 @@ function geminiReply(obj: unknown, rawText?: string): Response {
 
 beforeEach(() => {
   vi.stubEnv("GEMINI_API_KEY", "test-key");
-  vi.stubEnv("GEMINI_MODEL", "");
+  // Pin the model so these tests count only generateContent calls (no model-list lookup).
+  vi.stubEnv("GEMINI_MODEL", "gemini-test-flash");
+  resetReaderStateForTests();
 });
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -32,7 +34,7 @@ describe("GeminiMeterReader", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(s).toEqual({ value: 4572, digitsText: "04572", serial: "SM-0214", confidence: 0.9, secondRead: 4572, provider: "gemini" });
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent");
+    expect(url).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-test-flash:generateContent");
     expect((init.headers as Record<string, string>)["x-goog-api-key"]).toBe("test-key");
     const sent = JSON.parse(init.body as string);
     expect(sent.generationConfig.responseMimeType).toBe("application/json");
