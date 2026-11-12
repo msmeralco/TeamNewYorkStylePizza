@@ -12,12 +12,13 @@ import { useT } from '../i18n/copy'
 import { day, localMonth, monthName, phpWhole } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
 
-const PEOPLE = [
-  { id: 'BAU', name: 'Bautista', note: 'usage.own' as const },
-  { id: 'A', name: 'Reyes', note: 'usage.shared' as const },
-  { id: 'B', name: 'Santos', note: 'usage.shared' as const },
-  { id: 'C', name: 'Dela Cruz', note: 'usage.shared' as const },
-  { id: 'D', name: 'Garcia', note: 'usage.shared' as const },
+/** Picker rows: Bautista first, then the compound's households. Names come from the active sample or scenario. */
+const PEOPLE_IDS = [
+  { id: 'BAU', note: 'usage.own' as const },
+  { id: 'A', note: 'usage.shared' as const },
+  { id: 'B', note: 'usage.shared' as const },
+  { id: 'C', note: 'usage.shared' as const },
+  { id: 'D', note: 'usage.shared' as const },
 ]
 const ACTION_ICON = { plug: Plug, clock: Clock, snowflake: Snowflake }
 const whole = (n: number) => `${Math.round(n)} kWh`
@@ -66,7 +67,13 @@ export default function Usage() {
   const { data, error, loading, reload } = useAsync(() => api.getUsage(householdId), [householdId])
   // For the empty state's button label: the bill comes first, then the meters.
   const { data: month } = useAsync(() => api.getMonth(), [])
+  const { data: own } = useAsync(() => api.getOwnMeter(), [])
   const [picking, setPicking] = useState(false)
+  // Until a name is known the row shows its household letter (Bautista: the own-meter label), never a stale sample name.
+  const PEOPLE = PEOPLE_IDS.map((p) => ({
+    ...p,
+    name: p.id === 'BAU' ? (own?.name || t('usage.own')) : (month?.households.find((h) => h.id === p.id)?.name || p.id),
+  }))
   const ref = useRef<HTMLDivElement>(null)
   useReveal(ref, !!data, data?.householdId)
   // "Remind me": confirmed in the button itself (no toast over it). The new label fades in place.

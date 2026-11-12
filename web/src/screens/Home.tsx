@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CircleAlert, CircleCheck, Ellipsis, Languages, RotateCcw, ScanLine, TrendingUp, Zap } from 'lucide-react'
+import { CircleAlert, CircleCheck, Ellipsis, FlaskConical, Languages, RotateCcw, ScanLine, TrendingUp, Zap } from 'lucide-react'
 import { api } from '../api'
 import { CountUp, useReveal } from '../components/motion'
 import { HomeSkeleton } from '../components/Skeletons'
-import { EmptyState, ErrorState, ICON, Sheet } from '../components/ui'
+import { EmptyState, ErrorState, ICON, Sheet, toast } from '../components/ui'
 import { useT } from '../i18n/copy'
 import { day, kwh, monthName, php } from '../lib/format'
 import { notifyChange, useAsync } from '../lib/useAsync'
@@ -15,6 +15,8 @@ export default function Home() {
   const nav = useNavigate()
   const ref = useRef<HTMLDivElement>(null)
   const [menu, setMenu] = useState(false)
+  // Read on each render: clearing the scenario re-renders Home through notifyChange().
+  const scenario = api.getScenarioName()
   const stateKey = data ? `${!!data.bill}-${data.households.filter((h) => h.reading).length}` : ''
   useReveal(ref, !!data, stateKey)
 
@@ -37,6 +39,15 @@ export default function Home() {
         <span className="icon-chip"><Languages {...ICON} /></span>
         <span className="grow body">{lang === 'en' ? 'Filipino' : 'English'}</span>
       </button>
+      {scenario && (
+        <button className="list-row" onClick={async () => { await api.clearScenario(); notifyChange(); setMenu(false) }}>
+          <span className="icon-chip"><FlaskConical {...ICON} /></span>
+          <span className="grow">
+            <span className="body">{t('home.useBuiltIn')}</span>
+            <span className="meta">{t('home.scenarioActive', { name: scenario })}</span>
+          </span>
+        </button>
+      )}
       <button className="list-row" onClick={async () => { await api.resetDemo(); notifyChange(); setMenu(false) }}>
         <span className="icon-chip"><RotateCcw {...ICON} /></span>
         <span className="grow body">{t('home.reset')}</span>
@@ -77,7 +88,7 @@ export default function Home() {
         <>
           <div className="row-between">
             <span className="status-line"><CircleAlert {...ICON} />{t('home.toGo', { n: missing.length, total: m.households.length })}</span>
-            <button className="text-link" onClick={async () => { await api.loadSampleReadings(); notifyChange() }}>
+            <button className="text-link" onClick={async () => { const r = await api.loadSampleReadings(); notifyChange(); if (r.loaded === 0 && r.missing > 0) toast(t('home.loadRestNone')) }}>
               {t('home.loadRest')}
             </button>
           </div>

@@ -456,8 +456,10 @@ export const mockApi: KahatiApi = {
 
   async loadSampleReadings() {
     await wait(300)
+    let loaded = 0
     for (const h of HOUSEHOLDS) {
       if (state.readings[h.id]) continue
+      loaded++
       const value = METER_FACES[h.id]
       state.readings[h.id] = {
         householdId: h.id, value, kwh: value - h.previousReading,
@@ -467,9 +469,25 @@ export const mockApi: KahatiApi = {
     // Bautista too: his day-18 photo reading.
     if (state.bau === undefined) state.bau = BAUTISTA_FACE
     save()
+    return { loaded, missing: 0 }
   },
 
   async resetDemo() {
+    state = { bill: null, readings: {}, bau: undefined }
+    save()
+  },
+
+  async getOwnMeter() {
+    return { name: BAUTISTA.name, meterSerial: BAUTISTA.meterSerial, previousReading: BAUTISTA.previousReading }
+  },
+  // Scenarios are an HTTP-adapter feature; offline dev has only the built-in sample.
+  importScenarioFromHash() {
+    return null
+  },
+  getScenarioName() {
+    return null
+  },
+  async clearScenario() {
     state = { bill: null, readings: {}, bau: undefined }
     save()
   },

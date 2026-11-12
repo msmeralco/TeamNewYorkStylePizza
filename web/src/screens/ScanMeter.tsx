@@ -15,9 +15,8 @@ import { notifyChange, useAsync } from '../lib/useAsync'
 /** Scan tab sequence: the bill, the four sub-meters, then Bautista's own meter. */
 export const SCAN_STEPS = 6
 
-/** Bautista's own meter (printed prop MM-5520); the bill's read-day reading was 12520. */
-
-const OWN = { id: 'BAU', name: 'Bautista', meterSerial: 'MM-5520', previousReading: 12520 }
+/** Bautista's own meter id; his name, serial and read-day reading come from the active sample or scenario. */
+const OWN_ID = 'BAU'
 type Target = { id: string; name: string; meterSerial: string; previousReading: number }
 
 export default function ScanMeter() {
@@ -34,8 +33,9 @@ export default function ScanMeter() {
   const [preview, setPreview] = useState<string>()
   const [err, setErr] = useState<string>()
   const ref = useRef<HTMLDivElement>(null)
-  const own = householdId === OWN.id
-  useReveal(ref, own || !!month.data, householdId)
+  const own = householdId === OWN_ID
+  const ownMeter = useAsync(() => api.getOwnMeter(), [])
+  useReveal(ref, own ? !!ownMeter.data : !!month.data, householdId)
   // Digits fade in one by one, in place, when a reading arrives.
   useGSAP(
     () => {
@@ -51,12 +51,14 @@ export default function ScanMeter() {
     setPhase('idle'); setScan(undefined); setTyped(''); setPreview(undefined); setErr(undefined)
   }, [householdId])
 
+  if (own && ownMeter.error) return <div className="screen no-nav"><ErrorState error={ownMeter.error} onRetry={ownMeter.reload} /></div>
+  if (own && !ownMeter.data) return <ScanSkeleton />
   if (!own && month.error) return <div className="screen no-nav"><ErrorState error={month.error} onRetry={month.reload} /></div>
   if (!own && !month.data) return <ScanSkeleton />
 
   const hs = month.data?.households ?? []
   const idx = own ? 0 : hs.findIndex((h) => h.id === householdId)
-  const found: Target | undefined = own ? OWN : hs[idx]
+  const found: Target | undefined = own ? { id: OWN_ID, ...ownMeter.data! } : hs[idx]
   if (!found) return <div className="screen no-nav"><ErrorState error={Object.assign(new Error(''), { code: 'unknown_household' })} /></div>
   const h: Target = found
 
@@ -86,7 +88,7 @@ export default function ScanMeter() {
       notifyChange()
       if (own) {
         // Bautista's own meter: back to the forecast it just updated.
-        nav(`/usage/${OWN.id}`)
+        nav(`/usage/${OWN_ID}`)
         return
       }
       goNext()
@@ -100,7 +102,7 @@ export default function ScanMeter() {
   function goNext() {
     const next = hs[idx + 1]
     // After the last sub-meter, step 6 is Bautista's own meter.
-    nav(next ? `/scan/meter/${next.id}` : `/scan/meter/${OWN.id}?flow=1`)
+    nav(next ? `/scan/meter/${next.id}` : `/scan/meter/${OWN_ID}?flow=1`)
   }
   const back = own
     ? inFlow ? () => nav(`/scan/meter/${hs[hs.length - 1]?.id ?? 'D'}`) : undefined

@@ -42,7 +42,7 @@ export default function Ask({ tenant = false }: { tenant?: boolean }) {
   const presets = useAsync(() => api.getAskPresets(lang), [lang])
   const who = useAsync(async () => {
     if (tenant) return (await api.getTenantView(token!)).name
-    if (householdId === 'BAU') return 'Bautista'
+    if (householdId === 'BAU') return (await api.getOwnMeter()).name
     const m = await api.getMonth()
     return m.households.find((h) => h.id === householdId)?.name ?? ''
   }, [tenant, token, householdId])

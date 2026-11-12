@@ -1,4 +1,4 @@
-import { ApiError, type KahatiApi } from './client'
+import { ApiError, type KahatiApi, type ScenarioImport } from './client'
 import type {
   AskAnswer,
   AskPreset,
@@ -86,6 +86,8 @@ const toB = (id: string) => (id === 'BAU' ? 'hBautista' : `h${id}`)
 const toF = (id: string) => (id === 'hBautista' ? 'BAU' : id.replace(/^h/, ''))
 /** Sample persona names used by the design for the tenant view. */
 const TENANT_FIRST_NAMES: Record<string, string> = { B: 'Lorna' }
+/** The built-in sample's household name behind each persona name: a scenario that renames the household wins. */
+const TENANT_SAMPLE_NAMES: Record<string, string> = { B: 'Santos' }
 /** The demo tenant link in the design ("/t/demo-santos") mints a real signed link. */
 const DEMO_TOKENS: Record<string, string> = { 'demo-santos': 'hB' }
 const RATE_SOURCE = 'Meralco rate announcement (team rate table)'
@@ -131,7 +133,81 @@ const BAU_DEMO_PHOTO_AT = '2026-11-18T08:30:00+08:00'
 
 const KEY = 'kahati-http-v1'
 /** `bau` is Bautista's own-meter state, kept apart from the shared compound. */
-interface Local { state: BState | null; billConfirmed: boolean; bau?: BState | null }
+interface Local { state: BState | null; billConfirmed: boolean; bau?: BState | null; scenario?: Scenario | null }
+/** A lab scenario: replaces GET /api/sample. Both states keep their currentReadings (used by "Load the rest"). */
+interface Scenario { v: 1; compound: BState; bau: BState }
+
+// ---------- scenario import (#scenario=<base64url JSON>) ----------
+
+const SCENARIO_HOUSEHOLDS = ['hA', 'hB', 'hC', 'hD']
+const SCENARIO_METERS = ['mMaster', 'mA', 'mB', 'mC', 'mD']
+const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x)
+const sameSet = (a: string[], b: string[]) => a.length === b.length && b.every((x) => a.includes(x))
+
+/** True when every number in the value is finite (no NaN or Infinity anywhere). */
+function allFinite(x: unknown): boolean {
+  if (typeof x === 'number') return Number.isFinite(x)
+  if (Array.isArray(x)) return x.every(allFinite)
+  if (isObj(x)) return Object.values(x).every(allFinite)
+  return true
+}
+
+/** Checks one state of a scenario; returns a reason, or null when it is fine. */
+function checkState(s: unknown, label: string, compoundId: string, hids: string[], mids: string[]): string | null {
+  if (!isObj(s)) return `${label} is missing`
+  if (!isObj(s.compound) || typeof s.compound.displayName !== 'string' || !s.compound.displayName.trim()) return `${label} has no name`
+  if (s.compound.id !== compoundId) return `${label} must use compound id ${compoundId}`
+  for (const k of ['households', 'meters', 'previousReadings'] as const) {
+    if (!Array.isArray(s[k]) || (s[k] as unknown[]).length === 0) return `${label} has no ${k}`
+  }
+  if (s.currentReadings !== undefined && !Array.isArray(s.currentReadings)) return `${label} currentReadings is not a list`
+  if (!isObj(s.bill)) return `${label} has no bill`
+  const hs = s.households as { id?: unknown; displayName?: unknown; fourPs?: unknown }[]
+  const ms = s.meters as { id?: unknown; serial?: unknown; householdId?: unknown }[]
+  if (!sameSet(hs.map((h) => String(h?.id)), hids)) return `${label} households must be ${hids.join(', ')}`
+  if (!sameSet(ms.map((m) => String(m?.id)), mids)) return `${label} meters must be ${mids.join(', ')}`
+  if (hs.some((h) => typeof h.displayName !== 'string' || !h.displayName.trim() || typeof h.fourPs !== 'boolean')) return `${label} households need a name and a 4Ps flag`
+  if (ms.some((m) => typeof m.serial !== 'string' || !m.serial.trim())) return `${label} meters need a serial`
+  for (const r of [...(s.previousReadings as unknown[]), ...((s.currentReadings as unknown[] | undefined) ?? [])]) {
+    if (!isObj(r) || typeof r.value !== 'number' || r.value < 0 || typeof r.meterId !== 'string' || !mids.includes(r.meterId)) {
+      return `${label} has a bad reading`
+    }
+  }
+  // Every household meter needs a previous reading (the master has none).
+  for (const m of ms) {
+    if (m.householdId && !(s.previousReadings as { meterId?: unknown }[]).some((r) => r.meterId === m.id)) {
+      return `${label} meter ${String(m.id)} has no previous reading`
+    }
+  }
+  const b = s.bill as { kwh?: unknown; amount?: unknown; lines?: unknown }
+  if (typeof b.kwh !== 'number' || b.kwh <= 0 || typeof b.amount !== 'number' || b.amount <= 0) return `${label} bill needs positive kWh and amount`
+  const lines = b.lines
+  if (!isObj(lines) || LINE_ORDER.some((k) => typeof lines[k] !== 'number')) return `${label} bill lines are incomplete`
+  const sum = LINE_ORDER.reduce((t, k) => t + (lines[k] as number), 0)
+  if (Math.abs(sum - b.amount) > 0.05) return `${label} bill lines add to ${sum.toFixed(2)}, not ${b.amount}`
+  return null
+}
+
+/** Decodes and validates a scenario payload (base64url of UTF-8 JSON). */
+export function parseScenario(encoded: string): { ok: true; scenario: Scenario } | { ok: false; reason: string } {
+  let data: unknown
+  try {
+    const b64 = encoded.replace(/-/g, '+').replace(/_/g, '/')
+    const bin = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4))
+    data = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))))
+  } catch {
+    return { ok: false, reason: 'the link is damaged' }
+  }
+  if (!isObj(data) || data.v !== 1) return { ok: false, reason: 'unsupported version' }
+  if (!allFinite(data)) return { ok: false, reason: 'a number is not valid' }
+  const bad =
+    checkState(data.compound, 'compound', 'c14', SCENARIO_HOUSEHOLDS, SCENARIO_METERS) ??
+    checkState(data.bau, 'Bautista', 'cBautista', ['hBautista'], ['mBautista'])
+  if (bad) return { ok: false, reason: bad }
+  return { ok: true, scenario: { v: 1, compound: data.compound as unknown as BState, bau: data.bau as unknown as BState } }
+}
+
+const withReadings = (s: BState): BState => ({ ...s, currentReadings: s.currentReadings ?? [] })
 
 export function createHttpApi(baseUrl: string): KahatiApi {
   // ---------- transport ----------
@@ -181,7 +257,9 @@ export function createHttpApi(baseUrl: string): KahatiApi {
     }
   }
   let sampleCache: BState | null = null
+  /** The active scenario's compound, else GET /api/sample. */
   async function sample(): Promise<BState> {
+    if (local.scenario) return structuredClone(local.scenario.compound)
     if (!sampleCache) sampleCache = await call<BState>('/api/sample?which=compound')
     return structuredClone(sampleCache)
   }
@@ -196,13 +274,18 @@ export function createHttpApi(baseUrl: string): KahatiApi {
     return local.state!
   }
   let bauCache: BState | null = null
+  /** The active scenario's Bautista state, else GET /api/sample?which=bautista (with its seeded day-18 reading). */
+  async function bauSample(): Promise<BState> {
+    if (local.scenario) return structuredClone(local.scenario.bau)
+    if (!bauCache) bauCache = await call<BState>('/api/sample?which=bautista')
+    return structuredClone(bauCache)
+  }
   /** Bautista's own-meter state: starts from GET /api/sample?which=bautista, then persists. */
   async function bauState(): Promise<BState> {
     if (!local.bau) {
-      if (!bauCache) bauCache = await call<BState>('/api/sample?which=bautista')
       // The bill's read-day reading stays (it is in previousReadings); the seeded day-18 photo
       // reading is dropped, so the forecast only appears after a real scan and confirmReading.
-      local.bau = { ...structuredClone(bauCache), currentReadings: [] }
+      local.bau = { ...(await bauSample()), currentReadings: [] }
       save()
     } else if (local.bau.currentReadings.some((r) => !r.id.startsWith('r-'))) {
       // State saved before this rule: drop the seeded reading (real ones are ids "r-<meter>-<time>").
@@ -467,7 +550,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
       const fid = toF(v.household.id)
       return {
         householdId: fid,
-        name: TENANT_FIRST_NAMES[fid] ?? v.household.displayName,
+        name: v.household.displayName === TENANT_SAMPLE_NAMES[fid] ? TENANT_FIRST_NAMES[fid] : v.household.displayName,
         share: v.share.amount,
         kwh: v.share.kwh,
         askedToPay: v.rateCheck?.askedAmount ?? null,
@@ -516,24 +599,70 @@ export function createHttpApi(baseUrl: string): KahatiApi {
     async loadSampleReadings() {
       const s = await state()
       const full = await sample()
+      let loaded = 0
       for (const r of full.currentReadings) {
-        if (!currOf(s, r.meterId)) s.currentReadings.push({ ...r, capturedAt: s.bill.readDate + 'T09:00:00+08:00' })
+        if (!currOf(s, r.meterId)) {
+          s.currentReadings.push({ ...r, capturedAt: s.bill.readDate + 'T09:00:00+08:00' })
+          loaded++
+        }
       }
-      // Bautista too: his day-18 photo reading, stamped like a real scan on his story clock.
+      // Bautista too: the sample's day-18 photo reading, stamped like a real scan on his story clock.
       const b = await bauState()
       const bm = meterOf(b, 'hBautista')
-      if (bm && !currOf(b, bm.id)) {
+      const seeded = (await bauSample()).currentReadings.find((r) => r.meterId === bm?.id)
+      if (bm && seeded && !currOf(b, bm.id)) {
         b.currentReadings.push({
-          id: `r-${bm.id}-${Date.now()}`, meterId: bm.id, value: 12552, source: 'photo',
+          ...seeded, id: `r-${bm.id}-${Date.now()}`,
           capturedAt: DEMO_CLOCK ? BAU_DEMO_PHOTO_AT : new Date().toISOString(),
-          confidence: 0.97, confirmed: true, serialRead: 'MM-5520',
         })
+        loaded++
       }
       save()
+      // Nothing is invented: whoever the sample has no reading for stays empty.
+      const missing = s.households.filter((h) => { const m = meterOf(s, h.id); return !m || !currOf(s, m.id) }).length
+      return { loaded, missing }
     },
 
     async resetDemo() {
-      local = { state: null, billConfirmed: false, bau: null }
+      local = { state: null, billConfirmed: false, bau: null, scenario: local.scenario ?? null }
+      save()
+    },
+
+    async getOwnMeter() {
+      const b = await bauState()
+      const m = meterOf(b, 'hBautista')
+      return {
+        name: b.households.find((h) => h.id === 'hBautista')?.displayName ?? '',
+        meterSerial: m?.serial ?? '',
+        previousReading: (m && prevOf(b, m.id)?.value) ?? b.bill.presentReading ?? 0,
+      }
+    },
+
+    importScenarioFromHash(): ScenarioImport | null {
+      const hit = /(?:^#|&)scenario=([^&]*)/.exec(window.location.hash)
+      if (!hit) return null
+      // Drop the hash first so a reload never re-imports (also when the scenario turns out invalid).
+      try { history.replaceState(null, '', window.location.pathname + window.location.search) } catch { /* ignore */ }
+      const r = parseScenario(hit[1])
+      if (!r.ok) return r
+      const { compound, bau } = r.scenario
+      // This month's progress restarts from the scenario: no readings yet, bill not confirmed.
+      local = {
+        scenario: { v: 1, compound: withReadings(compound), bau: withReadings(bau) },
+        state: { ...structuredClone(withReadings(compound)), currentReadings: [] },
+        billConfirmed: false,
+        bau: { ...structuredClone(withReadings(bau)), currentReadings: [] },
+      }
+      save()
+      return { ok: true, name: compound.compound.displayName }
+    },
+
+    getScenarioName() {
+      return local.scenario?.compound.compound.displayName ?? null
+    },
+
+    async clearScenario() {
+      local = { state: null, billConfirmed: false, bau: null, scenario: null }
       save()
     },
   }

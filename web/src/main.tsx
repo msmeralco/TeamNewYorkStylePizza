@@ -1,4 +1,4 @@
-import { StrictMode, useCallback, useRef, useState } from 'react'
+import { StrictMode, useCallback, useEffect, useRef, useState } from 'react'
 import { Splash } from './components/Splash'
 import { ScanOverlay, isScanPath } from './components/ScanOverlay'
 import { createRoot } from 'react-dom/client'
@@ -7,9 +7,9 @@ import './index.css'
 import { api } from './api'
 import { useAsync } from './lib/useAsync'
 import { ScanSkeleton } from './components/Skeletons'
-import { LangProvider } from './i18n/copy'
+import { LangProvider, useT } from './i18n/copy'
 import { BareShell, TabShell } from './components/Shell'
-import { ToastHost } from './components/ui'
+import { ToastHost, toast } from './components/ui'
 import Home from './screens/Home'
 import ScanBill from './screens/ScanBill'
 import ScanMeter from './screens/ScanMeter'
@@ -19,12 +19,49 @@ import Check from './screens/Check'
 import Tenant from './screens/Tenant'
 import Ask from './screens/Ask'
 
+// The lab's QR uses a compressed form (#scenarioz=<base64url(deflate-raw(JSON))>) to fit a phone QR.
+// Inflate it into the plain #scenario= form first, then import as usual.
+async function inflateScenarioHash() {
+  const hit = /(?:^#|&)scenarioz=([^&]*)/.exec(window.location.hash)
+  if (!hit) return
+  let plain = '!'
+  try {
+    const b64 = hit[1].replace(/-/g, '+').replace(/_/g, '/')
+    const bin = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4))
+    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0))
+    const json = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text()
+    const utf8 = new TextEncoder().encode(json)
+    let s = ''
+    for (const b of utf8) s += String.fromCharCode(b)
+    plain = btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  } catch {
+    /* '!' fails validation, so the person is told the link is damaged */
+  }
+  try { history.replaceState(null, '', `${window.location.pathname}${window.location.search}#scenario=${plain}`) } catch { /* ignore */ }
+}
+await inflateScenarioHash()
+
+// A lab link (#scenario=...) is imported once, before the first screen reads any state.
+const scenarioImport = api.importScenarioFromHash()
+
+/** Tells the person what the link did, once the splash is gone. */
+function ScenarioToast({ ready }: { ready: boolean }) {
+  const { t } = useT()
+  const shown = useRef(false)
+  useEffect(() => {
+    if (!ready || shown.current || !scenarioImport) return
+    shown.current = true
+    toast(scenarioImport.ok ? t('scenario.loaded', { name: scenarioImport.name }) : t('scenario.invalid', { why: scenarioImport.reason }))
+  }, [ready, t])
+  return null
+}
+
 function Root() {
   const [booting, setBooting] = useState(true)
   const done = useCallback(() => setBooting(false), [])
   return (
     <>
-      <App />
+      <App ready={!booting} />
       {booting && <Splash onDone={done} />}
     </>
   )
@@ -36,12 +73,13 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
-function App() {
+function App({ ready }: { ready: boolean }) {
   return (
     <LangProvider>
       <BrowserRouter>
         <AppRoutes />
         <ToastHost />
+        <ScenarioToast ready={ready} />
       </BrowserRouter>
     </LangProvider>
   )

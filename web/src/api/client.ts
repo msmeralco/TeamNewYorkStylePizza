@@ -43,10 +43,20 @@ export interface KahatiApi {
   getAskPresets(language?: 'en' | 'fil'): Promise<AskPreset[]>
   /** Ask Kahati: a grounded answer about one household's numbers. */
   ask(input: AskInput): Promise<AskAnswer>
-  /** Demo helpers (mock only; the HTTP adapter may no-op). */
-  loadSampleReadings(): Promise<void>
+  /** Demo helper: fills the readings the active sample has. `loaded` counts what it filled; `missing` what is still empty (nothing is invented). */
+  loadSampleReadings(): Promise<{ loaded: number; missing: number }>
   resetDemo(): Promise<void>
+  /** Bautista's own meter, from the active sample or scenario (serial and the bill's read-day reading). */
+  getOwnMeter(): Promise<{ name: string; meterSerial: string; previousReading: number }>
+  /** Startup: imports `#scenario=` from the URL hash if present (and removes the hash). Null when there is none. */
+  importScenarioFromHash(): ScenarioImport | null
+  /** Display name of the active lab scenario, or null when the built-in sample is in use. */
+  getScenarioName(): string | null
+  /** Drops the scenario and resets the demo to the built-in sample. */
+  clearScenario(): Promise<void>
 }
+
+export type ScenarioImport = { ok: true; name: string } | { ok: false; reason: string }
 
 export class ApiError extends Error {
   status: number

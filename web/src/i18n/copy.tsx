@@ -66,6 +66,11 @@ const en = {
   'home.rateAbove': 'Charged rate is {n} above the bill',
   'home.rateVs': '{a} charged vs {b} on the bill',
   'home.reset': 'Reset the demo',
+  'home.useBuiltIn': 'Use the built-in sample',
+  'home.scenarioActive': 'Scenario: {name}',
+  'home.loadRestNone': 'This sample has no readings for the rest. Scan the meters or type them.',
+  'scenario.loaded': 'Loaded scenario: {name}',
+  'scenario.invalid': 'Could not load the scenario: {why}. Kept the current demo.',
   'home.lifelineNote': '{n} are 4Ps under 50 kWh, but lifeline is per Meralco account: {kwh} kWh here.',
   'home.lifelineNote1': '1 is 4Ps under 50 kWh, but lifeline is per Meralco account: {kwh} kWh here.',
 
@@ -302,6 +307,11 @@ const fil: Record<Key, string> = {
   'home.rateAbove': 'Ang singil ay {n} na mas mataas sa bill',
   'home.rateVs': '{a} ang singil, {b} sa bill',
   'home.reset': 'I-reset ang demo',
+  'home.useBuiltIn': 'Gamitin ang built-in na sample',
+  'home.scenarioActive': 'Scenario: {name}',
+  'home.loadRestNone': 'Walang reading ang sample na ito para sa iba. I-scan ang mga meter o i-type ang mga reading.',
+  'scenario.loaded': 'Na-load ang scenario: {name}',
+  'scenario.invalid': 'Hindi ma-load ang scenario: {why}. Pinanatili ang kasalukuyang demo.',
   'home.lifelineNote': '{n} ang 4Ps na wala pang 50 kWh, pero kada Meralco account ang lifeline: {kwh} kWh dito.',
   'home.lifelineNote1': '1 ang 4Ps na wala pang 50 kWh, pero kada Meralco account ang lifeline: {kwh} kWh dito.',
 
