@@ -391,11 +391,14 @@ a { color: inherit; text-decoration: none; }
 /* Own-meter Usage is the tallest screen. On short phones the bubble (17px above the bar) would
    cover the buttons and footnote, so the chart is shorter and only the first tip shows. */
 @media (max-height: 860px) { .screen.own .card.usage-chart { --chart-h: min(12dvh, 100px); } }
-@media (max-height: 700px) {
+/* 840 covers iPhone Safari with its toolbars (about 700 to 800px of page); 844 and taller fit the full layout. */
+@media (max-height: 840px) {
   .screen.own .card.usage-chart { --chart-h: 86px; } /* the SVG scales its text with height; below about 85px labels get too small */
   .screen.own .rate-range { display: none; }
   .screen.own .card.list .list-row:nth-child(n+2) { display: none; }
 }
+/* Safety net: if a phone is shorter still, own-meter Usage scrolls instead of hiding the footnote. */
+.screen.own { overflow-y: auto; }
 
 /* Buttons: icon stays beside the text and the pair stays centred, even if a long translation wraps. */
 .btn, .link-btn { padding: 0 20px; text-align: center; line-height: 1.2; }
