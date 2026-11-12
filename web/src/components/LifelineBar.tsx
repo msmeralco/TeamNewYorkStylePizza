@@ -22,8 +22,9 @@ export function LifelineBar({ forecastKwh, tiers = LIFELINE_TIERS_2026 }: { fore
   const { t } = useT()
   const ref = useRef<HTMLDivElement>(null)
   const last = tiers[tiers.length - 1].upTo
-  // Room past the last tier for the "no discount" zone, and for a forecast beyond it.
-  const max = Math.max(Math.round(last * 1.5), Math.ceil((forecastKwh * 1.15) / 10) * 10)
+  // Fixed scale: the tiers plus a "no discount" zone. A forecast beyond it pins the marker to the
+  // end (its label still shows the real kWh), so the tick labels never squeeze together.
+  const max = Math.round(last * 1.5)
   const pct = (kwh: number) => (Math.min(kwh, max) / max) * 100
 
   const segments = [

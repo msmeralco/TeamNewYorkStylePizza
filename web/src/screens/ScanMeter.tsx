@@ -128,6 +128,10 @@ export default function ScanMeter() {
 
   const shown = scan ? meterDigits(scan.value) : saved ? meterDigits(saved.value) : '-----'
   const typedN = Number(typed)
+  // A household month above this is a wrong meter or a wrong month (e.g. lab props scanned
+  // without loading the lab's scenario), never a real reading: block it and say why.
+  const MAX_MONTH_KWH = 1000
+  const tooHigh = (kwh: number) => kwh > MAX_MONTH_KWH
   const since = (n: number) => (own ? t('scan.sinceBill', { n }) : t('scan.sinceLast', { n }))
 
   return (
@@ -154,7 +158,10 @@ export default function ScanMeter() {
               <input inputMode="numeric" autoFocus value={typed} onChange={(e) => setTyped(e.target.value.replace(/\D/g, ''))} />
             </div>
             {typed && <p className="support" style={{ margin: 0 }}>{since(typedN - h.previousReading)}</p>}
-            <button className="btn" disabled={!typed} onClick={() => save(typedN, 'typed')}>
+            {typed && tooHigh(typedN - h.previousReading) && (
+              <p className="status-line" role="alert" style={{ margin: 0 }}>{t('scan.tooHigh', { n: typedN - h.previousReading, prev: meterDigits(h.previousReading) })}</p>
+            )}
+            <button className="btn" disabled={!typed || tooHigh(typedN - h.previousReading)} onClick={() => save(typedN, 'typed')}>
               <Check {...ICON} /> {t('scan.confirm')}
             </button>
             <div className="scan-foot">
@@ -166,6 +173,9 @@ export default function ScanMeter() {
             <div className="card stack" style={{ gap: 6 }}>
               <span className="hero-num">{meterDigits(scan.value)}</span>
               <span className="body" style={{ fontWeight: 500 }}>{since(scan.kwhSinceLast)}</span>
+              {tooHigh(scan.kwhSinceLast) && (
+                <span className="status-line" role="alert">{t('scan.tooHigh', { n: scan.kwhSinceLast, prev: meterDigits(h.previousReading) })}</span>
+              )}
               <span className="meta" style={{ fontSize: 14 }}>
                 {scan.serialRead && scan.serialMatches ? <CircleCheck size={15} strokeWidth={1.75} /> : <CircleAlert size={15} strokeWidth={1.75} />}
                 {!scan.serialRead
@@ -191,7 +201,7 @@ export default function ScanMeter() {
                 </button>
               )}
             </div>
-            <button className="btn" disabled={phase === 'saving' || (scan.serialRead && !scan.serialMatches)} onClick={() => save(scan.value, 'photo')}>
+            <button className="btn" disabled={phase === 'saving' || (scan.serialRead && !scan.serialMatches) || tooHigh(scan.kwhSinceLast)} onClick={() => save(scan.value, 'photo')}>
               <Check {...ICON} /> {t('scan.confirm')}
             </button>
             <div className="scan-foot">
