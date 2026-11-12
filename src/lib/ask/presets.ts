@@ -109,7 +109,7 @@ const T = (ctx: AskContext) => ctx.language === "fil";
  * Own-meter bills are shown gross. When the household has lifeline facts, say so and name the tier, so the
  * October amount never contradicts "50 kWh or less is 100% off". Never states that the household is enrolled.
  */
-function grossNote(ctx: AskContext): { lead: { en: string; fil: string }; tail: { en: string; fil: string } } | null {
+function grossNote(ctx: AskContext): { lead: { en: string; fil: string }; tail: { en: string; fil: string }; month: { en: string; fil: string } | null } | null {
   const f = ctx.facts;
   if (ctx.mode !== "single" || f.lifelineForecastPeso == null || f.billKwh == null) return null;
   const pct = Math.round(discountFor(f.billKwh) * 100);
@@ -119,7 +119,16 @@ function grossNote(ctx: AskContext): { lead: { en: string; fil: string }; tail: 
       : pct > 0
         ? { en: ` On an enrolled meter, ${kwh(f.billKwh)} kWh is ${pct}% off most charges.`, fil: ` Sa naka-enroll na metro, ${pct}% ang bawas sa halos lahat ng singil sa ${kwh(f.billKwh)} kWh.` }
         : { en: "", fil: "" };
-  return { lead: { en: "Before any lifeline discount, ", fil: "Bago ang anumang lifeline discount, " }, tail };
+  return { lead: { en: "Before any lifeline discount, ", fil: "Bago ang anumang lifeline discount, " }, tail, month: billMonth(ctx) };
+}
+
+const MONTHS_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTHS_FIL = ["Enero", "Pebrero", "Marso", "Abril", "Mayo", "Hunyo", "Hulyo", "Agosto", "Setyembre", "Oktubre", "Nobyembre", "Disyembre"];
+/** The bill's month (from its period end; facts.readDate is the next read date for own meters), so an own-meter answer never reads as this month's forecast. */
+function billMonth(ctx: AskContext): { en: string; fil: string } | null {
+  const d = ctx.facts.periodEnd;
+  const m = d ? Number(d.slice(5, 7)) - 1 : NaN;
+  return m >= 0 && m < 12 ? { en: MONTHS_EN[m], fil: MONTHS_FIL[m] } : null;
 }
 
 function whyShare(ctx: AskContext): Answer {
@@ -138,10 +147,10 @@ function whyShare(ctx: AskContext): Answer {
     const fixed = f.fixedCharges;
     const g = grossNote(ctx);
     const answer = fil
-      ? `${g ? g.lead.fil + "ang" : "Ang"} bill mo ay ${peso(f.share)} para sa ${f.billKwh != null ? kwh(f.billKwh) : "iyong"} kWh.` +
+      ? `${g ? g.lead.fil + "ang" : "Ang"} bill mo${g?.month ? ` para sa ${g.month.fil}` : ""} ay ${peso(f.share)} para sa ${f.billKwh != null ? kwh(f.billKwh) : "iyong"} kWh.` +
         (fixed != null ? ` Sa halagang iyon, ${peso(fixed)} ay nakapirming singil na hindi nagbabago sa gamit mo. Ang iba ay depende sa kWh mo.` : "") +
         (g ? g.tail.fil : "")
-      : `${g ? g.lead.en + "your" : "Your"} bill is ${peso(f.share)} for ${f.billKwh != null ? kwh(f.billKwh) : "your"} kWh.` +
+      : `${g ? g.lead.en + "your" : "Your"} ${g?.month ? `${g.month.en} bill was` : "bill is"} ${peso(f.share)} for ${f.billKwh != null ? kwh(f.billKwh) : "your"} kWh.` +
         (fixed != null ? ` Of that, ${peso(fixed)} is fixed charges that do not change with your use. The rest depends on your kWh.` : "") +
         (g ? g.tail.en : "");
     return { answer, sources };
