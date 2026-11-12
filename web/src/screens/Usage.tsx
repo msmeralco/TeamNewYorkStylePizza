@@ -56,12 +56,13 @@ export default function Usage() {
           {t('usage.title', { household: u.name })}
           <ChevronDown size={20} strokeWidth={2} />
         </button>
-        <div className="row-between">
+        {/* Badge top lines up with the top of the number's glyphs (0.1259 x font size below its line box). */}
+        <div className="row-between" style={{ alignItems: 'flex-start' }}>
           <p className="hero-num"><CountUp value={f.kwh} format={whole} /></p>
           {u.mode === 'own' ? (
-            <span className="chip white"><Gauge size={14} strokeWidth={1.75} />{t('usage.own')}</span>
+            <span className="chip white" style={{ marginTop: 'calc(var(--hero) * 0.1259)' }}><Gauge size={14} strokeWidth={1.75} />{t('usage.own')}</span>
           ) : (
-            u.stage === 1 && <span className="chip white">{t('usage.guess')}</span>
+            u.stage === 1 && <span className="chip white" style={{ marginTop: 'calc(var(--hero) * 0.1259)' }}>{t('usage.guess')}</span>
           )}
         </div>
         <p className="body" style={{ fontWeight: 500, margin: 0 }}>

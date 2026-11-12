@@ -20,6 +20,10 @@ const BUBBLE_R = 28
 const BUBBLE_DROP = 8 // bubble centre sits 8px below the bar's top, so it rises 20px above it
 const NOTCH_R = BUBBLE_R + 6
 const FILLET = 14
+// Tabs sit inside a 12px side inset (half the page margin), not edge to edge.
+const SIDE = 12
+/** Centre of tab i across a bar of width w, inside the side inset. */
+const tabCenter = (i: number, w: number) => SIDE + ((i + 0.5) * (w - 2 * SIDE)) / TABS.length
 
 /** Bar outline with a smooth circular dip centred at cx (y down, top edge at y=0). */
 function notchPath(w: number, h: number, cx: number) {
@@ -74,14 +78,14 @@ function BottomNav({ active }: { active: number }) {
 
   // Bubble + notch position (also on resize, without animating).
   useLayoutEffect(() => {
-    const target = ((active + 0.5) * w) / TABS.length
+    const target = tabCenter(active, w)
     const draw = () => {
       pathRef.current?.setAttribute('d', notchPath(w, H, pos.current!.cx))
       if (bubbleRef.current) gsap.set(bubbleRef.current, { x: pos.current!.cx - BUBBLE_R })
       // Icons give way to the bubble: fade and shrink as it comes near, return as it leaves.
       icons.current.forEach((el, i) => {
         if (!el) return
-        const iconX = ((i + 0.5) * w) / TABS.length
+        const iconX = tabCenter(i, w)
         const t = Math.min(1, Math.max(0, (Math.abs(iconX - pos.current!.cx) - (BUBBLE_R + 6)) / 18))
         gsap.set(el, { autoAlpha: t, scale: 0.6 + 0.4 * t })
       })
