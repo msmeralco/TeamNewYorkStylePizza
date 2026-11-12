@@ -44,7 +44,7 @@ const rows = (n: number, chip = false, avatar = 38) =>
 export function HomeSkeleton() {
   return (
     <SkScreen>
-      <Sk w={190} h={34.5} />
+      <div className="header-row"><Sk w={190} h={34.5} /></div>
       <Sk h={124} r={20} />
       <Sk w={220} h={16} />
       <div className="card list">{rows(4)}</div>
@@ -56,8 +56,8 @@ export function HomeSkeleton() {
 export function BillSkeleton({ noNav }: { noNav?: boolean }) {
   return (
     <SkScreen noNav={noNav}>
-      <div className="stack-lg">
-        <Sk w={230} h={34.5} />
+      <div className="stack-lg" style={noNav ? undefined : { gap: 'calc(var(--gap) * 0.6)' }}>
+        {noNav ? <Sk w={230} h={34.5} /> : <div className="header-row"><Sk w={230} h={34.5} /></div>}
         <Sk w={180} h={46} />
       </div>
       <div className="card" style={{ padding: '20px 20px 4px' }}>
@@ -71,9 +71,11 @@ export function BillSkeleton({ noNav }: { noNav?: boolean }) {
 export function UsageSkeleton() {
   return (
     <SkScreen>
-      <Sk w={220} h={34.5} />
-      <div className="row-between"><Sk w={150} h={46} /><Sk w={100} h={28} r={14} /></div>
-      <Sk w={210} h={16} />
+      <div className="header-row"><Sk w={220} h={34.5} /></div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="row-between"><Sk w={150} h={46} /><Sk w={100} h={28} r={14} /></div>
+        <Sk w={210} h={16} />
+      </div>
       <Sk h={160} r={20} />
       <Sk h={86} r={20} />
       <div className="card list">{rows(2, false, 24)}</div>
@@ -85,14 +87,12 @@ export function UsageSkeleton() {
 export function CheckSkeleton() {
   return (
     <SkScreen>
-      <Sk w={110} h={34.5} />
+      <div className="header-row"><Sk w={110} h={34.5} /></div>
       <Sk h={128} r={20} />
+      <div className="card list">{rows(4)}</div>
       <div className="card list">
-        {rows(4, true)}
-        <div className="list-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-          <Sk w="75%" h={13} />
-          <Sk w="65%" h={13} />
-        </div>
+        <div className="list-row"><Sk w={16} h={16} r={4} /><Sk w="70%" h={15} /></div>
+        <div className="list-row"><Sk w={16} h={16} r={4} /><Sk w="75%" h={15} /></div>
       </div>
       <Sk h={54} r={16} />
     </SkScreen>

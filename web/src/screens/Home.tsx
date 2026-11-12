@@ -23,10 +23,10 @@ export default function Home() {
   const m = data!
 
   const header = (title: string) => (
-    <div className="row-between">
+    <div className="header-row">
       <h1 className="title">{title}</h1>
-      <button className="icon-btn ghost" aria-label={t('common.more')} onClick={() => setMenu(true)}>
-        <Ellipsis {...ICON} />
+      <button className="icon-btn ghost sm" aria-label={t('common.more')} onClick={() => setMenu(true)}>
+        <Ellipsis {...ICON} size={16} />
       </button>
     </div>
   )
@@ -73,7 +73,7 @@ export default function Home() {
 
       <div className="hero" style={{ ['--text-gap' as string]: 'calc(var(--hero) * 0.1259)' }}>
         <p className="hero-num"><CountUp value={bill.amount} format={php} /></p>
-        <p className="body" style={{ margin: '10px 0 0', fontWeight: 500, fontSize: 15 }}>
+        <p className="body" style={{ margin: '10px 0 0', fontWeight: 500 }}>
           {bill.kwh} kWh · {t('common.range', { a: day(bill.periodStart), b: day(bill.periodEnd) })}
         </p>
         <span className="icon-chip lime corner"><Zap {...ICON} /></span>
@@ -125,7 +125,7 @@ export default function Home() {
           <span className="icon-chip lime"><TrendingUp {...ICON} /></span>
           <div className="stack" style={{ gap: 4 }}>
             <span className="body">{t('home.rateAbove', { n: php(m.rateNote.difference) })}</span>
-            <span className="support" style={{ fontSize: 14 }}>
+            <span className="support">
               {t('home.rateVs', { a: php(m.rateNote.chargedRate), b: php(m.rateNote.billRate) })}
             </span>
           </div>

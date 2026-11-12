@@ -9,15 +9,16 @@ import { useT } from '../i18n/copy'
 const TABS = [
   { to: '/', label: 'nav.home' as const, Icon: House, match: (p: string) => p === '/' },
   { to: '/scan', label: 'nav.scan' as const, Icon: ScanLine, match: (p: string) => p.startsWith('/scan') },
+  // The month's order: scan, check the readings add up, then the bills and usage.
+  { to: '/check', label: 'nav.check' as const, Icon: ShieldCheck, match: (p: string) => p.startsWith('/check') },
   { to: '/bill', label: 'nav.bill' as const, Icon: ReceiptText, match: (p: string) => p.startsWith('/bill') },
   { to: '/usage', label: 'nav.usage' as const, Icon: ChartLine, match: (p: string) => p.startsWith('/usage') },
-  { to: '/check', label: 'nav.check' as const, Icon: ShieldCheck, match: (p: string) => p.startsWith('/check') },
 ]
 
 // Notch geometry. The bubble (r 28) sits centred 4px below the bar's top edge;
 // the notch is concentric with it, 6px wider, with rounded shoulders.
-const BUBBLE_R = 28
-const BUBBLE_DROP = 8 // bubble centre sits 8px below the bar's top, so it rises 20px above it
+const BUBBLE_R = 25 // 50px circle
+const BUBBLE_DROP = 8 // bubble centre sits 8px below the bar's top, so it rises 17px above it
 const NOTCH_R = BUBBLE_R + 6
 const FILLET = 14
 // Tabs sit inside a 12px side inset (half the page margin), not edge to edge.

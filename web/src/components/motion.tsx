@@ -63,7 +63,7 @@ export function GrowBar({ pct }: { pct: number }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!ref.current) return
-    gsap.to(ref.current, { width: `${pct}%`, duration: reduceMotion() ? 0 : 1.1, ease: 'power2.inOut', delay: 0.15, overwrite: true })
+    gsap.to(ref.current, { width: `${pct}%`, duration: reduceMotion() ? 0 : 0.7, ease: 'power2.inOut', delay: 0.15, overwrite: true })
   }, [pct])
   return (
     <div className="bar">

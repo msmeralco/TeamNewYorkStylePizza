@@ -41,6 +41,11 @@ export function ScanOverlay({ children, background }: { children: ReactNode; bac
           { yPercent: 0, borderTopLeftRadius: 0, borderTopRightRadius: 0, duration: 0.55 * d, ease: 'power3.out' },
           0,
         )
+      // The content fades in place as the sheet settles, so the fade is seen rather than
+      // finishing during the slide.
+      const content = sheet.current.querySelector('.screen')
+      if (content)
+        tl.fromTo(content, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4 * d, ease: 'power1.out', clearProps: 'opacity,visibility' }, 0.25 * d)
       return
     }
     if (!open && wasOpen.current) {

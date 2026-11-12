@@ -45,9 +45,9 @@ export function LifelineBar({ forecastKwh, tiers = LIFELINE_TIERS_2026 }: { fore
     () => {
       if (reduceMotion()) return
       gsap
-        .timeline({ delay: 0.2 })
-        .fromTo('.tier-bar', { clipPath: 'inset(0 100% 0 0 round 999px)' }, { clipPath: 'inset(0 0% 0 0 round 999px)', duration: 1.1, ease: 'power2.inOut', clearProps: 'clipPath' })
-        .from('.tier-marker', { autoAlpha: 0, duration: 0.3, ease: 'power1.out' }, '-=0.3')
+        .timeline({ delay: 0.15 })
+        .fromTo('.tier-bar', { clipPath: 'inset(0 100% 0 0 round 999px)' }, { clipPath: 'inset(0 0% 0 0 round 999px)', duration: 0.7, ease: 'power2.inOut', clearProps: 'clipPath' })
+        .from('.tier-marker', { autoAlpha: 0, duration: 0.25, ease: 'power1.out' }, '-=0.2')
     },
     { scope: ref, dependencies: [forecastKwh] },
   )

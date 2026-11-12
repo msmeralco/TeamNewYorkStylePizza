@@ -10,6 +10,7 @@
   --card: #ffffff;
   --hairline: #ecebe8;
   --chip: #f1f0ed;
+  --btn-done: #e6e4e0; /* warm gray that still reads as a button on --bg */
 
   --scan-screen: #141213;
   --scan-panel-in: #3a3536;
@@ -19,7 +20,7 @@
 
   --radius: 20px;
   --pad: 24px;
-  --nav-h: 82px;
+  --nav-h: 76px; /* was 82px */
   /* vertical rhythm shrinks on short phones so everything fits one screen */
   --top: clamp(16px, 4dvh, 36px);
   --gap: clamp(10px, 2.2dvh, 22px);
@@ -79,6 +80,8 @@ a { color: inherit; text-decoration: none; }
   height: 100%;
   overflow: hidden;
   padding: var(--top) var(--pad) calc(var(--nav-h) + var(--gap));
+  /* viewport-fit=cover: keep headers below the notch / status bar (0 on desktop and older phones). */
+  padding-top: calc(var(--top) + env(safe-area-inset-top));
   display: flex;
   flex-direction: column;
   gap: var(--gap);
@@ -90,18 +93,18 @@ a { color: inherit; text-decoration: none; }
 .title { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; margin: 0; line-height: 1.15; }
 .hero-num { font-size: var(--hero); font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; margin: 0; }
 .body { font-size: 16px; font-weight: 600; }
-.support { font-size: 15px; font-weight: 500; color: var(--soft-on-white); line-height: 1.35; }
+.support { font-size: 14px; font-weight: 500; color: var(--soft-on-white); line-height: 1.35; }
 .dark .support, .hero .support { color: var(--soft-on-dark); }
 .dark .scan-sheet .support { color: var(--soft-on-white); }
 .row-between { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 
 /* ---------- surfaces ---------- */
-.card { background: var(--card); border-radius: var(--radius); padding: 18px 20px; }
+.card { background: var(--card); border-radius: var(--radius); padding: 20px; }
 .card.list { padding: 4px 20px; }
 .hero { --py: 22px; background: var(--ink); color: var(--white); border-radius: var(--radius); padding: var(--py) 22px; position: relative; }
 .hero .hero-num { color: var(--white); }
 .hero .hero-num.lime { color: var(--lime); }
-.lime-card { --py: 20px; background: var(--lime); color: var(--ink); border-radius: var(--radius); padding: var(--py) 22px; position: relative; }
+.lime-card { --py: 22px; background: var(--lime); color: var(--ink); border-radius: var(--radius); padding: var(--py) 22px; position: relative; }
 
 .list-row { display: flex; align-items: center; gap: 14px; padding: var(--row-y) 0; width: 100%; text-align: left; }
 .list-row + .list-row { border-top: 1px solid var(--hairline); }
@@ -129,10 +132,15 @@ a { color: inherit; text-decoration: none; }
   font-size: 13px; font-weight: 600; white-space: nowrap;
 }
 .chip.white { background: var(--white); }
+/* Small status badge (Check rows: Verified / Typed). */
+.chip.sm { gap: 4px; padding: 2px 8px; font-size: 12px; }
+.chip.row-badge { align-self: center; flex: none; }
 
 .meta { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 500; color: var(--soft-on-white); }
 
 .status-line { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 500; }
+/* Secondary info rows (Usage tips): same size as the status lines (15px, 16px icon). */
+.tip { font-size: 15px; font-weight: 500; line-height: 1.3; }
 .note { display: flex; gap: 14px; align-items: flex-start; }
 .note .body { line-height: 1.3; }
 
@@ -148,6 +156,12 @@ a { color: inherit; text-decoration: none; }
 }
 .btn:disabled { opacity: 0.5; cursor: default; }
 .btn.dark { background: var(--ink); color: var(--white); }
+/* Compact button for secondary actions (Usage "Remind me"): 44px tall, still a full tap target. */
+.btn.compact { min-height: 44px; font-size: 16px; }
+/* Done state (e.g. "Reminder set"): quiet warm gray, label swapped in place. */
+.btn.done { background: var(--btn-done); cursor: default; }
+.btn-label { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.btn-label > svg { flex: none; }
 .link-btn {
   display: flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 44px; font-size: 16px; font-weight: 600; width: 100%;
@@ -163,9 +177,9 @@ a { color: inherit; text-decoration: none; }
 .dashes span { width: 18px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.2); }
 .dashes span.on { background: var(--white); }
 
-.bar { height: 8px; border-radius: 999px; background: rgba(35, 31, 32, 0.12); overflow: hidden; }
+.bar { height: 6px; border-radius: 999px; background: rgba(35, 31, 32, 0.1); overflow: hidden; }
 /* Width is animated by GSAP only (no CSS transition, which would fight it every frame). */
-.bar > div { height: 100%; background: var(--ink); border-radius: 999px; will-change: width; }
+.bar > div { height: 100%; background: rgba(35, 31, 32, 0.85); border-radius: 999px; will-change: width; }
 
 .stacked { display: flex; gap: 3px; height: 10px; }
 .stacked > div { border-radius: 3px; }
@@ -182,9 +196,10 @@ a { color: inherit; text-decoration: none; }
 /* ---------- toast ---------- */
 .toast {
   position: fixed; left: 50%; transform: translateX(-50%);
-  bottom: calc(var(--nav-h) + 28px); z-index: 50;
+  /* Top band, level with the screen titles' header row, so it never covers the bottom buttons. */
+  top: calc(var(--top) + env(safe-area-inset-top)); z-index: 50;
   background: var(--ink); color: var(--white); border-radius: 14px;
-  padding: 12px 16px; font-size: 15px; font-weight: 600;
+  padding: 11px 16px; font-size: 15px; font-weight: 600; min-height: 40px;
   width: max-content; max-width: min(390px, calc(100vw - 32px));
   display: flex; gap: 10px; align-items: center;
 }
@@ -211,7 +226,7 @@ a { color: inherit; text-decoration: none; }
 }
 .nav-bar { position: absolute; inset: 0; display: block; overflow: visible; }
 .nav .bubble {
-  position: absolute; left: 0; width: 56px; height: 56px; border-radius: 50%;
+  position: absolute; left: 0; width: 50px; height: 50px; border-radius: 50%;
   background: var(--lime); color: var(--ink); display: grid; place-items: center;
   will-change: transform; pointer-events: none; z-index: 3;
 }
@@ -282,8 +297,16 @@ a { color: inherit; text-decoration: none; }
 .toast { transform: none; left: 0; right: 0; margin: 0 auto; }
 .btn, .link-btn, .list-row, .icon-btn { transition: transform 0.12s; }
 .btn:active, .icon-btn:active { transform: scale(0.97); }
+/* Header corner icon (Home ⋯, Bill/Usage ✨): a 28px circle whose top meets the top of the title's
+   capitals, so it spans cap top to descender like a line of type. Offsets measured in the browser
+   (title centred in the 40px header row). The tap area stays 44px. */
+.icon-btn.sm { width: 28px; height: 28px; position: relative; align-self: flex-start; margin-top: 8.75px; }
+.icon-btn.sm::after { content: ''; position: absolute; inset: -8px; }
+@media (max-height: 760px) { .icon-btn.sm { margin-top: 10.05px; } }
+.btn { transition: transform 0.12s, background-color 0.3s; }
+.btn.done:active { transform: none; }
 .sheet .card.list { padding: 4px 20px; }
-.title-btn { display: inline-flex; align-items: center; gap: 6px; text-align: left; align-self: flex-start; }
+.title-btn { display: inline-flex; align-items: center; gap: 6px; text-align: left; align-self: center; }
 .title-btn svg { color: var(--soft-on-white); }
 .scan-beam {
   position: absolute; left: 18%; right: 18%; height: 2px; border-radius: 2px;
@@ -293,11 +316,12 @@ a { color: inherit; text-decoration: none; }
 .digits { perspective: 400px; }
 @media (max-height: 700px) {
   .digits span { width: 34px; height: 46px; font-size: 26px; }
-  .card { padding: 14px 18px; }
 }
 /* Children keep their size; only spacers and the viewfinder give way. */
 .screen > * { flex-shrink: 0; }
 .screen > .spacer, .screen > .viewfinder { flex-shrink: 1; }
+/* A little more air under the camera frame than the screen gap alone. */
+.screen > .viewfinder { margin-bottom: 8px; }
 
 /* Short phones (iPhone SE and similar): tighter rhythm so every screen still fits. */
 @media (max-height: 760px) {
@@ -306,7 +330,7 @@ a { color: inherit; text-decoration: none; }
     --gap: clamp(8px, 1.5dvh, 14px);
     --row-y: clamp(5px, 1dvh, 9px);
     --hero: clamp(32px, 5dvh, 40px);
-    --nav-h: 76px;
+    --nav-h: 72px; /* was 76px */
   }
   .title { font-size: 26px; }
   .btn { min-height: 48px; font-size: 16px; }
@@ -315,10 +339,9 @@ a { color: inherit; text-decoration: none; }
   .hero { --py: 16px; padding: var(--py) 18px; }
   .avatar { width: 32px; height: 32px; font-size: 14px; }
   .icon-chip { width: 30px; height: 30px; }
-  .support { font-size: 14px; }
   .lime-card { --py: 16px; padding: var(--py) 18px; }
   .tile { padding: 12px; gap: 6px; }
-  .usage-chart svg { max-height: 15dvh !important; }
+  .card.usage-chart { --chart-h: min(15dvh, 110px); padding: 8px 16px 16px; }
 }
 
 /* ---------- scan sheet over the tabs ---------- */
@@ -329,7 +352,8 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ---------- usage chart ---------- */
-.usage-chart { position: relative; padding: 8px 12px 16px; }
+/* The chart fills the card's width; --chart-h keeps the height it had (110px, less on short phones). */
+.usage-chart { position: relative; padding: 8px 20px 16px; --chart-h: min(16dvh, 110px); } /* same sides as other cards */
 .chart-tip-anchor { position: absolute; z-index: 5; pointer-events: none; margin-top: -14px; }
 .chart-tip-anchor.below { margin-top: 14px; }
 .chart-tip-anchor.center { translate: -50% -100%; }
@@ -354,8 +378,8 @@ a { color: inherit; text-decoration: none; }
 /* Nav sits above the iPhone home indicator; screens leave room for it. */
 .nav { height: calc(var(--nav-h) + env(safe-area-inset-bottom)); }
 .nav-items { height: var(--nav-h); }
-/* The lime nav bubble rises 20px above the bar; content keeps 12px clear of the bubble, not just the bar. */
-.screen:not(.no-nav) { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 32px); }
+/* The lime nav bubble rises 17px above the bar; content keeps 12px clear of the bubble, not just the bar. */
+.screen:not(.no-nav) { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 29px); }
 
 /* Buttons: icon stays beside the text and the pair stays centred, even if a long translation wraps. */
 .btn, .link-btn { padding: 0 20px; text-align: center; line-height: 1.2; }
@@ -366,6 +390,14 @@ a { color: inherit; text-decoration: none; }
 .scan-foot { display: flex; flex-direction: column; margin-bottom: -6px; }
 .scan-foot .scan-hint { margin: 0; padding: 8px 0 10px; text-align: center; }
 .scan-foot .link-btn { min-height: 0; padding: 10px 20px; }
+
+/* Tap areas: at least 44px, grown invisibly so nothing on screen moves. */
+.icon-btn { position: relative; }
+.icon-btn::after { content: ''; position: absolute; inset: -2px; }          /* 40px circles -> 44px */
+.ask-chip, .title-btn, .status-line { position: relative; }
+.ask-chip::after { content: ''; position: absolute; inset: -4px 0; }                   /* 36px -> 44px, meets the next row in the 8px gap */
+.title-btn::after { content: ''; position: absolute; left: 0; right: 0; top: calc(50% - 22px); bottom: calc(50% - 22px); } /* 44px at any title size */
+.status-line::after { content: ''; position: absolute; inset: -16px 0 -10px; }          /* 18px -> 44px, kept inside the gap below */
 
 /* ---------- lifeline tier bar (Usage, own meter) ---------- */
 .tier { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
@@ -379,7 +411,7 @@ a { color: inherit; text-decoration: none; }
   position: absolute; top: 0; left: 0; translate: -50% 0; white-space: nowrap;
   font-size: 12px; font-weight: 600; line-height: 14px; color: var(--ink);
 }
-.tier-axis { position: relative; height: 14px; font-size: 11px; font-weight: 500; color: var(--soft-on-white); }
+.tier-axis { position: relative; height: 14px; font-size: 12px; font-weight: 500; color: var(--soft-on-white); }
 .tier-axis span { position: absolute; top: 0; translate: -50% 0; line-height: 14px; }
 .tier-axis span.first { translate: 0 0; }
 .tier-axis span.last { translate: -100% 0; }
@@ -387,7 +419,11 @@ a { color: inherit; text-decoration: none; }
 /* ---------- Ask Kahati (chat) ----------
    The page stays one fixed screen; only the message list scrolls, as a chat must. */
 .screen.ask { padding-left: 0; padding-right: 0; gap: 0; }
-.ask-head { display: flex; align-items: center; gap: 12px; padding: 0 var(--pad) 12px; }
+.ask-head { display: flex; align-items: flex-start; gap: 12px; padding: 0 var(--pad) 12px; }
+/* Back button sits where the tab icons do (row top). The 24px Ask title is nudged down so its
+   cap tops match the tab titles' (centred 30px / 26px in a 40px row); offsets measured in the browser. */
+.ask-head > .stack { margin-top: 4.75px; }
+@media (max-height: 760px) { .ask-head > .stack { margin-top: 6.05px; } }
 .ask-title { font-size: 24px; }
 .ask-sub { font-size: 14px; }
 .ask-list {
@@ -408,7 +444,7 @@ a { color: inherit; text-decoration: none; }
 .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--soft-on-white); }
 .ask-chips { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 2px; }
 .ask-chip {
-  background: var(--white); color: var(--ink); border-radius: 999px; padding: 9px 14px;
+  background: var(--white); color: var(--ink); border-radius: 999px; padding: 9.5px 14px;
   font-size: 14px; font-weight: 600; text-align: left; box-shadow: inset 0 0 0 1px rgba(35, 31, 32, 0.08);
 }
 .ask-chip:active { transform: scale(0.97); }
@@ -426,3 +462,7 @@ a { color: inherit; text-decoration: none; }
 }
 .ask-send:disabled { opacity: 0.4; }
 .ask-link { min-height: 40px; margin-top: -8px; }
+
+/* Screen header row: same 40px height whether or not it holds an icon button, so titles and
+   the first card start at the same place on every tab. */
+.header-row { min-height: 40px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }

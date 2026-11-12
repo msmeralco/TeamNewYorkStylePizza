@@ -16,9 +16,12 @@ interface Tip {
   below: boolean
 }
 
-const W = 320
+/** Starting width in SVG units; replaced by the box's real aspect so the chart fills the card. */
+const BASE_W = 320
 const H = 116
-const PAD = { l: 8, r: 14, t: 16, b: 24 }
+// Lines and the outer labels run edge to edge (same width as the tier bar below); the first and
+// last points sit just inside, their white ring (POINT_R + 2.5) touching the edges.
+const PAD = { l: 7.5, r: 7.5, t: 16, b: 24 }
 // Every point is the same size. Measured points are solid dark; the forecast is lime
 // with a dark ring, drawn inside the same outer radius.
 const POINT_R = 5
@@ -35,6 +38,25 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
   const { t } = useT()
   const limitLabel = useRef<SVGTextElement>(null)
   const [labelBelow, setLabelBelow] = useState(false)
+  // The SVG box has a set height, so its width in SVG units follows the box's aspect ratio:
+  // the drawing fills the card edge to edge (no letterboxing) and circles and text never stretch.
+  const [W, setW] = useState(BASE_W)
+  const [measured, setMeasured] = useState(false)
+  useLayoutEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+    const fit = () => {
+      const r = svg.getBoundingClientRect()
+      if (r.width > 0 && r.height > 0) {
+        setW(Math.round((H * r.width) / r.height * 10) / 10)
+        setMeasured(true)
+      }
+    }
+    fit()
+    const ro = new ResizeObserver(fit)
+    ro.observe(svg)
+    return () => ro.disconnect()
+  }, [])
 
   const limit = u.lifeline?.limitKwh
   // Just enough headroom for the highest of the forecast range and the lifeline label.
@@ -47,7 +69,7 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
   const area = `M${x(0)},${y(0)} ${u.points.map((p) => `L${x(p.day)},${y(p.kwhUsed)}`).join(' ')} L${x(end.day)},${y(end.kwh)} L${x(end.day)},${y(0)} Z`
 
   // The photo's kWh label sits above-left of its point unless that would put it on the lifeline line.
-  const photoLabelLow = limit != null && Math.abs(y(last.kwhUsed) - 10 - y(limit)) < 12
+  const photoLabelLow = limit != null && Math.abs(y(last.kwhUsed) - 7 - y(limit)) < 12
 
   // Keep the lifeline label clear of the end point: if its measured box would touch
   // the point (with a little room), move the label under the line instead.
@@ -55,7 +77,7 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
     const t = limitLabel.current
     if (!t || limit == null) return
     const b = t.getBBox()
-    const right = PAD.l + 4 + b.width
+    const right = b.width
     const aboveTop = y(limit) - 8 - b.height
     const r = POINT_R + 6
     const hits = right > x(end.day) - r && y(end.kwh) + r > aboveTop && y(end.kwh) - r < y(limit) - 8 + 3
@@ -123,10 +145,10 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
     { scope: ref, dependencies: [tip?.id] },
   )
 
-  // Draw the real line, then the projection, then pop the end point.
+  // Draw the real line, then the projection, then pop the end point (once the width is known).
   useGSAP(
     () => {
-      if (reduceMotion()) return
+      if (!measured || reduceMotion()) return
       const line = ref.current!.querySelector<SVGPolylineElement>('.solid')!
       const len = line.getTotalLength()
       gsap
@@ -138,7 +160,7 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
         .from('.end', { scale: 0, transformOrigin: '50% 50%', duration: 0.45, ease: 'back.out(3)' }, '-=0.2')
         .from('.lbl', { autoAlpha: 0, duration: 0.3, stagger: 0.05 }, '-=0.3')
     },
-    { scope: ref, dependencies: [u.householdId] },
+    { scope: ref, dependencies: [u.householdId, measured] },
   )
 
   return (
@@ -146,8 +168,7 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
-        width="100%"
-        style={{ display: 'block', maxHeight: '16dvh', overflow: 'visible' }}
+        style={{ display: 'block', width: '100%', height: 'var(--chart-h)', overflow: 'visible' }}
         role="img"
         aria-label={t('chart.aria', { n: Math.round(end.kwh), d: day(u.nextReadDate) })}
       >
@@ -158,19 +179,19 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
           </linearGradient>
         </defs>
         <path className="area" d={area} fill="url(#fill)" />
-        <line x1={PAD.l} x2={W - PAD.r} y1={y(0)} y2={y(0)} stroke="#231F20" strokeOpacity="0.1" />
+        <line x1={0} x2={W} y1={y(0)} y2={y(0)} stroke="#231F20" strokeOpacity="0.1" />
         {limit != null && (
           <>
             {/* Quiet reference line: light, thin, full width; the end point's white ring covers the join. */}
-            <line x1={PAD.l} x2={W - PAD.r} y1={y(limit)} y2={y(limit)} stroke="#231F20" strokeOpacity="0.45" strokeWidth="1" strokeDasharray="1 3.5" strokeLinecap="round" />
-            <text ref={limitLabel} className="lbl" x={PAD.l + 4} y={labelBelow ? y(limit) + 15 : y(limit) - 8} fontSize="11" fontWeight="500" fill="#5C5859" {...HALO}>{label}</text>
+            <line x1={0} x2={W} y1={y(limit)} y2={y(limit)} stroke="#231F20" strokeOpacity="0.45" strokeWidth="1" strokeDasharray="1 3.5" strokeLinecap="round" />
+            <text ref={limitLabel} className="lbl" x={0} y={labelBelow ? y(limit) + 15 : y(limit) - 8} fontSize="11" fontWeight="500" fill="#5C5859" {...HALO}>{label}</text>
           </>
         )}
         <line x1={x(last.day)} x2={x(last.day)} y1={y(last.kwhUsed)} y2={y(0)} stroke="#231F20" strokeOpacity="0.45" strokeWidth="1" strokeDasharray="1 3.5" strokeLinecap="round" />
         <polyline className="solid" points={solid} fill="none" stroke="#231F20" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" shapeRendering="geometricPrecision" />
         <line className="proj" shapeRendering="geometricPrecision" x1={x(last.day)} y1={y(last.kwhUsed)} x2={x(end.day)} y2={y(end.kwh)} stroke="#231F20" strokeOpacity="0.8" strokeWidth="1.1" strokeDasharray="4 4" strokeLinecap="round" />
         {last.day > 0 && (
-          <text className="lbl" x={x(last.day) + (photoLabelLow ? 8 : -6)} y={photoLabelLow ? y(last.kwhUsed) + 16 : y(last.kwhUsed) - 10} fontSize="11" fontWeight="600" textAnchor={photoLabelLow ? 'start' : 'end'} fill="#231F20" {...HALO}>
+          <text className="lbl" x={x(last.day) + (photoLabelLow ? 8 : -8)} y={photoLabelLow ? y(last.kwhUsed) + 16 : y(last.kwhUsed) - 7} fontSize="11" fontWeight="600" textAnchor={photoLabelLow ? 'start' : 'end'} fill="#231F20" {...HALO}>
             {last.kwhUsed} kWh
           </text>
         )}
@@ -187,7 +208,7 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
             <circle
               cx={p.cx}
               cy={p.cy}
-              r={16}
+              r={26} /* at least 44px on screen, also when the chart shrinks on short phones */
               fill="transparent"
               style={{ cursor: 'pointer' }}
               tabIndex={0}
@@ -205,9 +226,9 @@ export function UsageChart({ u, label }: { u: UsageView; label: string }) {
           </g>
         ))}
         <g fontSize="10.5" fontWeight="500" fill="#5C5859" {...HALO}>
-          <text x={PAD.l} y={H - 4}>{t('chart.billAxis', { d: day(u.readDate) })}</text>
+          <text x={0} y={H - 4}>{t('chart.billAxis', { d: day(u.readDate) })}</text>
           {last.day > 0 && <text x={x(last.day)} y={H - 4} textAnchor="middle">{t('chart.photoAxis', { n: last.day })}</text>}
-          <text x={W - PAD.r + 8} y={H - 4} textAnchor="end">{day(u.nextReadDate)}</text>
+          <text x={W} y={H - 4} textAnchor="end">{day(u.nextReadDate)}</text>
         </g>
       </svg>
 

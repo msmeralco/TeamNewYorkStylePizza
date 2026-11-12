@@ -47,12 +47,12 @@ export default function Tenant() {
         <div className="tiles">
           <div className="tile">
             <span className="icon-chip"><ReceiptText {...ICON} size={16} /></span>
-            <span className="support" style={{ fontSize: 14 }}>{t('tenant.asked')}</span>
+            <span className="support">{t('tenant.asked')}</span>
             <span className="num">{php(v.askedToPay)}</span>
           </div>
           <div className="tile">
             <span className="icon-chip"><TrendingUp {...ICON} size={16} /></span>
-            <span className="support" style={{ fontSize: 14 }}>{t('tenant.above')}</span>
+            <span className="support">{t('tenant.above')}</span>
             <span className="num">{php(v.aboveBillRate)}</span>
           </div>
         </div>

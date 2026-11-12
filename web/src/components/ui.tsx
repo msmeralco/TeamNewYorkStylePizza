@@ -84,8 +84,9 @@ export function ToastHost() {
     const el = ref.current
     const tl = gsap
       .timeline()
-      .fromTo(el, { y: 24, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.4, ease: 'back.out(1.8)' })
-      .to(el, { y: 12, autoAlpha: 0, duration: 0.3, ease: 'power2.in', onComplete: () => setMsg(null) }, '+=2.6')
+      // Fades in and out in place (no slide, no bounce).
+      .fromTo(el, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3, ease: 'power1.out' })
+      .to(el, { autoAlpha: 0, duration: 0.3, ease: 'power1.in', onComplete: () => setMsg(null) }, '+=2.6')
     return () => {
       tl.kill()
     }

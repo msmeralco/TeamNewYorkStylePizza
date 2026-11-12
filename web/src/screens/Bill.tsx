@@ -34,7 +34,7 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
     () => {
       if (!data || reduceMotion()) return
       // One sweep left to right across the whole bar (segments keep their final size).
-      gsap.fromTo('.stacked', { clipPath: 'inset(0 100% 0 0 round 3px)' }, { clipPath: 'inset(0 0% 0 0 round 3px)', duration: 1.1, ease: 'power2.inOut', delay: 0.15, clearProps: 'clipPath' })
+      gsap.fromTo('.stacked', { clipPath: 'inset(0 100% 0 0 round 3px)' }, { clipPath: 'inset(0 0% 0 0 round 3px)', duration: 0.7, ease: 'power2.inOut', delay: 0.15, clearProps: 'clipPath' })
     },
     { scope: ref, dependencies: [data?.householdId] },
   )
@@ -59,8 +59,8 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
   const s = data!
   // Ask Kahati about this bill: next to the title (organizer) or the back button (tenant).
   const askBtn = (
-    <Link className="icon-btn" to={tenant ? `/t/${params.token}/ask` : `/ask/${s.householdId}`} aria-label={t('ask.open')}>
-      <Sparkles {...ICON} />
+    <Link className={tenant ? 'icon-btn' : 'icon-btn sm'} to={tenant ? `/t/${params.token}/ask` : `/ask/${s.householdId}`} aria-label={t('ask.open')}>
+      <Sparkles {...ICON} size={tenant ? ICON.size : 16} />
     </Link>
   )
   const total = s.lines.reduce((a, l) => a + l.amount, 0)
@@ -73,11 +73,12 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
           {askBtn}
         </div>
       )}
-      <div className="stack-lg">
+      {/* Organizer: same title-to-number gap as Usage, so the amount sits at the kWh number's height. */}
+      <div className="stack-lg" style={tenant ? undefined : { gap: 'calc(var(--gap) * 0.6)' }}>
         {tenant ? (
           <h1 className="title">{t('bill.title', { household: s.name })}</h1>
         ) : (
-          <div className="row-between" style={{ alignItems: 'flex-start' }}>
+          <div className="header-row">
             <h1 className="title">{t('bill.title', { household: s.name })}</h1>
             {askBtn}
           </div>

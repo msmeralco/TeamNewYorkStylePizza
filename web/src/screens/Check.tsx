@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Calendar, Camera, Check as CheckIcon, CircleCheck, Keyboard, Ruler, Search, Split } from 'lucide-react'
+import { Calendar, Camera, Check as CheckIcon, CircleCheck, Keyboard, Ruler, Search, Split, Zap } from 'lucide-react'
 import { api, type HouseholdMonth } from '../api'
 import { CountUp, GrowBar, useReveal } from '../components/motion'
 import { CheckSkeleton } from '../components/Skeletons'
@@ -19,14 +19,14 @@ export default function Check() {
   const ref = useRef<HTMLDivElement>(null)
   useReveal(ref, !!data)
 
-  if (error) return <div className="screen"><h1 className="title">{t('check.title')}</h1><ErrorState error={error} onRetry={reload} /></div>
+  if (error) return <div className="screen"><div className="header-row"><h1 className="title">{t('check.title')}</h1></div><ErrorState error={error} onRetry={reload} /></div>
   if (loading && !data) return <CheckSkeleton />
   const m = data!
 
   if (!m.bill || !m.check) {
     return (
       <div className="screen">
-        <h1 className="title">{t('check.title')}</h1>
+        <div className="header-row"><h1 className="title">{t('check.title')}</h1></div>
         <div className="card state">
           <span className="body">{t('check.empty')}</span>
           <Link className="btn" to={m.bill ? `/scan/meter/${m.households.find((h) => !h.reading)?.id ?? 'A'}` : '/scan/bill'}>
@@ -43,7 +43,7 @@ export default function Check() {
 
   return (
     <div className="screen" ref={ref}>
-      <h1 className="title">{t('check.title')}</h1>
+      <div className="header-row"><h1 className="title">{t('check.title')}</h1></div>
 
       <div className="lime-card" style={{ ['--num' as string]: c.addsUp ? 'calc(var(--hero) * 0.68)' : 'var(--hero)', ['--text-gap' as string]: 'calc(var(--num) * 0.1259)' }}>
         <p className="hero-num" style={{ fontSize: 'var(--num)', paddingRight: 44 }}>
@@ -56,8 +56,20 @@ export default function Check() {
             </>
           )}
         </p>
-        <span className="icon-chip corner" style={{ background: 'rgba(35,31,32,0.08)' }}>
-          {c.addsUp ? <CircleCheck {...ICON} /> : <Search {...ICON} />}
+        {/* Icon only (no tinted circle). Its outline's top lines up with the top of the text:
+            the drawn circle starts 2/24 (check) or 3/24 (search) of the icon's height below its box. */}
+        <span
+          className="corner"
+          style={{
+            // Centred on the same vertical line as Home's 34px corner circle (35px from the card's right).
+            right: 24,
+            width: 22,
+            height: 22,
+            display: 'grid',
+            top: `calc(var(--py) + var(--text-gap) - ${((c.addsUp ? 2 : 3) / 24) * 22}px)`,
+          }}
+        >
+          {c.addsUp ? <CircleCheck size={22} strokeWidth={1.75} /> : <Search size={22} strokeWidth={1.75} />}
         </span>
         <div style={{ marginTop: 16 }}><GrowBar pct={pct} /></div>
         <p className="body" style={{ margin: '12px 0 0', fontWeight: 500 }}>
@@ -72,37 +84,50 @@ export default function Check() {
           ) : (
             <button key={h.id} className="list-row" onClick={() => setEditing(h.id)} aria-label={t('check.change', { name: h.name })}>
               <span className="avatar">{h.label}</span>
+              {/* Same layout as Home's rows: name over kWh, the status badge where Home shows the price. */}
               <span className="grow">
-                <span className="body">
-                  {h.name} · {h.reading ? `${Math.round(h.reading.kwh)} kWh` : t('check.noReading')}
+                <span className="body">{h.name}</span>
+                <span className="meta">
+                  <Zap size={12} strokeWidth={1.75} />
+                  {h.reading ? `${Math.round(h.reading.kwh)} kWh` : t('check.noReading')}
                 </span>
-                {h.reading && (
-                  <span className="chip">
-                    {h.reading.source === 'typed' ? <Keyboard size={13} strokeWidth={1.75} /> : <CircleCheck size={13} strokeWidth={1.75} />}
-                    {h.reading.source === 'typed' ? t('check.typed') : t('check.verified')}
-                  </span>
-                )}
               </span>
+              {h.reading && (
+                <span className="chip sm row-badge">
+                  {h.reading.source === 'typed' ? <Keyboard size={12} strokeWidth={1.75} /> : <CircleCheck size={12} strokeWidth={1.75} />}
+                  {h.reading.source === 'typed' ? t('check.typed') : t('check.verified')}
+                </span>
+              )}
             </button>
           ),
         )}
-        <div className="list-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
-          <span className="status-line" style={{ fontSize: 14 }}>
-            <Calendar {...ICON} size={16} />
-            {t('check.aligned', { d: day(c.alignedTo) })}
-          </span>
-          {c.gapRuleApplied && (
-            <span className="status-line" style={{ fontSize: 14 }}>
-              <Split {...ICON} size={16} />
-              {t('check.gaprule')}
-            </span>
-          )}
-          <span className="status-line" style={{ fontSize: 14 }}>
-            <Ruler {...ICON} size={16} />
-            {t('check.tolerance', { p: c.tolerancePct, n: Math.round(c.toleranceKwh) })}
-          </span>
-        </div>
       </div>
+
+      {/* How the check works: its own card, laid out like Usage's tips card (16px icon, 15px text, dividers).
+          When the readings don't add up, only the gap-rule row shows (it explains the problem) so the
+          screen still fits with the "Ask for a new photo" button; the dates and 5% rows return once it adds up. */}
+      {(c.addsUp || c.gapRuleApplied) && (
+        <div className="card list">
+          {c.addsUp && (
+            <div className="list-row">
+              <Calendar {...ICON} size={16} style={{ flex: 'none' }} />
+              <span className="tip">{t('check.aligned', { d: day(c.alignedTo) })}</span>
+            </div>
+          )}
+          {c.gapRuleApplied && (
+            <div className="list-row">
+              <Split {...ICON} size={16} style={{ flex: 'none' }} />
+              <span className="tip">{t('check.gaprule')}</span>
+            </div>
+          )}
+          {c.addsUp && (
+            <div className="list-row">
+              <Ruler {...ICON} size={16} style={{ flex: 'none' }} />
+              <span className="tip">{t('check.tolerance', { p: c.tolerancePct, n: Math.round(c.toleranceKwh) })}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {!c.addsUp && (
         <button

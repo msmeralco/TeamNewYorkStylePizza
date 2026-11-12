@@ -10,7 +10,8 @@ export function ScanHeader({ step, total, title }: { step: number; total: number
   const close = useCloseScan()
   const { t } = useT()
   return (
-    <div className="stack-lg">
+    // 8px between the step dashes / close row and the title (was 16px).
+    <div className="stack-lg" style={{ gap: 8 }}>
       <div className="row-between">
         <div className="dashes" aria-label={t('scan.step', { n: step, total })}>
           {Array.from({ length: total }, (_, i) => (
