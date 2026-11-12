@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Calendar, Camera, Check as CheckIcon, CircleCheck, CircleHelp, Keyboard, Ruler, Search, Split, Zap } from 'lucide-react'
-import { api, type HouseholdMonth } from '../api'
+import { api, monthLooksEmpty, type HouseholdMonth } from '../api'
 import { CountUp, GrowBar, useReveal } from '../components/motion'
-import { CheckSkeleton } from '../components/Skeletons'
+import { CheckSkeleton, EmptySkeleton } from '../components/Skeletons'
 import { EmptyState, ErrorState, Footnote, ICON, toast } from '../components/ui'
 import { useErrText } from '../i18n/copy'
 import { useT } from '../i18n/copy'
@@ -25,12 +25,12 @@ export default function Check() {
   useReveal(ref, !!data)
 
   if (error) return <div className="screen"><div className="header-row"><h1 className="title">{t('check.title')}</h1></div><ErrorState error={error} onRetry={reload} /></div>
-  if (loading && !data) return <CheckSkeleton />
+  if (loading && !data) return monthLooksEmpty() ? <EmptySkeleton titleW={86} /> : <CheckSkeleton />
   const m = data!
 
   if (!m.bill || !m.check) {
     return (
-      <div className="screen">
+      <div className="screen" ref={ref}>
         <div className="header-row"><h1 className="title">{t('check.title')}</h1></div>
         <EmptyState
           title={t('check.emptyTitle')}

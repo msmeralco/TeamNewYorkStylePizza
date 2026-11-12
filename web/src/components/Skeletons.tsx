@@ -16,8 +16,9 @@ function SkScreen({ children, dark, noNav }: { children: ReactNode; dark?: boole
   useGSAP(
     () => {
       if (reduceMotion()) return
-      // Fade in after a beat: fast loads never show a skeleton at all.
-      gsap.from(ref.current, { autoAlpha: 0, duration: 0.25, delay: 0.15 })
+      // Stay hidden for half a second, then fade in: loads under 0.5s (the mock's 200-400ms calls,
+      // most backend calls) never flash a skeleton; only slow loads show one.
+      gsap.from(ref.current, { autoAlpha: 0, duration: 0.25, delay: 0.5 })
       gsap.fromTo('.sk', { opacity: 1 }, { opacity: 0.45, duration: 0.7, ease: 'sine.inOut', repeat: -1, yoyo: true, stagger: { each: 0.06 } })
     },
     { scope: ref },
@@ -40,6 +41,31 @@ const rows = (n: number, chip = false, avatar = 38) =>
       {!chip && <Sk w={64} h={15} />}
     </div>
   ))
+
+/** One empty-state card as in ui.tsx EmptyState: heading, body lines, the scan button (same heights). */
+const emptyCard = (lines: number, key: number) => (
+  <div className="card state empty" key={key}>
+    <Sk w="55%" h={26} />
+    {/* Mirrors the body <p>: one 11.6px bar per 19.2px text line, then the p's 8px bottom margin. */}
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7.6, padding: '3.8px 0', marginBottom: 8 }}>
+      {Array.from({ length: lines }, (_, i) => <Sk key={i} w={i === lines - 1 ? '60%' : '85%'} h={11.6} />)}
+    </div>
+    <Sk h={44} r={16} />
+  </div>
+)
+
+/**
+ * Loading skeleton for the initial (empty-month) state: the header row and the empty card(s),
+ * each given as its number of body lines.
+ */
+export function EmptySkeleton({ titleW, cards = [2] }: { titleW: number; cards?: number[] }) {
+  return (
+    <SkScreen>
+      <div className="header-row"><Sk w={titleW} h={34.5} /></div>
+      {cards.map((lines, i) => emptyCard(lines, i))}
+    </SkScreen>
+  )
+}
 
 export function HomeSkeleton() {
   return (

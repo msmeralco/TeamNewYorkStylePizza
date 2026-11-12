@@ -9,6 +9,9 @@ export function notifyChange() {
 // Last result per call, so revisiting a tab shows its content at once
 // (stale-while-revalidate) instead of flashing a skeleton.
 const cache = new Map<string, unknown>()
+// Errors too: Bill and Usage show their empty state through a "needs a scan" error, so without this
+// they reloaded on every visit while the other tabs showed their cached content at once.
+const errors = new Map<string, Error>()
 
 export interface AsyncState<T> {
   data: T | undefined
@@ -21,7 +24,7 @@ export interface AsyncState<T> {
 export function useAsync<T>(fn: () => Promise<T>, deps: unknown[] = []): AsyncState<T> {
   const key = fn.toString() + JSON.stringify(deps)
   const [data, setData] = useState<T | undefined>(() => cache.get(key) as T | undefined)
-  const [error, setError] = useState<Error>()
+  const [error, setError] = useState<Error | undefined>(() => errors.get(key))
   const [loading, setLoading] = useState(true)
   const [tick, setTick] = useState(0)
   const reload = useCallback(() => setTick((t) => t + 1), [])
@@ -38,14 +41,20 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[] = []): AsyncSt
     setLoading(true)
     if (cache.has(key)) setData(cache.get(key) as T)
     else setData(undefined)
+    setError(errors.get(key))
     fn()
       .then((d) => {
         if (!alive) return
         cache.set(key, d)
+        errors.delete(key)
         setData(d)
         setError(undefined)
       })
-      .catch((e: unknown) => alive && setError(e instanceof Error ? e : new Error(String(e))))
+      .catch((e: unknown) => {
+        const err = e instanceof Error ? e : new Error(String(e))
+        errors.set(key, err)
+        if (alive) setError(err)
+      })
       .finally(() => alive && setLoading(false))
     return () => {
       alive = false

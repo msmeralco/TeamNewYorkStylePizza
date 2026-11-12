@@ -204,8 +204,8 @@ export default function Ask({ tenant = false }: { tenant?: boolean }) {
   return (
     <div className="screen no-nav ask">
       <div className="ask-head" ref={head}>
-        <button className="icon-btn" onClick={back} aria-label={t('common.back')}>
-          <ArrowLeft {...ICON} />
+        <button className="icon-btn sm" onClick={back} aria-label={t('common.back')}>
+          <ArrowLeft {...ICON} size={16} />
         </button>
         <div className="stack" style={{ gap: 2, minWidth: 0 }}>
           <h1 className="title ask-title">{t('ask.title')}</h1>

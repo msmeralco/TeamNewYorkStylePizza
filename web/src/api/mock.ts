@@ -291,7 +291,7 @@ export const mockApi: KahatiApi = {
   },
 
   async getShare(householdId, opts) {
-    await wait(200)
+    await wait(250)
     const m = month()
     const h = m.households.find((x) => x.id === householdId)
     if (!h) throw new ApiError('Unknown household', 404, 'unknown_household')
@@ -380,7 +380,7 @@ export const mockApi: KahatiApi = {
   },
 
   async getTenantView(token) {
-    await wait(300)
+    await wait(250)
     const id = TENANT_TOKENS[token]
     if (!id) throw new ApiError('This link has expired. Ask the organizer for a new one.', 404, 'link_expired')
     const m = month()

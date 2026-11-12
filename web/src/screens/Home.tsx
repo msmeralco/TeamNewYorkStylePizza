@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CircleAlert, CircleCheck, Ellipsis, FlaskConical, Languages, RotateCcw, ScanLine, TrendingUp, Zap, Gauge, Search } from 'lucide-react'
-import { api } from '../api'
+import { api, monthLooksEmpty } from '../api'
 import { CountUp, useReveal } from '../components/motion'
-import { HomeSkeleton } from '../components/Skeletons'
+import { EmptySkeleton, HomeSkeleton } from '../components/Skeletons'
 import { EmptyState, ErrorState, ICON, Sheet, toast } from '../components/ui'
 import { useT } from '../i18n/copy'
 import { day, kwh, monthName, php } from '../lib/format'
@@ -21,7 +21,7 @@ export default function Home() {
   useReveal(ref, !!data, stateKey)
 
   if (error) return <div className="screen"><h1 className="title">Kahati</h1><ErrorState error={error} onRetry={reload} /></div>
-  if (loading && !data) return <HomeSkeleton />
+  if (loading && !data) return monthLooksEmpty() ? <EmptySkeleton titleW={150} cards={[2, 3]} /> : <HomeSkeleton />
   const m = data!
 
   const header = (title: string) => (

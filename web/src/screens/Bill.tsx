@@ -3,9 +3,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { ArrowLeft, ChevronDown, Gauge, Share2, Sparkles, Tag, Landmark, Layers, Network, TrendingDown, UtilityPole, Zap, type LucideIcon } from 'lucide-react'
-import { api, type LineKey } from '../api'
+import { api, monthLooksEmpty, type LineKey } from '../api'
 import { CountUp, reduceMotion, useReveal } from '../components/motion'
-import { BillSkeleton } from '../components/Skeletons'
+import { BillSkeleton, EmptySkeleton } from '../components/Skeletons'
 import { EmptyState, ErrorState, Footnote, ICON, Sheet, toast } from '../components/ui'
 import { lineKey, useT } from '../i18n/copy'
 import { kwh as kwhText, php, phpWhole } from '../lib/format'
@@ -46,7 +46,9 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
     try { sessionStorage.setItem('kahati-last-bill', currentId) } catch { /* storage unavailable */ }
   }, [currentId, data])
   const ref = useRef<HTMLDivElement>(null)
-  useReveal(ref, !!data, data?.householdId)
+  // The empty state (no bill yet) fades in like the full screen.
+  const needsScan = !tenant && (error as { code?: string } | undefined)?.code === 'needs_scan'
+  useReveal(ref, !!data || needsScan, data?.householdId ?? (needsScan ? 'empty' : undefined))
   useGSAP(
     () => {
       if (!data || reduceMotion()) return
@@ -57,8 +59,8 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
   )
 
   const back = tenant && (
-    <Link to={`/t/${params.token}`} className="icon-btn" aria-label={t('common.back')}>
-      <ArrowLeft {...ICON} />
+    <Link to={`/t/${params.token}`} className="icon-btn sm" aria-label={t('common.back')}>
+      <ArrowLeft {...ICON} size={16} />
     </Link>
   )
   const picker = !tenant && people.length > 0 && (
@@ -76,9 +78,9 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
   )
   const cls = `screen scrolls${tenant ? ' no-nav' : ''}`
 
-  if (error && (error as { code?: string }).code === 'needs_scan' && !tenant)
+  if (needsScan)
     return (
-      <div className="screen">
+      <div className="screen" ref={ref}>
         <div className="header-row"><h1 className="title">{t('nav.bill')}</h1></div>
         <EmptyState title={t('bill.emptyTitle')} body={t('bill.emptyBody')} label={t(month?.bill ? 'check.scanMeter' : 'home.scanBill')} onScan={() => nav('/scan')} />
       </div>
@@ -92,12 +94,12 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
         {!tenant && <Link className="btn" to="/">{t('bill.goHome')}</Link>}
       </div>
     )
-  if (loading && !data) return <BillSkeleton noNav={tenant} />
+  if (loading && !data) return !tenant && monthLooksEmpty() ? <EmptySkeleton titleW={38} /> : <BillSkeleton noNav={tenant} />
   const s = data!
   // Ask Kahati about this bill: next to the title (organizer) or the back button (tenant).
   const askBtn = (
-    <Link className={tenant ? 'icon-btn' : 'icon-btn sm'} to={tenant ? `/t/${params.token}/ask` : `/ask/${s.householdId}`} aria-label={t('ask.open')}>
-      <Sparkles {...ICON} size={tenant ? ICON.size : 16} />
+    <Link className="icon-btn sm" to={tenant ? `/t/${params.token}/ask` : `/ask/${s.householdId}`} aria-label={t('ask.open')}>
+      <Sparkles {...ICON} size={16} />
     </Link>
   )
   async function shareLink() {
@@ -163,7 +165,8 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
             ) : (
               <h1 className="title">{t('bill.title', { household: s.name })}</h1>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Top-aligned so each small icon's own offset meets the title's cap height. */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', alignSelf: 'flex-start', gap: 8 }}>
               <button className="icon-btn sm" onClick={shareLink} disabled={sharing} aria-busy={sharing} aria-label={t('bill.shareLink')}>
                 <Share2 {...ICON} size={16} />
               </button>

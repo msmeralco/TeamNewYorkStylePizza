@@ -2,12 +2,12 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Bell, ChevronDown, ScanLine, CircleCheck, Sparkles, Gauge, Leaf, Tag, TrendingUp } from 'lucide-react'
-import { api } from '../api'
+import { api, monthLooksEmpty } from '../api'
 import { UsageChart } from '../components/UsageChart'
 import { SharedUsageChart } from '../components/SharedUsageChart'
 import { LifelineBar } from '../components/LifelineBar'
 import { CountUp, reduceMotion, useReveal } from '../components/motion'
-import { UsageSkeleton } from '../components/Skeletons'
+import { EmptySkeleton, UsageSkeleton } from '../components/Skeletons'
 import { EmptyState, ErrorState, Footnote, ICON, Sheet } from '../components/ui'
 import { useT } from '../i18n/copy'
 import { LIFELINE_TIERS_2026, lifelineDiscount } from '../lib/lifeline'
@@ -77,7 +77,9 @@ export default function Usage() {
     name: p.id === 'BAU' ? (own?.name || t('usage.own')) : (month?.households.find((h) => h.id === p.id)?.name || p.id),
   }))
   const ref = useRef<HTMLDivElement>(null)
-  useReveal(ref, !!data, data?.householdId)
+  // The empty state (no readings yet) fades in like the full screen.
+  const needsScan = !!(error as { code?: string } | undefined)?.code?.startsWith('needs_')
+  useReveal(ref, !!data || needsScan, data?.householdId ?? (needsScan ? `empty-${householdId}` : undefined))
   // "Remind me": confirmed in the button itself (no toast over it). The new label fades in place.
   const [remindedFor, setRemindedFor] = useState<string | null>(null)
   const reminded = remindedFor === householdId
@@ -109,7 +111,7 @@ export default function Usage() {
     const nextMissing = month?.households.find((h) => !h.reading)
     // No household name until there is data: the title stays neutral and the picker chooses whose meter.
     return (
-      <div className="screen">
+      <div className="screen" ref={ref}>
         <div className="header-row">
           <button className="title title-btn" onClick={() => setPicking(true)} aria-label={t('usage.choose')}>
             {t('nav.usage')}
@@ -129,7 +131,7 @@ export default function Usage() {
     )
   }
   if (error) return <div className="screen"><h1 className="title">{t('nav.usage')}</h1><ErrorState error={error} onRetry={reload} /></div>
-  if (loading && !data) return <UsageSkeleton />
+  if (loading && !data) return monthLooksEmpty() ? <EmptySkeleton titleW={111} /> : <UsageSkeleton />
   const u = data!
   const f = u.forecast
 

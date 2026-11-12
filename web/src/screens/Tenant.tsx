@@ -35,13 +35,16 @@ export default function Tenant() {
 
   return (
     <div className="screen no-nav scrolls" ref={ref}>
-      <h1 className="title">{t('tenant.hi', { name: v.name })}</h1>
+      {/* Same 40px header row as the tabs, so the title sits at the same height. */}
+      <div className="header-row"><h1 className="title">{t('tenant.hi', { name: v.name })}</h1></div>
 
       <div className="hero" style={{ ['--text-gap' as string]: '4.1px' }}>
         <p className="support" style={{ margin: 0, color: 'var(--white)', fontWeight: 600 }}>{t('share.label')}</p>
         <p className="hero-num lime" style={{ fontSize: 'calc(var(--hero) * 1.18)', marginTop: 6 }}><CountUp value={v.share} format={php} /></p>
         <span className="icon-chip lime corner"><ShieldCheck {...ICON} /></span>
       </div>
+
+      <p className="support tenant-whole" style={{ margin: 0 }}>{t('tenant.wholeBill', { amount: php(v.billAmount), kwh: kwhText(v.billKwh) })}</p>
 
       {v.askedToPay != null && v.aboveBillRate != null && v.aboveBillRate > 0.005 && (
         <div className="tiles">
@@ -63,22 +66,22 @@ export default function Tenant() {
         <span className="body">{t('usage.perkwh', { n: Math.round(v.perKwhValue) })}</span>
       </div>
 
-      <p className="support tenant-whole" style={{ margin: 0 }}>{t('tenant.wholeBill', { amount: php(v.billAmount), kwh: kwhText(v.billKwh) })}</p>
-
-      <div className="spacer" />
+      {/* The notes read right after the figures they qualify; the actions sit at the bottom. */}
       <Footnote>
         {v.askedToPay != null && v.aboveBillRate != null && v.aboveBillRate > 0.005 && <span className="fn-extra">{t('tenant.rateNote')}</span>}
         <span className="fn-extra">{t('tenant.readNote')}</span>
         {t('footer.tenant')}
       </Footnote>
+
+      <div className="spacer" />
       <div className="stack tenant-actions">
         <Link className="btn" to={`/t/${token}/bill`}>
           <ReceiptText {...ICON} /> {t('tenant.seePay')}
         </Link>
-        <Link className="link-btn" to={`/t/${token}/ask`}>
+        <Link className="btn compact secondary" to={`/t/${token}/ask`}>
           <Sparkles {...ICON} /> {t('ask.open')}
         </Link>
-        <button className="link-btn" onClick={askForComputation}>
+        <button className="btn compact secondary" onClick={askForComputation}>
           <MessageCircle {...ICON} /> {t('tenant.askComp')}
         </button>
       </div>
