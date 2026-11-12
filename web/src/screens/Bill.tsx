@@ -200,8 +200,9 @@ export default function BillScreen({ tenant = false }: { tenant?: boolean }) {
         <div className="card note bill-lifeline">
           <span className="icon-chip lime"><Tag {...ICON} /></span>
           <div className="stack" style={{ gap: 2 }}>
-            <span className="body">{t('bill.lifelineSave', { amount: phpWhole(lifelineSave), pct: Math.round(ownPct * 100) })}</span>
-            <span className="support">{t('bill.lifelineNote', { kwh: accountKwh })}</span>
+            {/* Lead with what they would pay on their own meter, not the saving. */}
+            <span className="body"><strong>{t('bill.lifelinePay', { pay: phpWhole(s.amount - lifelineSave), share: phpWhole(s.amount) })}</strong></span>
+            <span className="support">{t('bill.lifelineNote', { kwh: accountKwh, pct: Math.round(ownPct * 100) })}</span>
           </div>
         </div>
       )}
