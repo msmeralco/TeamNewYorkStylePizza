@@ -64,7 +64,7 @@ export default function ScanBill() {
   async function confirm(s: BillScan) {
     setPhase('saving')
     try {
-      await api.confirmBill(s)
+      await api.confirmBill(s.linesAddUp === false ? spreadLines(s) : s)
       notifyChange()
       nav('/scan/meter/A')
     } catch (e) {
@@ -134,11 +134,14 @@ export default function ScanBill() {
         {scan && (scan.sanityNote || scan.linesAddUp === false) && (
           <div className="status-line" role="alert">
             <CircleAlert {...ICON} />
-            {scan.sanityNote ?? t('scan.linesNoAdd')}
+            <span>
+              {scan.sanityNote ?? t('scan.linesNoAdd')}
+              {scan.linesAddUp === false && <> {t('scan.linesSpread')}</>}
+            </span>
           </div>
         )}
         {scan && (
-          <button className="btn" disabled={phase === 'saving' || scan.linesAddUp === false} onClick={() => confirm(scan)}>
+          <button className="btn" disabled={phase === 'saving'} onClick={() => confirm(scan)}>
             <Check {...ICON} /> {t('scan.confirmBill')}
           </button>
         )}
@@ -210,4 +213,21 @@ function TypeBill({ onCancel, onDone }: { onCancel: () => void; onDone: (s: Bill
       </div>
     </div>
   )
+}
+
+/**
+ * The totals were read but the charge lines do not add up to the amount (usually one line misread).
+ * The user has been told: the variable part of each line is scaled so the lines add up to the total,
+ * fixed charges stay as read, and centavo rounding goes to "other". A retake gives the exact lines.
+ */
+function spreadLines(s: BillScan): BillScan {
+  const fixed = s.lines.reduce((a, l) => a + (l.fixed ?? 0), 0)
+  const variable = s.lines.reduce((a, l) => a + l.amount - (l.fixed ?? 0), 0)
+  if (variable <= 0) return s
+  const k = (s.amount - fixed) / variable
+  const lines = s.lines.map((l) => ({ ...l, amount: Math.round(((l.fixed ?? 0) + (l.amount - (l.fixed ?? 0)) * k) * 100) / 100 }))
+  const diff = Math.round((s.amount - lines.reduce((a, l) => a + l.amount, 0)) * 100) / 100
+  const other = lines.find((l) => l.key === 'other') ?? lines[lines.length - 1]
+  other.amount = Math.round((other.amount + diff) * 100) / 100
+  return { ...s, lines, linesAddUp: true }
 }
