@@ -53,7 +53,7 @@ describe("lifeline", () => {
   it("computes the bill", () => {
     expect(billAfterLifeline(53, 15.0615)).toBeCloseTo(518.868675, 6);
     expect(billAfterLifeline(50, 15.0615)).toBe(0);
-    expect(tierLine()).toBe("4Ps lifeline: 100% off up to 50 kWh, 35% off from 51 to 70");
+    expect(tierLine()).toBe("Lifeline: 100% off up to 50 kWh, 35% off from 51 to 70");
   });
 });
 
@@ -101,8 +101,8 @@ describe("forecast: Bautista (own meter, stage 2)", () => {
       underLinePeso: 0,
       pesoLow: expect.any(Number),
       pesoHigh: expect.any(Number),
-      message: expect.stringContaining("Stay under 50 kWh: 100% off instead of about ₱519"),
-      tierLine: "4Ps lifeline: 100% off up to 50 kWh, 35% off from 51 to 70",
+      message: expect.stringContaining("Stay under 50 kWh: 100% off most charges instead of about ₱519"),
+      tierLine: "Lifeline: 100% off up to 50 kWh, 35% off from 51 to 70",
     });
     expect(f.perKwhValue).toBeNull();
   });

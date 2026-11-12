@@ -19,7 +19,7 @@ export const RATES: RateRow[] = [
   // Add 2026-11 when Meralco announces it (mid-month).
 ];
 
-/** 2026 lifeline tiers as published by DSWD (24 Feb 2026). */
+/** ERC Res. No. 02, s. 2026 (uniform 100% up to 50 kWh) and Meralco's ERC-approved 51 to 100 kWh tiers, effective April 2026 billing. */
 export const LIFELINE_TIERS: LifelineTier[] = [
   { maxKwh: 50, discount: 1.0 },
   { maxKwh: 70, discount: 0.35 },

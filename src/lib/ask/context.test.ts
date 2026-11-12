@@ -39,7 +39,7 @@ describe("buildContextFromState (sample compound, Santos)", () => {
   it("keeps other names, other kWh and the 4Ps flag out of the fact sheet", () => {
     const sheet = ctx.factSheet.toLowerCase();
     for (const n of ["reyes", "dela cruz", "garcia"]) expect(sheet).not.toContain(n);
-    expect(sheet).not.toContain("4ps");
+    expect(sheet).not.toMatch(/(is|are|being) (a )?4ps|fourps/);
     expect(sheet).not.toContain("fourps");
     for (const bad of ["52 kwh", "38 kwh", "573.17", "782.36"]) expect(sheet).not.toContain(bad);
     expect(sheet).toContain("677.77");
@@ -89,7 +89,7 @@ describe("buildContextFromState (Bautista, own meter)", () => {
     expect(ctx.otherNames).toEqual([]);
   });
   it("never writes the 4Ps flag into the fact sheet", () => {
-    expect(ctx.factSheet.toLowerCase()).not.toContain("4ps");
+    expect(ctx.factSheet.toLowerCase()).not.toMatch(/(is|are|being) (a )?4ps|fourps/);
   });
 });
 
@@ -132,7 +132,7 @@ describe("buildContextFromTenant", () => {
     expect(ctx.otherNames).toEqual([]);
     const sheet = ctx.factSheet;
     for (const n of NAMES.filter((x) => x !== "Santos")) expect(sheet).not.toContain(n);
-    expect(sheet.toLowerCase()).not.toContain("4ps");
+    expect(sheet.toLowerCase()).not.toMatch(/(is|are|being) (a )?4ps|fourps/);
   });
 });
 

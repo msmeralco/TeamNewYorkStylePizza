@@ -532,7 +532,7 @@ export function createHttpApi(baseUrl: string): KahatiApi {
         lifeline: f.lifeline ? {
           limitKwh: 50, pesoAtForecast: f.lifeline.forecastPeso, pesoUnderLimit: f.lifeline.underLinePeso,
           pesoLow: f.lifeline.pesoLow, pesoHigh: f.lifeline.pesoHigh,
-          // The backend's tier table (2026 DSWD) feeds the Usage tier bar.
+          // The backend's tier table (ERC 2026) feeds the Usage tier bar.
           tiers: f.lifeline.tiers?.map((t) => ({ upTo: t.maxKwh, pctOff: Math.round(t.discount * 100) })),
         } : undefined,
         perKwhValue: f.perKwhValue ?? undefined,

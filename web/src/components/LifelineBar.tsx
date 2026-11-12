@@ -15,7 +15,7 @@ const FILLS = [
 const NONE = { bg: '#D0CDC9', fg: 'var(--ink)' }
 
 /**
- * The 4Ps lifeline discount as a to-scale bar of kWh tiers, with a marker at
+ * The lifeline discount (4Ps or SWDO-certified) as a to-scale bar of kWh tiers, with a marker at
  * this month's forecast. Own-meter households only.
  */
 export function LifelineBar({ forecastKwh, tiers = LIFELINE_TIERS_2026 }: { forecastKwh: number; tiers?: LifelineTier[] }) {

@@ -34,7 +34,7 @@ export default function Tenant() {
   }
 
   return (
-    <div className="screen no-nav" ref={ref}>
+    <div className="screen no-nav scrolls" ref={ref}>
       <h1 className="title">{t('tenant.hi', { name: v.name })}</h1>
 
       <div className="hero" style={{ ['--text-gap' as string]: '4.1px' }}>
@@ -66,7 +66,11 @@ export default function Tenant() {
       <p className="support" style={{ margin: 0 }}>{t('tenant.wholeBill', { amount: php(v.billAmount), kwh: kwhText(v.billKwh) })}</p>
 
       <div className="spacer" />
-      <Footnote>{t('footer.source')}</Footnote>
+      <Footnote>
+        {v.askedToPay != null && v.aboveBillRate != null && v.aboveBillRate > 0.005 && <span className="fn-extra">{t('tenant.rateNote')}</span>}
+        <span className="fn-extra">{t('tenant.readNote')}</span>
+        {t('footer.tenant')}
+      </Footnote>
       <div className="stack">
         <Link className="btn" to={`/t/${token}/bill`}>
           <ReceiptText {...ICON} /> {t('tenant.seePay')}

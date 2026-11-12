@@ -189,8 +189,8 @@ function saveKwh(ctx: AskContext): Answer {
   if (own && row) {
     const mi = Number(row.month.slice(5, 7)) - 1;
     answer = fil
-      ? `Bawat kWh na matipid mo, mga ${peso(row.perKwh)} ang bawas sa bill sa rate ng ${MONTH_FULL.fil[mi]}, bago ang anumang lifeline na diskwento. Sa metrong naka-enroll, 100% diskwento kapag 50 kWh o mas mababa. Hindi nagbabago ang nakapirming singil sa gamit mo.`
-      : `Each kWh you save takes about ${peso(row.perKwh)} off the bill at ${MONTH_FULL.en[mi]}'s rate, before any lifeline discount. On an enrolled meter, staying at 50 kWh or less is 100% off. Fixed charges do not change with your use.`;
+      ? `Bawat kWh na matipid mo, mga ${peso(row.perKwh)} ang bawas sa bill sa rate ng ${MONTH_FULL.fil[mi]}, bago ang anumang lifeline na diskwento. Sa metrong naka-enroll, 100% diskwento sa halos lahat ng singil kapag 50 kWh o mas mababa. Hindi nagbabago ang nakapirming singil sa gamit mo.`
+      : `Each kWh you save takes about ${peso(row.perKwh)} off the bill at ${MONTH_FULL.en[mi]}'s rate, before any lifeline discount. On an enrolled meter, staying at 50 kWh or less is 100% off most charges. Fixed charges do not change with your use.`;
   } else {
     answer = fil
       ? `Bawat kWh na matipid mo, mga ${pesoWhole(per)} ang bawas sa bahagi mo (${peso(per)} sa bill na ito). Hindi nagbabago ang nakapirming singil sa gamit mo.`
@@ -208,7 +208,7 @@ function saveKwh(ctx: AskContext): Answer {
 
 /** What staying under 50 kWh gives: "100% off" when that is ₱0 (never "about ₱0"), otherwise an estimate. */
 function underLine(peso: number, fil: boolean): string {
-  if (peso < 0.005) return fil ? "100% diskwento" : "100% off";
+  if (peso < 0.005) return fil ? "100% diskwento sa halos lahat ng singil" : "100% off most charges";
   return `${fil ? "mga" : "about"} ${pesoWhole(peso)}`;
 }
 
@@ -220,11 +220,11 @@ function lifeline(ctx: AskContext): Answer {
     const range = f.forecastLow != null && f.forecastHigh != null ? ` (${f.forecastLow} ${fil ? "hanggang" : "to"} ${f.forecastHigh})` : "";
     const on = f.forecastKwh <= 50;
     const answer = fil
-      ? `Sa sariling metro, 100% ang diskwento kapag 50 kWh o mas mababa. Tinatayang ${f.forecastKwh} kWh ang gamit mo${date ? ` sa ${date}` : ""}${range}. ` +
+      ? `Sa sariling metro, 100% ang diskwento sa halos lahat ng singil kapag 50 kWh o mas mababa (hindi kasama ang universal charges). Tinatayang ${f.forecastKwh} kWh ang gamit mo${date ? ` sa ${date}` : ""}${range}. ` +
         (on
           ? `Kung mananatili ka roon, mga ${pesoWhole(f.lifelineForecastPeso)} ang bill mo.`
           : `Kapag nanatili ka sa ilalim ng 50 kWh, ${underLine(f.lifelineUnderPeso, true)} ito sa halip na mga ${pesoWhole(f.lifelineForecastPeso)}. Mula 51 hanggang 70 kWh, 35% na lang ang diskwento.`)
-      : `On your own meter, 50 kWh or less gives 100% off. You are forecast at about ${f.forecastKwh} kWh${date ? ` by ${date}` : ""}${range}. ` +
+      : `On your own meter, 50 kWh or less gives 100% off most charges (not universal charges). You are forecast at about ${f.forecastKwh} kWh${date ? ` by ${date}` : ""}${range}. ` +
         (on
           ? `If you stay there, your bill is about ${pesoWhole(f.lifelineForecastPeso)}.`
           : `Staying under 50 kWh is ${underLine(f.lifelineUnderPeso, false)} instead of about ${pesoWhole(f.lifelineForecastPeso)}. From 51 to 70 kWh the discount is 35%.`);
@@ -233,15 +233,15 @@ function lifeline(ctx: AskContext): Answer {
   if (ctx.mode === "shared") {
     return {
       answer: fil
-        ? "Sa sariling metro na naka-enroll, 100% ang diskwento kapag 50 kWh o mas mababa ang gamit sa buwan. Sa shared na metro, ang hangganan ay binabasa sa kabuuang kWh ng metro, kaya walang 50 kWh na hangganan para sa iisang sambahayan."
-        : "On a household's own enrolled meter, staying at 50 kWh or less gives 100% off. On a shared meter the line is read on the whole meter's kWh, so there is no 50 kWh line for one household.",
+        ? "Para ang lifeline sa mga sambahayang 4Ps o may sertipikong mababa ang kita mula sa SWDO ng lungsod o munisipyo, at nasa iisang Meralco account at metro nito. Sa sariling metro na naka-enroll, 100% ang diskwento sa halos lahat ng singil kapag 50 kWh o mas mababa ang gamit sa buwan. Sa shared na metro, ang hangganan ay binabasa sa kabuuang kWh ng metro, kaya walang 50 kWh na hangganan para sa iisang sambahayan."
+        : "Lifeline is for 4Ps households or households certified low-income by their city or municipal social welfare office (SWDO). It sits on one Meralco account and its meter. On a household's own enrolled meter, staying at 50 kWh or less gives 100% off most charges. On a shared meter the line is read on the whole meter's kWh, so there is no 50 kWh line for one household. A sub-metered tenant without their own account cannot claim it.",
       sources: ["lifeline"],
     };
   }
   return {
     answer: fil
-      ? "Sa sariling metro na naka-enroll, 100% ang diskwento kapag 50 kWh o mas mababa sa buwan, 35% mula 51 hanggang 70 kWh, at 20% hanggang 100 kWh. Wala pa akong tantiya ng gamit mo para sa buwang ito."
-      : "On a household's own enrolled meter, 50 kWh or less in a month gives 100% off, 51 to 70 kWh gives 35% off, and up to 100 kWh gives 20% off. There is no usage forecast for this month yet.",
+      ? "Sa sariling metro na naka-enroll, 100% ang diskwento sa halos lahat ng singil kapag 50 kWh o mas mababa sa buwan, 35% mula 51 hanggang 70 kWh, at 20% hanggang 100 kWh. Para ito sa mga sambahayang 4Ps o SWDO-certified. Wala pa akong tantiya ng gamit mo para sa buwang ito."
+      : "On a household's own enrolled meter (4Ps or SWDO-certified), 50 kWh or less in a month gives 100% off most charges, 51 to 70 kWh gives 35% off, and up to 100 kWh gives 20% off. There is no usage forecast for this month yet.",
     sources: ["lifeline"],
   };
 }
@@ -319,8 +319,8 @@ function rateCheckAnswer(ctx: AskContext): Answer {
       : `You were asked ${charged} per kWh. The bill works out to ${eff} per kWh. ${peso(f.askedAmount)} is ${by} below your share${sh ? ` of ${sh}` : ""}.`;
   } else if (above && eff && f.askedAmount != null && f.aboveBy != null) {
     answer = fil
-      ? `Hiningi sa iyo ang ${charged} bawat kWh. Ang bill ay lumalabas na ${eff} bawat kWh, kaya ang ${peso(f.askedAmount)} ay ${peso(f.aboveBy)} na mas mataas sa rate ng bill${f.kwh != null ? ` sa bahaging ${kwh(f.kwh)} kWh` : ""}.`
-      : `You were asked ${charged} per kWh. The bill works out to ${eff} per kWh, so ${peso(f.askedAmount)} is ${peso(f.aboveBy)} above the bill's rate${kwhPart}.`;
+      ? `Hiningi sa iyo ang ${charged} bawat kWh. Ang bill ay lumalabas na ${eff} bawat kWh, kaya ang ${peso(f.askedAmount)} ay ${peso(f.aboveBy)} na mas mataas sa rate ng bill${f.kwh != null ? ` sa bahaging ${kwh(f.kwh)} kWh` : ""}. Puwedeng singilin nang hiwalay ng may-ari ang ilang gastos. Hingin ang master bill.`
+      : `You were asked ${charged} per kWh. The bill works out to ${eff} per kWh, so ${peso(f.askedAmount)} is ${peso(f.aboveBy)} above the bill's rate${kwhPart}. Landlords may bill some costs separately. Ask to see the master bill.`;
   } else if (below && eff) {
     answer = fil
       ? `Hiningi sa iyo ang ${charged} bawat kWh. Ang bill ay lumalabas na ${eff} bawat kWh, kaya mas mababa ang hiningi sa rate ng bill.`

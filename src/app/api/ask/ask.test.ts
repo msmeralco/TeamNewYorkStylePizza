@@ -138,7 +138,7 @@ describe("POST /api/ask free text", () => {
     const f = stubModel({ answer: "Your share is ₱677.77.", inScope: true });
     await POST(post({ state, householdId: "hB", question: "Why?" }));
     const sent = String((f.mock.calls[0] as unknown as [string, RequestInit])[1].body);
-    expect(sent).not.toMatch(/Reyes|Dela Cruz|Garcia|4Ps/i);
+    expect(sent).not.toMatch(/Reyes|Dela Cruz|Garcia|(is|are|being) (a )?4Ps|fourPs/i);
   });
 
   it("rate limits the 13th question in a minute", async () => {

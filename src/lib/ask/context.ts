@@ -77,6 +77,8 @@ function numbersIn(v: unknown, out: number[]): void {
  * Its numbers are added to allowedNumbers. Every wattage is "typical", never this household's.
  */
 const BACKGROUND: string[] = [
+  "Background, lifeline (RA 11552): it is for 4Ps households, or households certified below the PSA poverty threshold by their city or municipal social welfare office (SWDO). It sits on one Meralco account and its meter, so a sub-metered tenant without their own account cannot claim it. Tiers: ERC Res. No. 02, s. 2026 (uniform 100% up to 50 kWh) and Meralco's ERC-approved 51 to 100 kWh tiers, effective April 2026 billing. The 100% covers generation, transmission, system loss, distribution, supply, metering and VAT, not universal charges.",
+  "Background, rate check: a rate above the bill's average rate is not proof of wrongdoing. ERC rules (ERC Res. No. 02, s. 2010, DSOAR Art. VI) let landlords bill some costs, such as losses and admin, separately. Suggest asking to see the master bill.",
   "Background, what each bill line means: Generation is the cost of producing the electricity and is usually the biggest part. Transmission carries it over the high-voltage grid. System loss covers electricity lost on the way. Distribution, supply and metering pay the local distribution utility for the wires, the account and the meter. Taxes are government taxes. Other charges are universal charges, the renewable energy (FIT-All) charge and subsidies.",
   "Background, typical appliance wattages (typical values, not measured for this household): " +
     TYPICAL_WATTS.map((w) => `${w.appliance} about ${w.watts} W`).join("; ") +
@@ -138,10 +140,10 @@ export function factSheetOf(c: { displayName: string; label: string; mode: "shar
   // Identical for every own-meter household, so the text never reveals enrollment (the 4Ps flag).
   // Household-specific lifeline pesos stay in the local template answers only.
   if (c.mode === "shared") {
-    L.push("Lifeline: on a shared meter there is no 50 kWh line for one household. The line applies on a household's own enrolled meter.");
+    L.push("Lifeline: on a shared meter there is no 50 kWh line for one household. The line applies on a household's own enrolled meter. A sub-metered tenant without their own Meralco account cannot claim it.");
   } else {
     L.push(
-      "Lifeline: the discount applies on an enrolled own meter: 100% off up to 50 kWh, 35% off from 51 to 70 kWh, 20% off up to 100 kWh. Do not say whether this household is enrolled.",
+      "Lifeline: the discount applies on an enrolled own meter: 100% off most charges up to 50 kWh (not universal charges), 35% off from 51 to 70 kWh, 20% off up to 100 kWh. Do not say whether this household is enrolled.",
     );
   }
   if (f.checkStatus) {

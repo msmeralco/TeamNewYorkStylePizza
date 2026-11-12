@@ -437,9 +437,9 @@ export const mockApi: KahatiApi = {
       why_share: "Your share is ₱677.77. You used 45 of the meter's 180 kWh, so you pay a quarter of each kWh-based charge, plus an equal ₱5.35 part of the ₱21.38 fixed charges.",
       what_lines: "Most of your ₱677.77 is generation (₱422.50), the cost of producing the electricity. The rest is transmission, system loss, distribution, supply and metering, taxes and other charges.",
       save_kwh: "Each kWh you save takes about ₱15 off your share (₱14.94 on this bill).",
-      lifeline: "On a household's own enrolled meter, staying at 50 kWh or less gives 100% off. On a shared meter there is no 50 kWh line for one household.",
+      lifeline: "On a household's own enrolled meter, staying at 50 kWh or less gives 100% off most charges. On a shared meter there is no 50 kWh line for one household.",
       readings_gap: "The sub-meter readings must add up to the bill's 180 kWh within about 9 kWh. When they fall short, the gap is split by kWh until a new photo fixes it.",
-      rate_check: "You were asked ₱16.50 per kWh. The bill works out to ₱15.06 per kWh, so ₱742.50 is ₱64.73 above the bill's rate on a 45 kWh share.",
+      rate_check: "You were asked ₱16.50 per kWh. The bill works out to ₱15.06 per kWh, so ₱742.50 is ₱64.73 above the bill's rate on a 45 kWh share. Landlords may bill some costs separately. Ask to see the master bill.",
     }
     const id = presetId ?? 'why_share'
     return {

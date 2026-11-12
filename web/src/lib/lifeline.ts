@@ -1,5 +1,6 @@
-// 2026 lifeline tiers for 4Ps households on their own enrolled meter, as published
-// by DSWD (02_product_spec.md, "The 50 kWh line"). Kept as data so a new schedule
+// 2026 lifeline tiers for 4Ps or SWDO-certified households on one Meralco account:
+// ERC Res. No. 02, s. 2026 (uniform 100% up to 50 kWh) and Meralco's ERC-approved
+// 51 to 100 kWh tiers, effective April 2026 billing (02_product_spec.md, "The 50 kWh line"). Kept as data so a new schedule
 // is a one-line change. The backend may send its own tiers; these are the default.
 
 export interface LifelineTier {

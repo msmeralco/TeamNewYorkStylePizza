@@ -63,6 +63,6 @@ describe("background facts", () => {
     const ctx = buildContextFromState(sampleCompoundState(), "hB", "en");
     expect(ctx.factSheet).toMatch(/Background, what each bill line means/);
     expect(ctx.factSheet).toMatch(/Aircon \(window, 1 HP\) about 1000 W/);
-    expect(ctx.factSheet).not.toMatch(/Reyes|Dela Cruz|Garcia|4Ps/);
+    expect(ctx.factSheet).not.toMatch(/Reyes|Dela Cruz|Garcia|(is|are|being) (a )?4Ps|fourPs/i);
   });
 });

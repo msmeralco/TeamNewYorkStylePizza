@@ -24,7 +24,8 @@ function selfCheck(text: string, ctx: AskContext) {
   expect(text).not.toContain("—");
   expect(text).not.toMatch(BANNED);
   for (const n of ctx.otherNames) expect(text).not.toContain(n);
-  expect(text).not.toMatch(/4ps/i);
+  // The general rule may name 4Ps; no answer may say a household is 4Ps.
+  expect(text).not.toMatch(/(is|are|being) (a )?4Ps|fourPs/i);
 }
 
 describe("ASK_PRESETS and footer", () => {
@@ -73,7 +74,7 @@ describe("shared compound, Santos (en)", () => {
   });
   it("rate_check in neutral words", () => {
     const a = answerPreset("rate_check", ctx).answer;
-    expect(a).toBe("You were asked ₱16.50 per kWh. The bill works out to ₱15.06 per kWh, so ₱742.50 is ₱64.73 above the bill's rate on a 45 kWh share.");
+    expect(a).toBe("You were asked ₱16.50 per kWh. The bill works out to ₱15.06 per kWh, so ₱742.50 is ₱64.73 above the bill's rate on a 45 kWh share. Landlords may bill some costs separately. Ask to see the master bill.");
   });
   it("every answer passes the self-check, with sources", () => {
     for (const id of IDS) {
@@ -110,9 +111,9 @@ describe("readings gap with a typed reading", () => {
 
 describe("Bautista, own meter", () => {
   const ctx = buildContextFromState(sampleBautistaState(), "hBautista", "en");
-  it("lifeline says 100% off instead of about ₱519", () => {
+  it("lifeline says 100% off most charges instead of about ₱519", () => {
     const a = answerPreset("lifeline", ctx).answer;
-    expect(a).toContain("100% off instead of about ₱519");
+    expect(a).toContain("100% off most charges instead of about ₱519");
     expect(a).toContain("53 kWh");
     expect(a).toContain("51 to 55");
     selfCheck(a, ctx);
@@ -125,7 +126,7 @@ describe("Bautista, own meter", () => {
   it("save_kwh on an own meter uses October's rate, not the share or the compound's rate", () => {
     const en = answerPreset("save_kwh", ctx).answer;
     expect(en).toContain("about ₱15.06 off the bill at October's rate, before any lifeline discount");
-    expect(en).toContain("staying at 50 kWh or less is 100% off");
+    expect(en).toContain("staying at 50 kWh or less is 100% off most charges");
     expect(en).not.toMatch(/your share|14\.94/);
     const fil = answerPreset("save_kwh", buildContextFromState(sampleBautistaState(), "hBautista", "fil")).answer;
     expect(fil).toContain("₱15.06");

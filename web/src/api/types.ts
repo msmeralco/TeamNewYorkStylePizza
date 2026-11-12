@@ -66,7 +66,7 @@ export interface Household {
   meterKind: MeterKind
   meterSerial: string
   previousReading: number
-  /** 4Ps household (lifeline eligible on its own enrolled meter). */
+  /** Lifeline-eligible household (4Ps or SWDO-certified) on its own enrolled meter. */
   fourPs?: boolean
 }
 
@@ -177,7 +177,7 @@ export interface UsageView {
     /** Peso range across the forecast band, when the backend gives it. */
     pesoLow?: number
     pesoHigh?: number
-    /** Discount tiers; the UI falls back to the 2026 DSWD tiers when absent. */
+    /** Discount tiers; the UI falls back to the 2026 ERC tiers when absent. */
     tiers?: { upTo: number; pctOff: number }[]
   }
   /** Shared meter only: V / K, pesos off the share per kWh saved. */

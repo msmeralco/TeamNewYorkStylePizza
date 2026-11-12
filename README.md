@@ -62,7 +62,7 @@ flowchart TD
     S2 --> S6["6 · Scan Bautista's own meter<br/>12552 on day 18"]
     S6 --> H["Home: four shares<br/>Readings add up: 180 of 180 kWh"]
     H --> BL["Bill: what Santos pays<br/>₱677.77 in seven lines"]
-    BL --> U["Usage: Bautista 53 kWh (51 to 55)<br/>stay under 50 kWh: 100% off instead of about ₱519"]
+    BL --> U["Usage: Bautista 53 kWh (51 to 55)<br/>stay under 50 kWh: 100% off most charges instead of about ₱519"]
     U --> C["Check: type 20 kWh for Dela Cruz<br/>Typed chip + 18 kWh missing"]
     C --> T["Tenant link: Lorna's share<br/>₱742.50 asked, ₱64.73 above the bill's rate"]
     T --> Q["Ask Kahati: why is my share this amount?"]
@@ -121,7 +121,7 @@ flowchart LR
     S3 -.-> S4["Stage 4 (road ahead)<br/>SARIMAX after about 24 months"]
 ```
 
-Bautista: 32 kWh by day 18, so 1.78 kWh a day, 12 days left, 53 kWh by 30 Nov (51 to 55). The lifeline tiers (2026, DSWD) are 100% off up to 50 kWh, 35% to 70, 20% to 100. Pesos use the published Meralco rate from a team-updated table; before a month's rate is announced, last month's rate is used and labelled. Kahati never forecasts the rate.
+Bautista: 32 kWh by day 18, so 1.78 kWh a day, 12 days left, 53 kWh by 30 Nov (51 to 55). The lifeline tiers (ERC Res. No. 02, s. 2026: uniform 100% up to 50 kWh; Meralco's ERC-approved 51 to 100 kWh tiers, effective April 2026 billing) are 100% off most charges up to 50 kWh, 35% to 70, 20% to 100. Lifeline is for 4Ps or SWDO-certified low-income households, on one Meralco account and its meter. Pesos use the published Meralco rate from a team-updated table; before a month's rate is announced, last month's rate is used and labelled. Kahati never forecasts the rate.
 
 ## Ask Kahati (grounded chat)
 

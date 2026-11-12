@@ -191,7 +191,7 @@ export interface Forecast {
     underLinePeso: number;
     message: string;
     tierLine: string;
-    /** The lifeline tier table used (2026 DSWD): up to maxKwh, discount as a fraction (1 = 100% off). */
+    /** The lifeline tier table used (ERC Res. No. 02, s. 2026, effective April 2026 billing): up to maxKwh, discount as a fraction (1 = 100% off). */
     tiers?: LifelineTier[];
   };
   /** Shared meter only. */

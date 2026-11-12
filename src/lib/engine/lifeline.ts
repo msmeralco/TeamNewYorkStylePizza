@@ -15,12 +15,12 @@ export function billAfterLifeline(kwh: number, rate: number, tiers: LifelineTier
   return (1 - discountFor(kwh, tiers)) * kwh * rate;
 }
 
-/** "4Ps lifeline: 100% off up to 50 kWh, 35% off from 51 to 70" */
+/** "Lifeline: 100% off up to 50 kWh, 35% off from 51 to 70" */
 export function tierLine(tiers: LifelineTier[] = LIFELINE_TIERS): string {
   const sorted = [...tiers].sort((a, b) => a.maxKwh - b.maxKwh).slice(0, 2);
   const parts = sorted.map((t, i) => {
     const pct = Math.round(t.discount * 100);
     return i === 0 ? `${pct}% off up to ${t.maxKwh} kWh` : `${pct}% off from ${sorted[i - 1].maxKwh + 1} to ${t.maxKwh}`;
   });
-  return `4Ps lifeline: ${parts.join(", ")}`;
+  return `Lifeline: ${parts.join(", ")}`;
 }

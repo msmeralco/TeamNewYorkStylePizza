@@ -258,7 +258,7 @@ Guardrails (enforced in code, not only in the prompt):
 - Santos breakdown: Generation 422.50, Transmission 57.50, System loss 37.50, Distribution 82.50, Supply and metering 17.50, Taxes 47.50, Other charges 12.77.
 - Rate check (Santos): ₱16.50 charged vs ₱15.06 on the bill, asked ₱742.50, ₱64.73 above.
 - Per kWh saved on the shared meter: ₱14.94 ("about ₱15").
-- Bautista forecast: 53 kWh by 30 Nov (51 to 55); staying under 50 kWh: 100% off instead of about ₱519.
+- Bautista forecast: 53 kWh by 30 Nov (51 to 55); staying under 50 kWh: 100% off most charges instead of about ₱519.
 - Check with Dela Cruz typed 20: "18 kWh missing", 162 of 180 kWh, chip "typed".
 
 ## Bill scan: fixed-charge check

@@ -95,7 +95,7 @@ describe("demo script, end to end", () => {
     expect(f.kwh).toBe(53);
     expect(f.low).toBe(51);
     expect(f.high).toBe(55);
-    expect(f.lifeline.message).toContain("Stay under 50 kWh: 100% off instead of about ₱519");
+    expect(f.lifeline.message).toContain("Stay under 50 kWh: 100% off most charges instead of about ₱519");
 
     const fb = await json(await postForecast(post({ state, householdId: "hB" })));
     expect(fb.perKwhValue).toBeCloseTo(14.94, 2);
