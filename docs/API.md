@@ -28,6 +28,8 @@ Types: `src/types/index.ts` (import them directly from the frontend if you share
 | POST | `/api/check` | `CompoundState` → `CheckResult` (add-up, typed chips, gap rule, digit suggestion) | live |
 | POST | `/api/tenant-link` | `CompoundState` + householdId → `{ token, url, expiresAt, view }` | live |
 | GET | `/api/tenant/{token}` | → `TenantView` | live |
+| GET | `/api/ask/presets?language=en\|fil` | Preset questions for the chat buttons | planned |
+| POST | `/api/ask` | Ask Kahati: grounded answer about one household's numbers | planned |
 
 ## Endpoints
 
@@ -208,6 +210,43 @@ A household with no linked meter gets the flag "Reading needs a second look: no 
 ### Scan bill: charge lines reconciled (12 Nov, about 11 AM)
 
 `sanity` now also carries `linesAddUp: boolean`, `linesAdjustedBy: number` and `linesNote: string | null`. When the scanned lines differ from the total by ₱5 or less, the difference is moved into `lines.other` (so every state endpoint accepts the bill) and `linesNote` says so, for the UI to show before Confirm. A larger difference is left as read, with `linesAddUp: false` and a note asking the user to check each line; confirming it as is would fail with 400 `bad_state` ("Bill lines do not add up to the bill amount.").
+
+## Ask Kahati (chat) — contract published 12 Nov, about 11:50 AM
+
+A narrow explainer, not an open chatbot. It only explains numbers Kahati already computed for ONE household. Types: `AskRequest`, `AskAnswer`, `AskPreset` in `src/types/index.ts`.
+
+### GET /api/ask/presets?language=en|fil
+
+Response: `{ "presets": AskPreset[] }`. Ids: `why_share`, `what_lines`, `save_kwh`, `lifeline`, `readings_gap`, `rate_check`. Show them as buttons; they are answered from templates (instant, no AI, same every time), so use them on stage.
+
+### POST /api/ask
+
+Request, one of:
+- organizer: `{ "state": CompoundState, "householdId": "hB", "presetId"?: ..., "question"?: "...", "language"?: "en" | "fil", "history"?: AskTurn[] }`
+- tenant link: `{ "tenantToken": "<token from the /t/ link>", "presetId"?: ..., "question"?: ..., "language"?: ..., "history"?: ... }`
+
+Send `presetId` OR `question` (max 500 characters). `history` is at most 6 turns.
+
+Response 200 `AskAnswer`:
+```json
+{
+  "answer": "Your share is ₱677.77. You used 45 of the meter's 180 kWh, so you pay a quarter of each kWh-based charge, plus an equal ₱5.35 part of the ₱21.38 fixed charges.",
+  "language": "en",
+  "provider": "template",
+  "fallback": false,
+  "refused": false,
+  "sources": ["share", "breakdown"],
+  "suggestions": [{ "id": "what_lines", "question": "What am I paying for?" }, { "id": "save_kwh", "question": "How much do I save per kWh?" }],
+  "footer": "Computed by Kahati. Not a Meralco statement."
+}
+```
+
+Guardrails (enforced in code, not only in the prompt):
+- Grounded: Gemini receives only this household's computed results; every peso or kWh figure in its answer must appear in them, otherwise the answer is replaced (`fallback: true`).
+- Scope: the bill, the share, usage tips, how the checks work. Anything else gets a polite refusal (`refused: true`).
+- Wording: never "overcharged", "owed" or legal claims; never names another household; never speaks for Meralco; no em dashes.
+- Privacy: the 4Ps flag and other households' names and kWh are never sent to Gemini.
+- Errors: 400 `bad_request` (no question/preset, too long), 400 `bad_state`, 401/410 tenant link errors as in `/api/tenant`, 429 `slow_down` (too many questions; next "Try a question button."), 502 `ask_failed` (next "Try a question button."). Free text needs Gemini; presets never do.
 
 ## Golden sample values (the frontend can test against these)
 

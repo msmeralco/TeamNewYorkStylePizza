@@ -1,4 +1,7 @@
 import type {
+  AskAnswer,
+  AskInput,
+  AskPreset,
   Bill,
   BillScan,
   MeterScan,
@@ -29,6 +32,10 @@ export interface KahatiApi {
   getUsage(householdId: string): Promise<UsageView>
   requestNewPhoto(householdIds: string[]): Promise<void>
   getTenantView(token: string): Promise<TenantView>
+  /** Ask Kahati: preset buttons for the chat. */
+  getAskPresets(language?: 'en' | 'fil'): Promise<AskPreset[]>
+  /** Ask Kahati: a grounded answer about one household's numbers. */
+  ask(input: AskInput): Promise<AskAnswer>
   /** Demo helpers (mock only; the HTTP adapter may no-op). */
   loadSampleReadings(): Promise<void>
   resetDemo(): Promise<void>

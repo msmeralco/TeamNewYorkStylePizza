@@ -180,3 +180,40 @@ export interface TenantView {
   perKwhValue: number
   expiresAt: string
 }
+
+// ---------- Ask Kahati (chat). Mirrors AskRequest/AskAnswer in ../../src/types/index.ts ----------
+
+export type AskPresetId = 'why_share' | 'what_lines' | 'save_kwh' | 'lifeline' | 'readings_gap' | 'rate_check'
+
+export interface AskPreset {
+  id: AskPresetId
+  question: string
+}
+
+export interface AskTurn {
+  role: 'user' | 'assistant'
+  text: string
+}
+
+export interface AskInput {
+  /** Organizer screens: the household (A..D or BAU). */
+  householdId?: string
+  /** Tenant view: the token from /t/:token. */
+  tenantToken?: string
+  presetId?: AskPresetId
+  question?: string
+  language?: 'en' | 'fil'
+  history?: AskTurn[]
+}
+
+export interface AskAnswer {
+  answer: string
+  language: 'en' | 'fil'
+  provider: 'template' | 'gemini'
+  fallback: boolean
+  refused: boolean
+  sources: ('share' | 'breakdown' | 'rateCheck' | 'forecast' | 'check' | 'lifeline')[]
+  suggestions: AskPreset[]
+  footer: string
+  model?: string
+}

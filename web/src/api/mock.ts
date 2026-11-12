@@ -6,6 +6,8 @@
 import { ApiError, type KahatiApi } from './client'
 import { LIFELINE_TIERS_2026, lifelineDiscount } from '../lib/lifeline'
 import type {
+  AskAnswer,
+  AskPreset,
   Bill,
   BillScan,
   CheckSummary,
@@ -162,6 +164,27 @@ const ACTIONS: UsageView['actions'] = [
   { icon: 'plug', text: 'Unplug the rice cooker after cooking' },
   { icon: 'clock', text: 'Set the fan on a timer at night' },
 ]
+
+
+const ASK_PRESETS: Record<'en' | 'fil', AskPreset[]> = {
+  en: [
+    { id: 'why_share', question: 'Why is my share this amount?' },
+    { id: 'what_lines', question: 'What am I paying for?' },
+    { id: 'save_kwh', question: 'How much do I save per kWh?' },
+    { id: 'lifeline', question: 'What is the 50 kWh line?' },
+    { id: 'readings_gap', question: 'Why are kWh missing?' },
+    { id: 'rate_check', question: 'Is my rate the same as the bill?' },
+  ],
+  fil: [
+    { id: 'why_share', question: 'Bakit ganito ang bahagi ko?' },
+    { id: 'what_lines', question: 'Ano ang binabayaran ko?' },
+    { id: 'save_kwh', question: 'Magkano ang matitipid ko bawat kWh?' },
+    { id: 'lifeline', question: 'Ano ang 50 kWh na hangganan?' },
+    { id: 'readings_gap', question: 'Bakit may kulang na kWh?' },
+    { id: 'rate_check', question: 'Pareho ba ang rate ko sa bill?' },
+  ],
+}
+const MOCK_FOOTER = 'Computed by Kahati. Not a Meralco statement.'
 
 export const mockApi: KahatiApi = {
   async getMonth() {
@@ -320,6 +343,36 @@ export const mockApi: KahatiApi = {
       aboveBillRate: asked - share.amount,
       perKwhValue: (bill.amount - bill.fixedCharges) / bill.kwh,
       expiresAt: bill.nextReadDate,
+    }
+  },
+
+  async getAskPresets(language = 'en') {
+    await wait(150)
+    return ASK_PRESETS[language]
+  },
+
+  async ask({ presetId, question, language = 'en' }): Promise<AskAnswer> {
+    await wait(600)
+    const lang = language
+    const p = ASK_PRESETS[lang]
+    const answers: Record<string, string> = {
+      why_share: "Your share is ₱677.77. You used 45 of the meter's 180 kWh, so you pay a quarter of each kWh-based charge, plus an equal ₱5.35 part of the ₱21.38 fixed charges.",
+      what_lines: "Most of your ₱677.77 is generation (₱422.50), the cost of producing the electricity. The rest is transmission, system loss, distribution, supply and metering, taxes and other charges.",
+      save_kwh: "Each kWh you save takes about ₱15 off your share (₱14.94 on this bill).",
+      lifeline: "On a household's own enrolled meter, staying at 50 kWh or less gives 100% off. On a shared meter there is no 50 kWh line for one household.",
+      readings_gap: "The sub-meter readings must add up to the bill's 180 kWh within about 9 kWh. When they fall short, the gap is split by kWh until a new photo fixes it.",
+      rate_check: "You were asked ₱16.50 per kWh. The bill works out to ₱15.06 per kWh, so ₱742.50 is ₱64.73 above the bill's rate on a 45 kWh share.",
+    }
+    const id = presetId ?? 'why_share'
+    return {
+      answer: presetId ? answers[id] : `(mock) Sample answer to: "${question ?? ''}". The real backend answers from your own numbers.`,
+      language: lang,
+      provider: 'template',
+      fallback: false,
+      refused: false,
+      sources: ['share', 'breakdown'],
+      suggestions: p.filter((x) => x.id !== id).slice(0, 3),
+      footer: MOCK_FOOTER,
     }
   },
 

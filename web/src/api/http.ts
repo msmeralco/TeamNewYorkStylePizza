@@ -1,5 +1,7 @@
 import { ApiError, type KahatiApi } from './client'
 import type {
+  AskAnswer,
+  AskPreset,
   Bill,
   BillLine,
   BillScan,
@@ -406,6 +408,32 @@ export function createHttpApi(baseUrl: string): KahatiApi {
         perKwhValue: v.perKwhValue,
         expiresAt: v.expiresAt,
       }
+    },
+
+    async getAskPresets(language = 'en'): Promise<AskPreset[]> {
+      const r = await call<{ presets: AskPreset[] }>(`/api/ask/presets?language=${language}`)
+      return r.presets
+    },
+
+    async ask({ householdId, tenantToken, presetId, question, language, history }): Promise<AskAnswer> {
+      const base = { presetId, question, language, history }
+      if (tenantToken) {
+        // The design's demo link mints a real signed link first, like getTenantView does.
+        const demoHid = DEMO_TOKENS[tenantToken]
+        let token = tenantToken
+        if (demoHid) {
+          const s = await state()
+          const src = local.billConfirmed && allIn(s) ? s : await sample()
+          token = (await post<{ token: string }>('/api/tenant-link', { state: src, householdId: demoHid })).token
+        }
+        return post<AskAnswer>('/api/ask', { ...base, tenantToken: token })
+      }
+      if (!householdId) throw new ApiError('Pick a household first.', 400, 'bad_request')
+      const own = householdId === 'BAU'
+      const s = own
+        ? await call<BState>('/api/sample?which=bautista')
+        : await (async () => { const w = await state(); return local.billConfirmed && allIn(w) ? w : sample() })()
+      return post<AskAnswer>('/api/ask', { ...base, state: s, householdId: toB(householdId) })
     },
 
     async loadSampleReadings() {

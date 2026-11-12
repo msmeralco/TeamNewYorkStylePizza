@@ -298,6 +298,56 @@ export interface TenantView {
   rateLineVisibleToOrganizer?: boolean;
 }
 
+// ---------- Ask Kahati (grounded explainer chat) ----------
+
+/** Preset questions are answered from templates (no AI), so they are instant and stage-proof. */
+export type AskPresetId = "why_share" | "what_lines" | "save_kwh" | "lifeline" | "readings_gap" | "rate_check";
+
+export interface AskPreset {
+  id: AskPresetId;
+  question: string;
+}
+
+export interface AskTurn {
+  role: "user" | "assistant";
+  text: string;
+}
+
+/**
+ * POST /api/ask. Send either the organizer's {state, householdId} or a tenant's {tenantToken}.
+ * Send presetId for a preset question, or question for free text (answered by Gemini, grounded).
+ */
+export interface AskRequest {
+  state?: CompoundState;
+  householdId?: string;
+  tenantToken?: string;
+  presetId?: AskPresetId;
+  /** Free text, at most 500 characters. */
+  question?: string;
+  language?: Language;
+  /** The last few turns (at most 6), for follow-up questions. */
+  history?: AskTurn[];
+}
+
+export type AskSource = "share" | "breakdown" | "rateCheck" | "forecast" | "check" | "lifeline";
+
+export interface AskAnswer {
+  answer: string;
+  language: Language;
+  /** "template" for presets and safe fallbacks; "gemini" for free text that passed the guardrails. */
+  provider: "template" | "gemini";
+  /** True when the AI answer failed a guardrail and was replaced by a safe answer. */
+  fallback: boolean;
+  /** True when the question was outside what Kahati answers. */
+  refused: boolean;
+  /** Which computed results the answer is based on. */
+  sources: AskSource[];
+  /** Follow-up preset questions to show as buttons. */
+  suggestions: AskPreset[];
+  footer: string;
+  model?: string;
+}
+
 export interface ApiError {
   error: { code: string; message: string; next?: string };
 }
