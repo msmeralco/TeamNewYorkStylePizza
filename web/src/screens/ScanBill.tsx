@@ -118,14 +118,17 @@ export default function ScanBill() {
 
       <div className="scan-sheet">
         {err && <div className="status-line" role="alert">{err}</div>}
-        <div className="card" style={{ padding: '4px 20px' }}>
-          {rows.map(({ Icon, k, v }) => (
-            <div className="kv" key={k}>
-              <span className="k"><Icon {...ICON} color="var(--soft-on-white)" />{k}</span>
-              <span className="v">{v}</span>
-            </div>
-          ))}
-        </div>
+        {/* Like the meter step: the read values appear only once the bill has been scanned. */}
+        {scan && (
+          <div className="card" style={{ padding: '4px 20px' }}>
+            {rows.map(({ Icon, k, v }) => (
+              <div className="kv" key={k}>
+                <span className="k"><Icon {...ICON} color="var(--soft-on-white)" />{k}</span>
+                <span className="v">{v}</span>
+              </div>
+            ))}
+          </div>
+        )}
         {scan && (
           <button className="btn" disabled={phase === 'saving'} onClick={() => confirm(scan)}>
             <Check {...ICON} /> {t('scan.confirmBill')}
