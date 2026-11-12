@@ -132,7 +132,8 @@ async function hedgedAttempt(key: string, models: string[], body: string, deadli
   for (let i = 1; i < models.length; i++) timers.push(setTimeout(() => go[i](), i * HEDGE_MS));
   const startNext = (i: number) => { if (i + 1 < models.length) go[i + 1](); };
 
-  const attempt = async (i: number): Promise<{ res: Response; model: string }> => {
+  let winner = -1;
+  const attempt = async (i: number): Promise<{ res: Response; model: string; i: number }> => {
     await started[i];
     if (stopped) throw new Error("stopped");
     const model = models[i];
@@ -166,7 +167,7 @@ async function hedgedAttempt(key: string, models: string[], body: string, deadli
       }
       throw lastError;
     }
-    if (res.ok) return { res, model };
+    if (res.ok) return { res, model, i };
     lastError = new ReaderError("http_error", `The reading service returned HTTP ${res.status} (${model}). ${await errorText(res)}`.trim());
     if (res.status === 503 || res.status === 429) setAsideUntil.set(model, Date.now() + SET_ASIDE_MS);
     // Listed but retired ("no longer available to new users"): never try it again on this instance.
@@ -184,6 +185,7 @@ async function hedgedAttempt(key: string, models: string[], body: string, deadli
 
   try {
     const win = await Promise.any(models.map((_, i) => attempt(i)));
+    winner = win.i;
     lastGoodModel = win.model;
     return { res: win.res, tryNextKey: false };
   } catch {
@@ -192,7 +194,8 @@ async function hedgedAttempt(key: string, models: string[], body: string, deadli
     stopped = true;
     for (const t of timers) clearTimeout(t);
     for (const g of go) g();
-    for (const c of controllers) if (!c.signal.aborted) c.abort();
+    // Abort the losers only: the winner's body has not been read yet.
+    controllers.forEach((c, i) => { if (i !== winner && !c.signal.aborted) c.abort(); });
   }
 }
 

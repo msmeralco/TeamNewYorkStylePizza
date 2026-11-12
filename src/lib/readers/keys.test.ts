@@ -131,3 +131,28 @@ describe("hedged requests", () => {
     expect(scan.model).toBe("gemini-3.5-flash");
   });
 });
+
+describe("hedged requests keep the winner's body readable", () => {
+  it("reads the winning reply after the losers are aborted (real stream bodies)", async () => {
+    process.env.GEMINI_API_KEY = "k1";
+    delete process.env.GEMINI_MODEL;
+    delete process.env.GEMINI_MODEL_FIRST;
+    resetReaderStateForTests();
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
+      if (url.includes("?pageSize")) {
+        return new Response(JSON.stringify({ models: [{ name: "models/gemini-3.8-flash", supportedGenerationMethods: ["generateContent"] }] }), { status: 200 });
+      }
+      // A streamed body that errors if its request is aborted, like a real fetch body.
+      const text = JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ digits: "05055", serial: "SM-0216", confidence: 0.9 }) }] } }] });
+      const stream = new ReadableStream({
+        start(ctrl) {
+          init.signal?.addEventListener("abort", () => ctrl.error(Object.assign(new Error("aborted"), { name: "AbortError" })));
+          setTimeout(() => { try { ctrl.enqueue(new TextEncoder().encode(text)); ctrl.close(); } catch { /* aborted */ } }, 20);
+        },
+      });
+      return new Response(stream, { status: 200 });
+    }));
+    const scan = await new GeminiMeterReader().readMeter({ base64: "aGk=", mimeType: "image/jpeg" }, { expectedDigits: 5 });
+    expect(scan.value).toBe(5055);
+  });
+});
