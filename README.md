@@ -71,10 +71,11 @@ The API keeps no database. The app holds the month's state (bill, readings) in t
 
 ```mermaid
 flowchart TD
+    S0["Home asks: one shared Meralco meter,<br/>or your own Meralco bill?"] --> S1
     S1["1 · Scan the sample bill<br/>180 kWh, ₱2,711.07, •••• 4821"] --> S2["2-5 · Scan four sub-meters<br/>serial must match each household"]
     S2 --> S6["6 · Scan Bautista's own meter<br/>12552 on day 18"]
     S6 --> H["Home: four shares<br/>Readings add up: 180 of 180 kWh"]
-    H --> BL["Bill: what Santos pays<br/>₱677.77 in seven lines"]
+    H --> BL["Bill: what Santos pays<br/>₱677.77 in seven lines<br/>if eligible, own meter: about ₱13"]
     BL --> U["Usage: Bautista 53 kWh (51 to 55)<br/>stay under 50 kWh: 100% off most charges instead of about ₱519"]
     U --> C["Check: type 20 kWh for Dela Cruz<br/>Typed chip + 18 kWh missing"]
     C --> T["Tenant link: Lorna's share<br/>₱742.50 asked, ₱64.73 above the bill's rate"]
