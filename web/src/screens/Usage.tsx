@@ -281,7 +281,7 @@ export default function Usage() {
           )}
         </button>
       </div>
-      <div style={{ marginTop: 'calc(var(--gap) * -0.5)' }}><Footnote>{t('footer.source')}</Footnote></div>
+      <div className="usage-foot" style={{ marginTop: 'calc(var(--gap) * -0.5)' }}><Footnote>{t('footer.source')}</Footnote></div>
       {picker}
       <Sheet open={claiming} onClose={() => setClaiming(false)}>
         <ol className="claim">
