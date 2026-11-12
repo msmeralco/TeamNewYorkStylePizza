@@ -16,7 +16,7 @@ export function closestPreset(question: string): AskPresetId {
   const q = question.toLowerCase();
   const has = (...w: string[]) => w.some((x) => q.includes(x));
   if (has("rate", "presyo", "per kwh", "singil")) return "rate_check";
-  if (has("save", "tipid", "makatipid", "lower", "reduce", "bawasan")) return "save_kwh";
+  if (has("save", "tipid", "makatipid", "lower", "reduce", "bawasan", "bawas", "less", "aircon", "appliance", "kuryente", "electricity", "use ")) return "save_kwh";
   if (has("lifeline", "50 kwh", "50kwh", "discount", "diskwento")) return "lifeline";
   if (has("missing", "kulang", "reading", "gap")) return "readings_gap";
   if (has("lines", "line", "binabayaran", "generation", "transmission", "paying for", "charges")) return "what_lines";
@@ -47,7 +47,11 @@ export async function freeTextAnswer(ctx: AskContext, question: string, history:
     return build(ctx, { answer: refusalText(ctx), provider: "template", fallback: false, refused: true, sources: [] }, null);
   }
   const check = checkAnswer(r.answer, ctx, { question, history: turns });
-  if (!check.ok) return templateFallback(ctx, question);
+  if (!check.ok) {
+    // Rule names only (never the question or the answer), for tuning the guard from the logs.
+    console.warn(`ask: guard fallback: ${check.problems.map((p) => p.replace(/:.*$/, "")).join("; ")}`);
+    return templateFallback(ctx, question);
+  }
   return build(
     ctx,
     { answer: r.answer, provider: "gemini", fallback: false, refused: false, sources: ctx.sources, ...(r.model ? { model: r.model } : {}) },
