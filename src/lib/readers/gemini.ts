@@ -5,8 +5,45 @@ import { ReaderError, type BillReader, type MeterReader, type ReaderImage } from
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
+/** Model last found to work. GEMINI_MODEL pins one; otherwise it is discovered from the key's model list. */
+let discoveredModel: string | null = null;
+
 function model(): string {
-  return process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  return process.env.GEMINI_MODEL || discoveredModel || "gemini-2.5-flash";
+}
+
+/** Rank model ids like "gemini-3.8-flash" by version; plain "-flash" (no lite/preview suffix) wins ties. */
+export function pickFlashModel(names: string[]): string | null {
+  const parsed = names
+    .map((n) => n.replace(/^models\//, ""))
+    .map((id) => ({ id, m: /^gemini-(\d+(?:\.\d+)*)-flash(-[a-z0-9-]+)?$/.exec(id) }))
+    .filter((x): x is { id: string; m: RegExpExecArray } => !!x.m && !/image|tts|audio|live|thinking/.test(x.id));
+  if (parsed.length === 0) return null;
+  const ver = (s: string) => s.split(".").map(Number);
+  parsed.sort((a, b) => {
+    const va = ver(a.m[1]), vb = ver(b.m[1]);
+    for (let i = 0; i < Math.max(va.length, vb.length); i++) {
+      const d = (vb[i] ?? 0) - (va[i] ?? 0);
+      if (d) return d;
+    }
+    return (a.m[2] ? 1 : 0) - (b.m[2] ? 1 : 0);
+  });
+  return parsed[0].id;
+}
+
+/** Ask the API which models this key can call with generateContent, and pick the newest Flash. */
+async function discoverModel(key: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${BASE}?pageSize=200`, { headers: { "x-goog-api-key": key } });
+    if (!res.ok) return null;
+    const j: any = await res.json();
+    const names: string[] = (j?.models ?? [])
+      .filter((m: any) => (m?.supportedGenerationMethods ?? []).includes("generateContent"))
+      .map((m: any) => String(m.name));
+    return pickFlashModel(names);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -37,13 +74,23 @@ async function callGemini(prompt: string, img: ReaderImage, schema: object): Pro
   });
   let res: Response | null = null;
   let lastError: ReaderError | null = null;
+  const send = (key: string) =>
+    fetch(`${BASE}/${model()}:generateContent`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": key },
+      body,
+    });
   for (const key of keys) {
     try {
-      res = await fetch(`${BASE}/${model()}:generateContent`, {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-goog-api-key": key },
-        body,
-      });
+      res = await send(key);
+      // The model was retired or renamed: find the newest Flash this key can use, once, and retry.
+      if (res.status === 404 && !process.env.GEMINI_MODEL) {
+        const found = await discoverModel(key);
+        if (found && found !== model()) {
+          discoveredModel = found;
+          res = await send(key);
+        }
+      }
     } catch {
       lastError = new ReaderError("network", "Could not reach the reading service.");
       res = null;

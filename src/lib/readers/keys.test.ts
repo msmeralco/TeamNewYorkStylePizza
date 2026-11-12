@@ -44,3 +44,13 @@ describe("Gemini backup keys", () => {
     expect(used.every((k) => k === "primary")).toBe(true);
   });
 });
+
+import { pickFlashModel } from "./gemini";
+
+describe("pickFlashModel", () => {
+  it("picks the newest plain Flash model", () => {
+    expect(pickFlashModel(["models/gemini-2.5-flash", "models/gemini-3.8-flash", "models/gemini-3.8-flash-lite", "models/gemini-3.1-pro", "models/gemini-3.8-flash-image"])).toBe("gemini-3.8-flash");
+    expect(pickFlashModel(["models/gemini-3.10-flash", "models/gemini-3.9-flash"])).toBe("gemini-3.10-flash");
+    expect(pickFlashModel(["models/gemini-3.1-pro"])).toBeNull();
+  });
+});

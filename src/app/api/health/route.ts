@@ -9,7 +9,7 @@ export function GET() {
     reader: process.env.READER === "gemini" && geminiKeys().length > 0 ? "gemini" : "mock",
     // How many Gemini keys are configured (the keys themselves are never shown).
     geminiKeys: geminiKeys().length,
-    model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    model: process.env.GEMINI_MODEL || "auto (newest Flash the key can use)",
     time: new Date().toISOString(),
   });
 }
