@@ -331,6 +331,9 @@ a { color: inherit; text-decoration: none; }
 .screen > .viewfinder { margin-bottom: 8px; }
 
 /* Short phones (iPhone SE and similar): tighter rhythm so every screen still fits. */
+/* One title position for every screen (titles, header icons, toast all hang off --top):
+   22px on phones up to 860px tall, 14px on short phones. Screens never override it. */
+@media (max-height: 860px) { :root { --top: 22px; } }
 @media (max-height: 760px) {
   :root {
     --top: 14px;
@@ -415,7 +418,7 @@ a { color: inherit; text-decoration: none; }
 /* Home, Bill and Check hold the most content (hero, rows, notes). Up to 860px tall they get a tighter
    rhythm so everything ends 12px above the nav bubble at rest; .scrolls is only the safety net. */
 @media (max-height: 860px) {
-  .screen.scrolls { --top: 22px; --gap: 14px; --row-y: 9px; --hero: 40px; }
+  .screen.scrolls { --gap: 14px; --row-y: 9px; --hero: 40px; }
   .screen.scrolls .hero { --py: 18px; padding: var(--py) 20px; }
   .screen.scrolls .lime-card { --py: 18px; padding: var(--py) 20px; }
   .screen.scrolls .card { padding: 16px 18px; }
@@ -427,7 +430,7 @@ a { color: inherit; text-decoration: none; }
   .screen.scrolls .footnote { font-size: 13px; }
 }
 @media (max-height: 700px) {
-  .screen.scrolls { --top: 14px; --gap: 9px; --row-y: 5px; --hero: 34px; }
+  .screen.scrolls { --gap: 9px; --row-y: 5px; --hero: 34px; }
   .screen.scrolls .hero, .screen.scrolls .lime-card { --py: 14px; padding: var(--py) 18px; }
   .screen.scrolls .card { padding: 12px 16px; }
   .screen.scrolls .card.list { padding: 2px 16px; }
@@ -437,7 +440,7 @@ a { color: inherit; text-decoration: none; }
   .screen.scrolls .icon-chip { width: 30px; height: 30px; }
   .screen.scrolls .btn { min-height: 46px; }
   /* Own-meter Usage: a little less air so the buttons and footnote clear the bubble at 667px. */
-  .screen.own, .screen.shared { --top: 12px; --gap: 8px; }
+  .screen.own, .screen.shared { --gap: 8px; }
 }
 
 /* Buttons: icon stays beside the text and the pair stays centred, even if a long translation wraps. */
