@@ -260,7 +260,7 @@ const en = {
   'err.ask_failed': 'Kahati could not answer that right now. Try a question button.',
 
   // tenant
-  'tenant.hi': 'Hi, {name} household',
+  'tenant.hi': 'Hi, {name}',
   'tenant.wholeBill': 'Whole bill: {amount} for {kwh}',
   'share.label': 'Your share',
   'tenant.asked': 'You were asked to pay',
@@ -521,7 +521,7 @@ const fil: Record<Key, string> = {
   'err.slow_down': 'Masyadong maraming tanong nang sabay. Subukan ang isang button na tanong.',
   'err.ask_failed': 'Hindi ito masagot ng Kahati ngayon. Subukan ang isang button na tanong.',
 
-  'tenant.hi': 'Kumusta, sambahayang {name}',
+  'tenant.hi': 'Kumusta, {name}',
   'tenant.wholeBill': 'Buong bill: {amount} para sa {kwh}',
   'share.label': 'Iyong bahagi',
   'tenant.asked': 'Hiningi sa iyo',

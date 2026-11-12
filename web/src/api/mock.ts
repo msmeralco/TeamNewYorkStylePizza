@@ -393,7 +393,7 @@ export const mockApi: KahatiApi = {
     const asked = share.kwh * CHARGED_RATE
     return {
       householdId: id,
-      name: h.name,
+      name: 'Lorna',
       share: share.amount,
       kwh: share.kwh,
       askedToPay: asked,
