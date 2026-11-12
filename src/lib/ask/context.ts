@@ -153,6 +153,7 @@ export function factSheetOf(c: { displayName: string; label: string; mode: "shar
     );
   }
   if (f.typed) L.push("This household's reading was typed, not photographed.");
+  L.push(...BACKGROUND);
   return L.join("\n");
 }
 

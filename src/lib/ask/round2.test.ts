@@ -57,3 +57,12 @@ describe("context", () => {
     expect(answerPreset("why_share", ctx).answer).toContain("₱21.38");
   });
 });
+
+describe("background facts", () => {
+  it("the fact sheet carries the bill-line meanings and typical wattages", () => {
+    const ctx = buildContextFromState(sampleCompoundState(), "hB", "en");
+    expect(ctx.factSheet).toMatch(/Background, what each bill line means/);
+    expect(ctx.factSheet).toMatch(/Aircon \(window, 1 HP\) about 1000 W/);
+    expect(ctx.factSheet).not.toMatch(/Reyes|Dela Cruz|Garcia|4Ps/);
+  });
+});
