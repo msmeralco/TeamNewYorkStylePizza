@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CircleAlert, CircleCheck, Ellipsis, FlaskConical, Languages, RotateCcw, ScanLine, TrendingUp, Zap } from 'lucide-react'
+import { CircleAlert, CircleCheck, Ellipsis, FlaskConical, Languages, RotateCcw, ScanLine, TrendingUp, Zap, Gauge } from 'lucide-react'
 import { api } from '../api'
 import { CountUp, useReveal } from '../components/motion'
 import { HomeSkeleton } from '../components/Skeletons'
@@ -62,6 +62,15 @@ export default function Home() {
       <div className="screen" ref={ref}>
         {header(t('home.thisMonth'))}
         <EmptyState title={t('home.noBill')} body={t('home.noBillHint')} label={t('home.scanBill')} onScan={() => nav('/scan/bill')} />
+        {/* Two kinds of "sub-meter": a Meralco meter with its own bill (own-meter mode) vs. a landlord's private
+            sub-meter behind one Meralco service (the shared split above). Ask which one this household has. */}
+        <div className="card state empty own-choice">
+          <h2 className="empty-title">{t('home.ownTitle')}</h2>
+          <p className="body">{t('home.ownBody')}</p>
+          <button className="btn compact dark" onClick={() => nav('/usage/BAU')}>
+            <span className="btn-label"><Gauge {...ICON} /> {t('home.ownCta')}</span>
+          </button>
+        </div>
         {sheet}
       </div>
     )
