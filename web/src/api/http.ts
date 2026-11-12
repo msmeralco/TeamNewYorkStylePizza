@@ -1,4 +1,5 @@
 import { scenarioPayloadFromLink } from '../lib/scenarioLink'
+import { buildLabMonth, parseLabLink } from '../lib/labMonth'
 import { ApiError, type KahatiApi, type ScenarioImport } from './client'
 import type {
   AskAnswer,
@@ -761,6 +762,16 @@ export function createHttpApi(baseUrl: string): KahatiApi {
       if (p == null) return { ok: false, reason: 'no scenario in the link' }
       let r: ReturnType<typeof parseScenario>
       if (p.kind === 'plain') r = parseScenario(p.payload)
+      else if (p.kind === 'lab') {
+        // Tiny lab link: rebuild the month from its seed with the generator the lab uses (labMonth.ts).
+        const o = parseLabLink(p.value)
+        if (!o) r = { ok: false, reason: 'the link is damaged' }
+        else {
+          try {
+            r = validateScenario(buildLabMonth({ compound: await builtInCompound(), bau: await builtInBau() } as never, o))
+          } catch { r = { ok: false, reason: 'could not reach Kahati to read the link' } }
+        }
+      }
       else if (p.json == null) r = { ok: false, reason: 'the link is damaged' }
       else {
         try { r = buildCompact(p.json, await builtInCompound(), await builtInBau()) } catch { r = { ok: false, reason: 'could not reach Kahati to read the link' } }

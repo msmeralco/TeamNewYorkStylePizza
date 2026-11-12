@@ -32,12 +32,12 @@ async function inflateScenarioHash() {
 await inflateScenarioHash()
 // A scenario link pasted into an already-open tab only changes the hash; reload so it is imported.
 window.addEventListener('hashchange', () => {
-  if (/(?:^#|&)(?:scenarioz?|s2)=/.test(window.location.hash) || window.location.hash === '#fresh') window.location.reload()
+  if (/(?:^#|&)(?:scenarioz?|s2|lab)=/.test(window.location.hash) || window.location.hash === '#fresh') window.location.reload()
 })
 
 // A lab link (#scenario=...) is imported once, before the first screen reads any state.
 // The compact #s2= form is rebuilt from the sample states, so it is read here (async) instead.
-const compactHash = /(?:^#|&)s2=/.test(window.location.hash)
+const compactHash = /(?:^#|&)(?:s2|lab)=/.test(window.location.hash)
 const scenarioImport = compactHash ? await importCompactHash() : api.importScenarioFromHash()
 async function importCompactHash() {
   const link = window.location.hash

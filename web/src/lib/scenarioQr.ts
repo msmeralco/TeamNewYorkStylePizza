@@ -25,7 +25,7 @@ async function load(file: Blob): Promise<Source | null> {
   }
 }
 
-const isScenario = (text: string) => /#(?:s2|scenarioz?)=/.test(text)
+const isScenario = (text: string) => /#(?:s2|lab|scenarioz?)=/.test(text)
 
 /** Draws a region (source pixels) scaled to fit `max`, then runs jsQR on it. */
 function scan(jsQR: JsQR, src: Source, sx: number, sy: number, sw: number, sh: number, max: number): string | null {
