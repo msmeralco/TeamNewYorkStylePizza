@@ -220,6 +220,8 @@ export interface CheckResult {
   tolerancePct: number;
   toleranceKwh: number;
   households: HouseholdCheck[];
+  /** False when any household chip is "missing" (no meter, no current or no previous reading). */
+  complete?: boolean;
   alignedTo: string;
   gapRule: string | null;
   headline: string;

@@ -1,4 +1,4 @@
-import { addDays, isValidDate, toManilaDate } from "@/lib/engine/dates";
+import { addDays, daysBetween, isValidDate, toManilaDate, toTimestamp } from "@/lib/engine/dates";
 import { ForecastError, forecast } from "@/lib/engine/forecast";
 import { fail, ok, readJson } from "@/lib/http";
 import { cddForRange, monthlyCdd } from "@/lib/weather";
@@ -63,14 +63,30 @@ export async function POST(req: Request) {
     const own = state.compound.mode === "single" && ownMeter !== false;
     const past = state.bill.history;
     const meter = state.meters.find((m) => m.householdId === householdId);
-    const hasPhoto = !!meter && state.currentReadings.some((r) => r.meterId === meter.id);
+    // Same rule as forecast(): a reading at least 1 day after the base date counts as a photo.
+    let baseDate = toManilaDate(state.bill.readDate);
+    if (meter && state.bill.presentReading == null) {
+      const prevs = state.previousReadings.filter((r) => r.meterId === meter.id).sort((a, b) => toTimestamp(a.capturedAt) - toTimestamp(b.capturedAt));
+      if (prevs.length > 0) baseDate = toManilaDate(prevs[prevs.length - 1].capturedAt);
+    }
+    const hasPhoto = !!meter && state.currentReadings.some((r) => r.meterId === meter.id && daysBetween(baseDate, toManilaDate(r.capturedAt)) >= 1);
     let weatherFailed = false;
     if (useWeather && own && !hasPhoto && Array.isArray(past) && past.length >= 6 && past.length <= MAX_HISTORY) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
       try {
         const nextStart = addDays(toManilaDate(state.bill.readDate), 1);
         const nextEnd = toManilaDate(state.bill.nextReadDate);
-        const deadline = new Promise<never>((_, rej) => setTimeout(() => rej(new Error("deadline")), DEADLINE_MS).unref?.());
-        const [hist, next] = await Promise.race([Promise.all([monthlyCdd(past), cddForRange(nextStart, nextEnd)]), deadline]);
+        const deadline = new Promise<never>((_, rej) => {
+          timer = setTimeout(() => rej(new Error("deadline")), DEADLINE_MS);
+          timer.unref?.();
+        });
+        let hist: Awaited<ReturnType<typeof monthlyCdd>>;
+        let next: Awaited<ReturnType<typeof cddForRange>>;
+        try {
+          [hist, next] = await Promise.race([Promise.all([monthlyCdd(past), cddForRange(nextStart, nextEnd)]), deadline]);
+        } finally {
+          clearTimeout(timer);
+        }
         h = hist;
         cdd = next.cdd;
         if (next.note) note = next.note;

@@ -44,7 +44,7 @@ function sanity(amount: number, kwh: number, periodEnd: string) {
   const sorted = [...RATES].sort((a, b) => a.month.localeCompare(b.month));
   const row = sorted.filter((r) => r.month <= month).at(-1);
   if (!(kwh > 0) || !row) {
-    return { effectiveRate: 0, withinBand: false, note: "Could not check the rate. Please confirm the numbers." };
+    return { effectiveRate: 0, withinBand: false, note: "Could not check the rate. Please confirm the numbers.", rateMonth: null };
   }
   const effectiveRate = amount / kwh;
   const diff = (effectiveRate - row.perKwh) / row.perKwh;

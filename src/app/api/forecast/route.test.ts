@@ -81,8 +81,13 @@ describe("POST /api/forecast", () => {
   });
   it("shared compound forecasts without weather", async () => {
     const state = sampleCompoundState();
-    const res = await post({ state, householdId: state.households[0].id });
-    expect([200, 422]).toContain(res.status);
+    const res = await post({ state, householdId: "hB" });
+    expect(res.status).toBe(200);
+    const j = await res.json();
+    expect(j.stage).toBe(1);
+    expect(j.kwh).toBe(45);
+    expect(j.label).toBe("Rough guess");
+    expect(j.perKwhValue).toBe(14.94);
   });
 
   it("useWeather with stubbed temperatures gives stage 3", async () => {

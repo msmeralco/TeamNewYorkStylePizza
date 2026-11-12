@@ -21,6 +21,21 @@ describe("POST /api/scan/bill", () => {
     expect(j.sanity.rateMonth).toBe("2026-10");
     expect(j.sanity.note).toContain("2026-10 rate");
   });
+  it("always includes rateMonth, null when unknown", async () => {
+    vi.stubEnv("READER", "gemini");
+    vi.stubEnv("GEMINI_API_KEY", "k");
+    const bill = {
+      periodStart: "2000-01-01", periodEnd: "2000-01-31", readDate: "2000-01-31", nextReadDate: "2000-02-28",
+      kwh: 180, amount: 2711.07, fixedCharges: 21.38, accountLast4: "4821", confidence: 0.9,
+      lines: { generation: 1690, transmission: 230, systemLoss: 150, distribution: 330, supplyMetering: 70, taxes: 190, other: 51.07 },
+    };
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(bill) }] } }] }), { status: 200 })));
+    const j = await (await postBill(req({ imageBase64: "AAAA", mimeType: "image/jpeg" }))).json();
+    vi.unstubAllGlobals();
+    expect("rateMonth" in j.sanity).toBe(true);
+    expect(j.sanity.rateMonth).toBeNull();
+  });
   it("400 on missing image, bad json", async () => {
     vi.stubEnv("READER", "");
     const r = await postBill(req({ mimeType: "image/jpeg" }));
@@ -85,5 +100,13 @@ describe("POST /api/scan/meter", () => {
     vi.stubEnv("READER", "");
     expect((await postMeter(req({}))).status).toBe(400);
     expect((await postMeter(req({ imageBase64: "A".repeat(4 * 1024 * 1024 + 10) }))).status).toBe(413);
+  });
+  it("ignores a meter or reading without an id", async () => {
+    vi.stubEnv("READER", "");
+    const { id: _a, ...noId } = meter;
+    const { meterId: _b, ...noMeterId } = previous;
+    const res = await postMeter(req({ imageBase64: "AAAA", mimeType: "image/jpeg", meter: noId, previous: noMeterId }));
+    const j = await res.json();
+    expect(j.validation.kwhSinceLast ?? null).toBeNull();
   });
 });

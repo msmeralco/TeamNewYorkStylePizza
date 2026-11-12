@@ -65,7 +65,7 @@ export function checkCompound(state: CompoundState, opts: CheckOptions = {}): Ch
     // A household with no usable meter at all counts as a missing reading.
     let anyMissing = mine.length === 0;
     let anyTyped = false;
-    if (mine.length === 0) flags.push("Reading needs a second look: no reading yet. Take a photo of the meter.");
+    if (mine.length === 0) flags.push("Reading needs a second look: no meter is linked yet.");
 
     for (const u of mine) {
       const meter = state.meters.find((m) => m.id === u.meterId);
@@ -74,6 +74,10 @@ export function checkCompound(state: CompoundState, opts: CheckOptions = {}): Ch
         anyMissing = true;
         flags.push("Reading needs a second look: no reading yet. Take a photo of the meter.");
         continue;
+      }
+      if (!u.previous) {
+        anyMissing = true;
+        flags.push("Reading needs a second look: no previous reading to compare with.");
       }
       if (u.current.source === "typed") anyTyped = true;
       if (u.previous && u.current.value < u.previous.value) {
@@ -120,6 +124,7 @@ export function checkCompound(state: CompoundState, opts: CheckOptions = {}): Ch
     tolerancePct: ADD_UP_TOLERANCE * 100,
     toleranceKwh,
     households,
+    complete: households.every((h) => h.chip !== "missing"),
     alignedTo: `Reading dates aligned to the bill: ${shortDate(bill.readDate)}`,
     gapRule: status === "gap" ? GAP_RULE : null,
     headline,

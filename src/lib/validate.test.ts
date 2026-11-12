@@ -134,3 +134,19 @@ describe("validateState hardening", () => {
     expect(bad((s) => (s.currentReadings[0].confidence = 2)).ok).toBe(false);
   });
 });
+
+describe("validateState extra limits", () => {
+  it("requires bill.id", () => {
+    expect(bad((s) => delete s.bill.id).ok).toBe(false);
+  });
+  it("rejects bill lines that do not add up to the amount", () => {
+    const v = bad((s) => (s.bill.lines.taxes += 5));
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.message).toBe("Bill lines do not add up to the bill amount.");
+  });
+  it("caps array sizes", () => {
+    expect(bad((s) => (s.households = Array.from({ length: 51 }, (_, i) => ({ id: "h" + i })))).ok).toBe(false);
+    expect(bad((s) => (s.meters = Array.from({ length: 61 }, (_, i) => ({ id: "m" + i, householdId: null, digits: 5 })))).ok).toBe(false);
+    expect(bad((s) => (s.currentReadings = Array.from({ length: 501 }, () => ({ ...s.currentReadings[0] })))).ok).toBe(false);
+  });
+});

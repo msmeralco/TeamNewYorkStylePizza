@@ -16,6 +16,15 @@ function isHttpUrl(x: unknown): boolean {
   }
 }
 
+/**
+ * POST /api/tenant-link: the organizer makes a link for one household.
+ *
+ * The response view leaves out rateCheck: the tenant sees her own rate line through
+ * GET /api/tenant/{token}, which returns the full view.
+ *
+ * The token signature proves Kahati computed the view from the submitted bill and readings,
+ * not that the bill or the readings are genuine.
+ */
 export async function POST(req: Request) {
   try {
     const body = await readJson<{ state?: unknown; householdId?: unknown; baseUrl?: unknown }>(req);
@@ -35,7 +44,9 @@ export async function POST(req: Request) {
     }
     const token = signToken({ ...view, exp: view.expiresAt });
     const base = (hasBase ? (body.baseUrl as string) : new URL(req.url).origin).replace(/\/+$/, "");
-    return ok({ token, url: `${base}/t/${token}`, expiresAt: view.expiresAt, view });
+    const { rateCheck: _rateCheck, ...organizerView } = view;
+    void _rateCheck;
+    return ok({ token, url: `${base}/t/${token}`, expiresAt: view.expiresAt, view: organizerView });
   } catch (e) {
     if (e instanceof TenantError) return fail(404, e.code, e.message, e.next);
     if (e instanceof SplitError) return fail(422, e.code, e.message, e.next);

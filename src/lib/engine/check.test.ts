@@ -160,3 +160,25 @@ describe("suggestDigitFix odd values", () => {
     expect(suggestDigitFix({ candidates: [{ householdId: "hB", previous: prev, current: cur, digits: 5 }], gapKwh: 60, toleranceKwh: 9 })).toBeNull();
   });
 });
+
+describe("checkCompound missing readings", () => {
+  it("a current reading with no previous reading is missing and not complete", () => {
+    const s = sampleCompoundState();
+    s.previousReadings = s.previousReadings.filter((r) => r.meterId !== "mB");
+    const r = checkCompound(s);
+    const hB = r.households.find((h) => h.householdId === "hB")!;
+    expect(hB.chip).toBe("missing");
+    expect(hB.flags[0].startsWith("Reading needs a second look")).toBe(true);
+    expect(r.complete).toBe(false);
+  });
+  it("a household with no meter is missing", () => {
+    const s = sampleCompoundState();
+    s.meters = s.meters.filter((m) => m.householdId !== "hC");
+    const r = checkCompound(s);
+    expect(r.households.find((h) => h.householdId === "hC")!.chip).toBe("missing");
+    expect(r.complete).toBe(false);
+  });
+  it("the sample is complete", () => {
+    expect(checkCompound(sampleCompoundState()).complete).toBe(true);
+  });
+});

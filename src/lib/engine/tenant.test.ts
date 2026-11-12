@@ -40,17 +40,22 @@ describe("tenant link routes", () => {
     const j = await res.json();
     expect(j.url).toBe(`https://kahati.app/t/${j.token}`);
     expect(j.expiresAt).toBe(j.view.expiresAt);
+    expect("rateCheck" in j.view).toBe(false);
+    expect(JSON.stringify(j.view)).not.toContain("aboveBy");
     expect(JSON.stringify(j).toLowerCase()).not.toContain("fourps");
     const g = await get(j.token);
     expect(g.status).toBe(200);
     const view = await g.json();
-    expect(view).toEqual(j.view);
+    expect(view).toEqual({ ...j.view, rateCheck: view.rateCheck });
     expect(view.exp).toBeUndefined();
+    expect(view.rateCheck.aboveBy).toBe(64.73);
+    expect(view.share.amount).toBe(677.77);
+    expect(view.footer).toBe(TENANT_FOOTER);
   });
   it("falls back to the request origin", async () => {
     const j = await (await post({ state: sampleCompoundState(), householdId: "hA" })).json();
     expect(j.url.startsWith("http://localhost:3000/t/")).toBe(true);
-    expect(j.view.rateCheck).toBeNull();
+    expect("rateCheck" in j.view).toBe(false);
   });
   it("validates input", async () => {
     expect((await post({ householdId: "hB" })).status).toBe(400);

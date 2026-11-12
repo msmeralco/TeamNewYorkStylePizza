@@ -6,6 +6,9 @@ export type StateValidation =
   | { ok: false; code: "bad_state"; message: string; next: string };
 
 const NEXT = "Send {state} from GET /api/sample.";
+const MAX_HOUSEHOLDS = 50;
+const MAX_METERS = 60;
+const MAX_READINGS = 500;
 const SOURCES = ["photo", "typed", "bill"];
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === "object" && x !== null && !Array.isArray(x);
@@ -25,6 +28,7 @@ function isDateTime(x: string): boolean {
 
 function checkReadings(list: unknown, name: string, digitsOf: Map<string, number>): string | null {
   if (!Array.isArray(list)) return `${name} must be an array.`;
+  if (list.length > MAX_READINGS) return `${name} can hold at most ${MAX_READINGS} readings.`;
   for (let i = 0; i < list.length; i++) {
     const r = list[i];
     if (!isObj(r)) return `${name}[${i}] must be an object.`;
@@ -46,12 +50,14 @@ function problem(x: unknown): string | null {
   if (!isObj(compound)) return "state.compound must be an object.";
   if (compound.mode !== "shared" && compound.mode !== "single") return "state.compound.mode must be shared or single.";
   if (!Array.isArray(households)) return "state.households must be an array.";
+  if (households.length > MAX_HOUSEHOLDS) return `state.households can hold at most ${MAX_HOUSEHOLDS} households.`;
   for (let i = 0; i < households.length; i++) {
     const h = households[i];
     if (!isObj(h) || typeof h.id !== "string") return `state.households[${i}] must be an object with a string id.`;
   }
   if (new Set(households.map((h) => (h as { id: string }).id)).size !== households.length) return "state.households has a duplicate id.";
   if (!Array.isArray(meters)) return "state.meters must be an array.";
+  if (meters.length > MAX_METERS) return `state.meters can hold at most ${MAX_METERS} meters.`;
   for (let i = 0; i < meters.length; i++) {
     const m = meters[i];
     if (!isObj(m) || typeof m.id !== "string") return `state.meters[${i}] must be an object with a string id.`;
@@ -61,6 +67,7 @@ function problem(x: unknown): string | null {
   }
   if (new Set(meters.map((m) => (m as { id: string }).id)).size !== meters.length) return "state.meters has a duplicate id.";
   if (!isObj(bill)) return "state.bill must be an object.";
+  if (typeof bill.id !== "string" || bill.id === "") return "state.bill.id must be a string.";
   if (!isNum(bill.kwh) || bill.kwh <= 0 || bill.kwh > 1e7) return "state.bill.kwh must be a number above zero.";
   if (!isNum(bill.amount) || bill.amount <= 0 || bill.amount > 1e9) return "state.bill.amount must be a number above zero.";
   if (!isNum(bill.fixedCharges) || bill.fixedCharges < 0) return "state.bill.fixedCharges must be a number, zero or more.";
@@ -69,6 +76,8 @@ function problem(x: unknown): string | null {
   for (const k of LINE_KEYS) {
     if (!isNum(bill.lines[k]) || Math.abs(bill.lines[k] as number) > 1e9) return `state.bill.lines.${k} must be a number.`;
   }
+  const lineSum = LINE_KEYS.reduce((t, k) => t + (bill.lines as Record<string, number>)[k], 0);
+  if (Math.abs(lineSum - bill.amount) > 0.01) return "Bill lines do not add up to the bill amount.";
   if ((bill.lines.supplyMetering as number) < bill.fixedCharges) return "state.bill.lines.supplyMetering cannot be less than state.bill.fixedCharges.";
   if (!isIsoDate(bill.readDate)) return "state.bill.readDate must be a date like 2026-10-31.";
   if (!isIsoDate(bill.nextReadDate)) return "state.bill.nextReadDate must be a date like 2026-11-30.";

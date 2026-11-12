@@ -57,10 +57,10 @@ function serialLine(serial: string | null, matches: boolean | null): string {
 }
 
 function isMeter(m: unknown): m is Meter {
-  return !!m && typeof m === "object" && typeof (m as Meter).serial === "string" && typeof (m as Meter).digits === "number";
+  return !!m && typeof m === "object" && typeof (m as Meter).id === "string" && typeof (m as Meter).serial === "string" && typeof (m as Meter).digits === "number";
 }
 function isReading(r: unknown): r is Reading {
-  return !!r && typeof r === "object" && typeof (r as Reading).value === "number";
+  return !!r && typeof r === "object" && typeof (r as Reading).meterId === "string" && typeof (r as Reading).value === "number";
 }
 function missing(): Response {
   return fail(400, "missing_image", "No photo was sent.", "Type it instead");

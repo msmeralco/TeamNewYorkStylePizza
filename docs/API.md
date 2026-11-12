@@ -159,7 +159,7 @@ Errors (all `{error:{code,message,next}}`):
 - 422 `link_expired_on_issue`: the bill period has already ended (next "Scan this month's bill first."), or a SplitError.
 - 500 `internal`: unexpected error, or TENANT_SECRET missing when VERCEL_ENV=production (next "Try again.").
 
-Limitation: `rateLineVisibleToOrganizer` is fixed at false inside the signed token. The organizer creating the link can see the full rateCheck in the POST response and the base64url token, so the flag is not yet enforced. A later fix is to omit rateCheck from the organizer response or add a tenant-side re-sign endpoint.
+Privacy: the organizer's POST response omits `rateCheck`; the tenant sees it via GET. The token itself is signed, not encrypted, so its payload is readable by whoever holds the link. The signature proves Kahati computed the view from the submitted bill and readings, not that they are genuine.
 
 ### GET /api/tenant/{token}
 Response 200: TenantView. Errors: 401 `bad_signature` and 410 `expired` (next "Ask the organizer for a new link"), 400 `malformed`, 500 `internal`. Both rows in the API.md endpoint table should be marked live and the old `{token,url,expiresAt}` shape replaced.
@@ -184,6 +184,26 @@ Response 200: `{ "scan": BillScan, "sanity": { "effectiveRate": 15.0615, "within
 #### POST /api/scan/meter (changed)
 Response `validation.issues[].code` gains `"previous_mismatch"` (when previous.meterId !== meter.id; kwhSinceLast is then null, ok false). Mock now maps mMaster and MM-7781 to 12520 (digitsText "12520"); MM-5520 stays 12552. Golden: SM-0214 -> 04572, vs 4527 -> 45 kWh, serial matches.
 
+
+## Batch 3 changes (12 Nov, about 10:30 AM)
+
+POST /api/tenant-link: Response 200 is now `{ token, url, expiresAt, view }` where `view` is a TenantView WITHOUT `rateCheck` (the key is absent). The tenant gets the full view, including her own rateCheck (e.g. hB aboveBy 64.73), from GET /api/tenant/{token}. The token signature proves Kahati computed the view from the submitted bill and readings, not that they are genuine. The "Limitation" paragraph about the organizer seeing rateCheck in the POST response no longer applies to the response body (the base64url token payload still contains it).
+
+POST /api/check: CheckResult gains optional `complete: boolean` (false when any household chip is "missing"). A household with a current reading but no previous reading, or no meter, gets chip "missing"; the no-previous case adds flag "Reading needs a second look: no previous reading to compare with." Headline unchanged.
+
+All state endpoints (validateState) 400 bad_state additionally: bill.id missing or not a string; "Bill lines do not add up to the bill amount." when the lines sum differs from bill.amount by more than 0.01; households > 50, meters > 60, or any readings array > 500 entries.
+
+POST /api/scan/bill: sanity always includes `rateMonth` (string, or null when the rate could not be checked).
+
+POST /api/scan/meter: `meter` is only used when it has string id, string serial and numeric digits; `previous` only when it has string meterId and numeric value (otherwise ignored, as before for malformed input).
+
+POST /api/forecast: no request change. Internally the weather stage-3 pre-fetch now skips only when a reading exists at least 1 day after the forecast base date (same rule as forecast()), and the 8 s deadline timer is cleared after the fetch settles.
+
+A household with no linked meter gets the flag "Reading needs a second look: no meter is linked yet."
+
+**Demo path test:** `src/e2e/demo.test.ts` runs all 8 demo steps through the real route handlers. If it passes, the demo path works.
+
+**Accuracy harness:** see `scripts/README.md` (needs `GEMINI_API_KEY` and the labelled photos in `data-private/`).
 
 ## Golden sample values (the frontend can test against these)
 
