@@ -264,7 +264,7 @@ export function checkAnswer(
   const allowed = [...(ctx.allowedNumbers ?? [])];
   numbersFromStrings(ctx.facts, allowed);
   for (const n of extractNumbers(nf)) {
-    if (!allowed.some((a) => Math.abs(a - n) <= 0.01 + 1e-9)) problems.push("number not in the facts: " + n);
+    if (!allowed.some((a) => Math.abs(a - n) <= 0.005 + 1e-9)) problems.push("number not in the facts: " + n);
   }
 
   // 3. Meralco: only as a noun phrase (Meralco bill, rate, meter, account, statement, announcement), or inside the footer.
@@ -298,7 +298,7 @@ export function checkAnswer(
   }
   for (const n of [ctx.facts?.askedAmount, ctx.facts?.aboveBy, ctx.facts?.chargedRate]) {
     if (typeof n !== "number") continue;
-    if (extractNumbers(nf).some((x) => Math.abs(x - Math.abs(n)) <= 0.01 + 1e-9)) {
+    if (extractNumbers(nf).some((x) => Math.abs(x - Math.abs(n)) <= 0.005 + 1e-9)) {
       problems.push("rate-check number in free text");
       break;
     }

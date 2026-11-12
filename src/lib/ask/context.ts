@@ -1,6 +1,6 @@
 // Builds the grounded context for Ask Kahati: one household's computed numbers, and nothing else.
 // Privacy: the 4Ps flag and other households' names and kWh never go into factSheet (which is sent to Gemini).
-import { ADD_UP_TOLERANCE, LIFELINE_TIERS } from "@/data/tables";
+import { ADD_UP_TOLERANCE, TYPICAL_WATTS, LIFELINE_TIERS } from "@/data/tables";
 import { LINE_KEYS, LINE_LABELS, type AskSource, type CompoundState, type LineKey, type TenantView } from "@/types";
 import { checkCompound } from "@/lib/engine/check";
 import { forecast } from "@/lib/engine/forecast";
@@ -71,8 +71,22 @@ function numbersIn(v: unknown, out: number[]): void {
   }
 }
 
+/**
+ * Fixed background (same for every household): what each bill line means and typical appliance
+ * wattages from the spec's table. It lets the assistant explain "why" and give usage tips.
+ * Its numbers are added to allowedNumbers. Every wattage is "typical", never this household's.
+ */
+const BACKGROUND: string[] = [
+  "Background, what each bill line means: Generation is the cost of producing the electricity and is usually the biggest part. Transmission carries it over the high-voltage grid. System loss covers electricity lost on the way. Distribution, supply and metering pay the local distribution utility for the wires, the account and the meter. Taxes are government taxes. Other charges are universal charges, the renewable energy (FIT-All) charge and subsidies.",
+  "Background, typical appliance wattages (typical values, not measured for this household): " +
+    TYPICAL_WATTS.map((w) => `${w.appliance} about ${w.watts} W`).join("; ") +
+    ". One hour less of a 1000 W aircon a day is about 30 kWh a month (1 kW x 1 hour x 30 days).",
+  "Background, practical ways to use fewer kWh: run the aircon fewer hours or at a higher setting, use a fan with a timer at night, unplug the rice cooker after cooking instead of keeping it warm, keep the refrigerator door closed, and switch off lights and TVs when not in use.",
+];
+const BACKGROUND_NUMBERS = [...TYPICAL_WATTS.flatMap((w) => [w.watts, w.watts / 1000]), 1000, 1, 30, 32];
+
 export function allowedFrom(facts: AskFacts): number[] {
-  const out: number[] = [...FIXED_NUMBERS];
+  const out: number[] = [...FIXED_NUMBERS, ...BACKGROUND_NUMBERS];
   numbersIn(facts, out);
   return [...new Set(out.map((n) => Math.round(n * 10000) / 10000))].sort((a, b) => a - b);
 }
