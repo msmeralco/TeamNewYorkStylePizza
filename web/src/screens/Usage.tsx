@@ -120,8 +120,9 @@ export default function Usage() {
         <EmptyState
           title={t(waiting ? 'usage.waitTitle' : 'usage.emptyTitle')}
           body={t(waiting ? 'usage.waitBody' : 'usage.emptyBody')}
-          label={t(own || month?.bill ? 'check.scanMeter' : 'home.scanBill')}
-          onScan={() => nav(own ? '/scan/meter/BAU' : waiting && nextMissing ? `/scan/meter/${nextMissing.id}` : '/scan')}
+          // Same rule as Home, Check and Bill: "Scan the bill" until the month has a bill, then "Scan the meter".
+          label={t(month?.bill ? 'check.scanMeter' : 'home.scanBill')}
+          onScan={() => nav(!month?.bill ? '/scan' : own ? '/scan/meter/BAU' : waiting && nextMissing ? `/scan/meter/${nextMissing.id}` : '/scan')}
         />
         {picker}
       </div>

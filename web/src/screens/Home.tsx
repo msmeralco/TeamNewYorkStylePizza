@@ -57,8 +57,9 @@ export default function Home() {
 
   // Empty: no bill yet this month.
   if (!m.bill) {
+    // Empty states use the standard layout (no compact .scrolls rhythm), same as Check, Bill and Usage.
     return (
-      <div className="screen scrolls" ref={ref}>
+      <div className="screen" ref={ref}>
         {header(t('home.thisMonth'))}
         <EmptyState title={t('home.noBill')} body={t('home.noBillHint')} label={t('home.scanBill')} onScan={() => nav('/scan/bill')} />
         {sheet}
