@@ -1,5 +1,5 @@
 // Usage forecast in stages (spec: "Forecast, in stages"). Pure: no I/O.
-import { LIFELINE_LINE_KWH, SPIKE_THRESHOLD, STAGE2_RANGE, TYPICAL_WATTS } from "@/data/tables";
+import { LIFELINE_LINE_KWH, LIFELINE_TIERS, SPIKE_THRESHOLD, STAGE2_RANGE, TYPICAL_WATTS } from "@/data/tables";
 import type { CompoundState, Forecast, Reading } from "@/types";
 import { fitCdd, predict } from "./cdd";
 import { daysBetween, monthOf, toManilaDate, toTimestamp } from "./dates";
@@ -176,6 +176,7 @@ export function forecast(input: ForecastInput): Forecast {
           ? `On track to stay under 50 kWh: about ₱${peso(underLinePeso)}`
           : `Stay under 50 kWh: about ₱${peso(underLinePeso)} instead of about ₱${peso(forecastPeso)}`,
       tierLine: tierLine(),
+      tiers: LIFELINE_TIERS.map((t) => ({ ...t })),
     };
     if (rate.isFallback && rate.rangeFactor > 0) {
       const lo = billAfterLifeline(lowR, rate.perKwh * (1 - rate.rangeFactor));

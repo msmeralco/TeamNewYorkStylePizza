@@ -65,7 +65,7 @@ interface BForecast {
   stage: 1 | 2 | 3; readDate: string; kwh: number; low: number; high: number
   points: { date: string; day: number; kwhUsed: number; kind: 'bill' | 'photo' | 'projection' }[]
   rate: { perKwh: number; month: string; isFallback: boolean; note: string | null }
-  lifeline: null | { forecastPeso: number; underLinePeso: number }
+  lifeline: null | { forecastPeso: number; underLinePeso: number; tiers?: { maxKwh: number; discount: number }[] }
   perKwhValue: number | null
   spike: null | { percentAbove: number }
   actions: string[]
@@ -378,7 +378,11 @@ export function createHttpApi(baseUrl: string): KahatiApi {
         totalDays: days(s.bill.readDate, s.bill.nextReadDate),
         points: f.points.filter((p) => p.kind !== 'projection').map((p) => ({ ...p, kind: p.kind as 'bill' | 'photo' })),
         forecast: { kwh: f.kwh, low: f.low, high: f.high },
-        lifeline: f.lifeline ? { limitKwh: 50, pesoAtForecast: f.lifeline.forecastPeso, pesoUnderLimit: f.lifeline.underLinePeso } : undefined,
+        lifeline: f.lifeline ? {
+          limitKwh: 50, pesoAtForecast: f.lifeline.forecastPeso, pesoUnderLimit: f.lifeline.underLinePeso,
+          // The backend's tier table (2026 DSWD) feeds the Usage tier bar.
+          tiers: f.lifeline.tiers?.map((t) => ({ upTo: t.maxKwh, pctOff: Math.round(t.discount * 100) })),
+        } : undefined,
         perKwhValue: f.perKwhValue ?? undefined,
         rate: { perKwh: f.rate.perKwh, month: monthLabel(f.rate.month), source: RATE_SOURCE, isFallback: f.rate.isFallback, fallbackNote: f.rate.note ?? undefined },
         spikePct: f.spike?.percentAbove,

@@ -191,6 +191,8 @@ export interface Forecast {
     underLinePeso: number;
     message: string;
     tierLine: string;
+    /** The lifeline tier table used (2026 DSWD): up to maxKwh, discount as a fraction (1 = 100% off). */
+    tiers?: LifelineTier[];
   };
   /** Shared meter only. */
   perKwhValue: number | null;
