@@ -1,0 +1,137 @@
+import { useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { CircleAlert, CircleCheck, Ellipsis, Languages, RotateCcw, ScanLine, TrendingUp, Zap } from 'lucide-react'
+import { api, usingMock } from '../api'
+import { CountUp, useReveal } from '../components/motion'
+import { HomeSkeleton } from '../components/Skeletons'
+import { ErrorState, ICON, Sheet } from '../components/ui'
+import { useT } from '../i18n/copy'
+import { day, kwh, monthName, php } from '../lib/format'
+import { notifyChange, useAsync } from '../lib/useAsync'
+
+export default function Home() {
+  const { data, error, loading, reload } = useAsync(() => api.getMonth())
+  const { lang, setLang } = useT()
+  const nav = useNavigate()
+  const ref = useRef<HTMLDivElement>(null)
+  const [menu, setMenu] = useState(false)
+  const stateKey = data ? `${!!data.bill}-${data.households.filter((h) => h.reading).length}` : ''
+  useReveal(ref, !!data, stateKey)
+
+  if (error) return <div className="screen"><h1 className="title">Kahati</h1><ErrorState error={error} onRetry={reload} /></div>
+  if (loading && !data) return <HomeSkeleton />
+  const m = data!
+
+  const header = (title: string) => (
+    <div className="row-between">
+      <h1 className="title">{title}</h1>
+      <button className="icon-btn ghost" aria-label="More" onClick={() => setMenu(true)}>
+        <Ellipsis {...ICON} />
+      </button>
+    </div>
+  )
+
+  const sheet = (
+    <Sheet open={menu} onClose={() => setMenu(false)}>
+      <button className="list-row" onClick={() => { setLang(lang === 'en' ? 'fil' : 'en'); setMenu(false) }}>
+        <span className="icon-chip"><Languages {...ICON} /></span>
+        <span className="grow body">{lang === 'en' ? 'Filipino' : 'English'}</span>
+      </button>
+      {usingMock && (
+        <button className="list-row" onClick={async () => { await api.resetDemo(); notifyChange(); setMenu(false) }}>
+          <span className="icon-chip"><RotateCcw {...ICON} /></span>
+          <span className="grow body">Reset the demo</span>
+        </button>
+      )}
+    </Sheet>
+  )
+
+  // Empty: no bill yet this month.
+  if (!m.bill) {
+    return (
+      <div className="screen" ref={ref}>
+        {header('This month')}
+        <div className="hero">
+          <p className="hero-num" style={{ fontSize: 30 }}>No bill yet</p>
+          <p className="support" style={{ margin: '8px 0 0' }}>Scan the Meralco bill to start the split.</p>
+        </div>
+        <button className="btn" onClick={() => nav('/scan/bill')}>
+          <ScanLine {...ICON} /> Scan the bill
+        </button>
+        {sheet}
+      </div>
+    )
+  }
+
+  const bill = m.bill
+  const missing = m.households.filter((h) => !h.reading)
+  const check = m.check
+
+  return (
+    <div className="screen" ref={ref}>
+      {header(`${monthName(bill.periodEnd)} bill`)}
+
+      <div className="hero">
+        <p className="hero-num"><CountUp value={bill.amount} format={php} /></p>
+        <p className="body" style={{ margin: '10px 0 0', fontWeight: 500, fontSize: 15 }}>
+          {bill.kwh} kWh · {day(bill.periodStart)} to {day(bill.periodEnd)}
+        </p>
+        <span className="icon-chip lime corner"><Zap {...ICON} /></span>
+      </div>
+
+      {missing.length > 0 ? (
+        <>
+          <div className="row-between">
+            <span className="status-line"><CircleAlert {...ICON} />{missing.length} of {m.households.length} readings to go</span>
+            {usingMock && (
+              <button className="text-link" onClick={async () => { await api.loadSampleReadings(); notifyChange() }}>
+                Load the rest
+              </button>
+            )}
+          </div>
+          <button className="btn" onClick={() => nav(`/scan/meter/${missing[0].id}`)}>
+            <ScanLine {...ICON} /> Scan {missing[0].name}
+          </button>
+        </>
+      ) : (
+        check && (
+          <Link to="/check" className="status-line">
+            {check.addsUp ? <CircleCheck {...ICON} /> : <CircleAlert {...ICON} />}
+            {check.addsUp
+              ? `Readings add up: ${Math.round(check.readingsKwh)} of ${check.masterKwh} kWh`
+              : `${Math.round(check.missingKwh)} kWh missing: ${Math.round(check.readingsKwh)} of ${check.masterKwh} kWh`}
+          </Link>
+        )
+      )}
+
+      <div className="card list">
+        {m.households.map((h) => (
+          <Link key={h.id} to={`/bill/${h.id}`} className="list-row">
+            <span className="avatar">{h.label}</span>
+            <span className="grow">
+              <span className="body">{h.name}</span>
+              <span className="meta">
+                <Zap size={12} strokeWidth={1.75} />
+                {h.reading ? kwh(h.reading.kwh) : 'No reading yet'}
+              </span>
+            </span>
+            <span className="amount">{h.share ? <CountUp value={h.share.amount} format={php} /> : '–'}</span>
+          </Link>
+        ))}
+      </div>
+
+      {missing.length === 0 && m.rateNote && (
+        <div className="card note">
+          <span className="icon-chip lime"><TrendingUp {...ICON} /></span>
+          <div className="stack" style={{ gap: 4 }}>
+            <span className="body">Charged rate is {php(m.rateNote.difference)} above the bill</span>
+            <span className="support" style={{ fontSize: 14 }}>
+              {php(m.rateNote.chargedRate)} charged vs {php(m.rateNote.billRate)} on the bill
+            </span>
+          </div>
+        </div>
+      )}
+      {sheet}
+    </div>
+  )
+}

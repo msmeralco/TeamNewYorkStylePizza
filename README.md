@@ -18,6 +18,7 @@ npm test
 ## Layout
 
 - `docs/API.md`: the API contract between backend and frontend.
+- `web/`: the phone-first front end (Vite, React, TypeScript). Its own `package.json`; see `web/README.md`.
 - `src/types/`: shared types.
 - `src/lib/engine/`: pure calculation functions (split, breakdown, forecast, checks).
 - `src/lib/readers/`: bill and meter readers (mock, Gemini).
