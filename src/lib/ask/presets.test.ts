@@ -144,7 +144,8 @@ describe("Bautista, own meter", () => {
   });
   it("why_share for a single meter", () => {
     const a = answerPreset("why_share", ctx).answer;
-    expect(a).toContain("Your bill is");
+    expect(a).toContain("Before any lifeline discount, your bill is ₱858.17 for 56 kWh");
+    expect(a).toContain("56 kWh is 35% off most charges");
     expect(a).toContain("₱21.38");
   });
 });

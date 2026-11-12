@@ -4,6 +4,7 @@
 import { RATES } from "@/data/tables";
 import { LINE_KEYS, type AskPreset, type AskPresetId, type AskSource, type LineKey } from "@/types";
 import type { AskContext, AskLanguage } from "./context";
+import { discountFor } from "@/lib/engine/lifeline";
 
 export const ASK_PRESETS: Record<"en" | "fil", AskPreset[]> = {
   en: [
@@ -104,6 +105,23 @@ const LINE_GLOSS: Record<AskLanguage, Record<LineKey, string>> = {
 type Answer = { answer: string; sources: AskSource[] };
 const T = (ctx: AskContext) => ctx.language === "fil";
 
+/**
+ * Own-meter bills are shown gross. When the household has lifeline facts, say so and name the tier, so the
+ * October amount never contradicts "50 kWh or less is 100% off". Never states that the household is enrolled.
+ */
+function grossNote(ctx: AskContext): { lead: { en: string; fil: string }; tail: { en: string; fil: string } } | null {
+  const f = ctx.facts;
+  if (ctx.mode !== "single" || f.lifelineForecastPeso == null || f.billKwh == null) return null;
+  const pct = Math.round(discountFor(f.billKwh) * 100);
+  const tail =
+    pct >= 100
+      ? { en: " On an enrolled meter, 50 kWh or less is 100% off most charges.", fil: " Sa naka-enroll na metro, 100% ang bawas sa halos lahat ng singil kapag 50 kWh o mas mababa." }
+      : pct > 0
+        ? { en: ` On an enrolled meter, ${kwh(f.billKwh)} kWh is ${pct}% off most charges.`, fil: ` Sa naka-enroll na metro, ${pct}% ang bawas sa halos lahat ng singil sa ${kwh(f.billKwh)} kWh.` }
+        : { en: "", fil: "" };
+  return { lead: { en: "Before any lifeline discount, ", fil: "Bago ang anumang lifeline discount, " }, tail };
+}
+
 function whyShare(ctx: AskContext): Answer {
   const f = ctx.facts;
   const fil = T(ctx);
@@ -118,11 +136,14 @@ function whyShare(ctx: AskContext): Answer {
   }
   if (ctx.mode === "single") {
     const fixed = f.fixedCharges;
+    const g = grossNote(ctx);
     const answer = fil
-      ? `Ang bill mo ay ${peso(f.share)} para sa ${f.billKwh != null ? kwh(f.billKwh) : "iyong"} kWh.` +
-        (fixed != null ? ` Sa halagang iyon, ${peso(fixed)} ay nakapirming singil na hindi nagbabago sa gamit mo. Ang iba ay depende sa kWh mo.` : "")
-      : `Your bill is ${peso(f.share)} for ${f.billKwh != null ? kwh(f.billKwh) : "your"} kWh.` +
-        (fixed != null ? ` Of that, ${peso(fixed)} is fixed charges that do not change with your use. The rest depends on your kWh.` : "");
+      ? `${g ? g.lead.fil + "ang" : "Ang"} bill mo ay ${peso(f.share)} para sa ${f.billKwh != null ? kwh(f.billKwh) : "iyong"} kWh.` +
+        (fixed != null ? ` Sa halagang iyon, ${peso(fixed)} ay nakapirming singil na hindi nagbabago sa gamit mo. Ang iba ay depende sa kWh mo.` : "") +
+        (g ? g.tail.fil : "")
+      : `${g ? g.lead.en + "your" : "Your"} bill is ${peso(f.share)} for ${f.billKwh != null ? kwh(f.billKwh) : "your"} kWh.` +
+        (fixed != null ? ` Of that, ${peso(fixed)} is fixed charges that do not change with your use. The rest depends on your kWh.` : "") +
+        (g ? g.tail.en : "");
     return { answer, sources };
   }
   const used = f.kwh != null && f.billKwh != null;
@@ -164,9 +185,10 @@ function whatLines(ctx: AskContext): Answer {
   const rest = sorted.slice(1).map((k) => LINE_NAME[lang][k]);
   const total = f.share != null ? ` ng ${peso(f.share)}` : "";
   const totalEn = f.share != null ? ` of your ${peso(f.share)}` : "";
+  const g = grossNote(ctx);
   const answer = fil
-    ? `Ang pinakamalaking bahagi${total} ay ${LINE_NAME.fil[top]} (${peso(lines[top])}), ${LINE_GLOSS.fil[top]}. Ang iba ay ${list(rest, lang)}. Kapag pinagsama ang lahat ng linya, makukuha ang bahagi mo.`
-    : `The largest part${totalEn} is ${LINE_NAME.en[top]} (${peso(lines[top])}), ${LINE_GLOSS.en[top]}. The rest is ${list(rest, lang)}. Together the lines add up to your share.`;
+    ? `${g ? g.lead.fil + "ang" : "Ang"} pinakamalaking bahagi${total} ay ${LINE_NAME.fil[top]} (${peso(lines[top])}), ${LINE_GLOSS.fil[top]}. Ang iba ay ${list(rest, lang)}. Kapag pinagsama ang lahat ng linya, makukuha ang bahagi mo.`
+    : `${g ? g.lead.en + "the" : "The"} largest part${totalEn} is ${LINE_NAME.en[top]} (${peso(lines[top])}), ${LINE_GLOSS.en[top]}. The rest is ${list(rest, lang)}. Together the lines add up to your share.`;
   return { answer, sources };
 }
 
