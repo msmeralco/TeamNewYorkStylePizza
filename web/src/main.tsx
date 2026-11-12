@@ -40,6 +40,10 @@ async function inflateScenarioHash() {
   try { history.replaceState(null, '', `${window.location.pathname}${window.location.search}#scenario=${plain}`) } catch { /* ignore */ }
 }
 await inflateScenarioHash()
+// A scenario link pasted into an already-open tab only changes the hash; reload so it is imported.
+window.addEventListener('hashchange', () => {
+  if (/(?:^#|&)scenarioz?=/.test(window.location.hash)) window.location.reload()
+})
 
 // A lab link (#scenario=...) is imported once, before the first screen reads any state.
 const scenarioImport = api.importScenarioFromHash()
